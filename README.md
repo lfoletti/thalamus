@@ -1,6 +1,6 @@
 # granular_cortex
 
-A governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge brains of an organisation: which employee may read or write which brain, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. granular_cortex adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
+A governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge of an organisation: which employee may read or write which brain, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. granular_cortex adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
 
 *Version française plus bas.*
 
@@ -61,7 +61,7 @@ MIT. CortexDB is MIT too.
 
 # granular_cortex (français)
 
-Une couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les cerveaux de connaissances partagés d'une organisation : quel employé peut lire ou écrire quel cerveau, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. granular_cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
+Une couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les connaissances partagées d'une organisation : quel employé peut lire ou écrire quel cerveau, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. granular_cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
 
 ## Pourquoi
 
