@@ -88,11 +88,11 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 
 // brainFor checks the brain exists and the caller has at least the access.
 func (s *Server) brainFor(user, name string, need rights.Access, tool string) (rights.Brain, error) {
-	b, ok := s.rights.Brains[name]
+	b, ok := s.rights().Brains[name]
 	if !ok {
 		return rights.Brain{}, fmt.Errorf("%s: unknown brain %q", tool, name)
 	}
-	access, _ := s.rights.Access(user, name)
+	access, _ := s.rights().Access(user, name)
 	switch {
 	case need == rights.Curate && access < rights.Curate:
 		return rights.Brain{}, fmt.Errorf("%s: %s is not a curator of %s", tool, user, name)
@@ -131,7 +131,7 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	for k, v := range args.Metadata {
 		md[k] = v
 	}
-	access, _ := s.rights.Access(user, args.Brain)
+	access, _ := s.rights().Access(user, args.Brain)
 	if access == rights.Curate {
 		md["review_status"] = "accepted"
 		md["reviewed_by"] = user

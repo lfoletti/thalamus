@@ -26,17 +26,21 @@ import (
 
 // Server relays MCP tool calls to the brains of a rights file.
 type Server struct {
-	rights *rights.Rights
-	audit  *Audit
+	src   *rights.Source
+	audit *Audit
 
 	mu       sync.Mutex
 	sessions map[string]*mcp.Server // by secret: one MCP server per key, with the brain's tools
 }
 
 // New makes a relay for the brains of r, auditing to a.
-func New(r *rights.Rights, a *Audit) *Server {
-	return &Server{rights: r, audit: a, sessions: map[string]*mcp.Server{}}
+func New(src *rights.Source, a *Audit) *Server {
+	return &Server{src: src, audit: a, sessions: map[string]*mcp.Server{}}
 }
+
+// rights is the rights file as of now: the source reads it again when it
+// changes.
+func (s *Server) rights() *rights.Rights { return s.src.Current() }
 
 type ctxKey struct{}
 
@@ -68,7 +72,7 @@ func (s *Server) Handler() http.Handler {
 // holder still has the right. It returns the MCP server for that key.
 func (s *Server) admit(r *http.Request) (*mcp.Server, int, error) {
 	name := strings.TrimPrefix(r.URL.Path, "/mcp/")
-	brain, ok := s.rights.Brains[name]
+	brain, ok := s.rights().Brains[name]
 	if !ok || name == r.URL.Path {
 		return nil, http.StatusNotFound, fmt.Errorf("unknown brain %q", name)
 	}
@@ -86,7 +90,7 @@ func (s *Server) admit(r *http.Request) (*mcp.Server, int, error) {
 	if keyBrain != name {
 		return nil, http.StatusForbidden, fmt.Errorf("the key of %s was issued for %s, not %s", user, keyBrain, name)
 	}
-	access, _ := s.rights.Access(user, name)
+	access, _ := s.rights().Access(user, name)
 	if !access.AllowsRead() {
 		return nil, http.StatusForbidden, fmt.Errorf("%s no longer has access to %s", user, name)
 	}

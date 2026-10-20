@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
 )
@@ -229,5 +230,104 @@ func TestACuratorWritesAndReviews(t *testing.T) {
 	}
 	if got := strings.Join(r.Users(), ","); got != "guest,kmlead,lfoletti,mdupont" {
 		t.Fatalf("users %s", got)
+	}
+}
+
+// A source reloads the file when it changes: a right withdrawn in the file
+// is withdrawn at the next read, without a restart. A broken file leaves
+// the previous rights in force and warns once; a removed file does the
+// same. The first load must succeed.
+func TestASourceReloadsTheFileWhenItChanges(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rights.yaml")
+	write := func(text string, when time.Time) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, when, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t0 := time.Now().Add(-time.Hour)
+	write(sample, t0)
+	var warnings []string
+	src, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src.Warn = func(err error) { warnings = append(warnings, err.Error()) }
+	first := src.Current()
+	if a, _ := first.Access("lfoletti", "team/acme"); a != Write {
+		t.Fatalf("first: %v", a)
+	}
+	if src.Current() != first {
+		t.Fatal("an unchanged file was reloaded")
+	}
+	write(strings.Replace(sample, "    writers: [group:acme-devs]\n", "", 1), t0.Add(time.Second))
+	second := src.Current()
+	if second == first {
+		t.Fatal("a changed file was not reloaded")
+	}
+	if a, _ := second.Access("lfoletti", "team/acme"); a != Read {
+		t.Fatalf("second: %v", a)
+	}
+	write("brains: [", t0.Add(2*time.Second))
+	for i := 0; i < 2; i++ {
+		if src.Current() != second {
+			t.Fatal("a broken file replaced the rights")
+		}
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "previous rights stay") {
+		t.Fatalf("warnings: %q", warnings)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if src.Current() != second {
+			t.Fatal("a removed file replaced the rights")
+		}
+	}
+	if len(warnings) != 2 || !strings.Contains(warnings[1], "previous rights stay") {
+		t.Fatalf("warnings: %q", warnings)
+	}
+	// A directory in its place: the stat passes, the read fails.
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if src.Current() != second || len(warnings) != 3 {
+			t.Fatalf("a directory replaced the rights: %q", warnings)
+		}
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	write(sample, t0.Add(3*time.Second))
+	third := src.Current()
+	if a, _ := third.Access("lfoletti", "team/acme"); a != Write {
+		t.Fatal("the repaired file was not reloaded")
+	}
+	// The same text written again: a new time, the same rights.
+	write(sample, t0.Add(5*time.Second))
+	if src.Current() != third {
+		t.Fatal("the same text was parsed again")
+	}
+	if _, err := Open(filepath.Join(t.TempDir(), "absent.yaml")); err == nil {
+		t.Fatal("an absent file opened")
+	}
+	if _, err := Open(t.TempDir()); err == nil {
+		t.Fatal("a directory opened")
+	}
+	write("brains: [", t0.Add(4*time.Second))
+	if _, err := Open(path); err == nil {
+		t.Fatal("a broken file opened")
+	}
+	// A static source serves one value and never reads a file.
+	s := Static(first)
+	for i := 0; i < 2; i++ {
+		if s.Current() != first {
+			t.Fatal("static")
+		}
 	}
 }

@@ -110,10 +110,10 @@ func TestServeListensAndStops(t *testing.T) {
 	rightsPath, _ := writeRights(t, dir)
 	audit := filepath.Join(dir, "audit.jsonl")
 	ctx, cancel := context.WithCancel(context.Background())
-	out := &lockedBuffer{}
+	out, errOut := &lockedBuffer{}, &lockedBuffer{}
 	done := make(chan int, 1)
 	go func() {
-		done <- run(ctx, []string{"serve", rightsPath, "--listen", "127.0.0.1:0", "--audit", audit}, out, os.Stderr)
+		done <- run(ctx, []string{"serve", rightsPath, "--listen", "127.0.0.1:0", "--audit", audit}, out, errOut)
 	}()
 	var addr string
 	for i := 0; i < 100 && addr == ""; i++ {
@@ -136,6 +136,24 @@ func TestServeListensAndStops(t *testing.T) {
 	if code, _, stderr := call(t, "serve", rightsPath, "--listen", addr, "--audit", audit); code != 1 || !strings.Contains(stderr, "listen") {
 		t.Fatalf("port in use: %d %q", code, stderr)
 	}
+	// A broken rights file while serving: the previous rights stay, and
+	// stderr says so.
+	if err := os.WriteFile(rightsPath, []byte("brains: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(time.Hour)
+	if err := os.Chtimes(rightsPath, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := http.Post("http://"+addr+"/mcp/team/acme", "application/json", strings.NewReader("{}")); err != nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("after a broken file: %v %v", err, resp)
+	} else {
+		_ = resp.Body.Close()
+	}
+	if !strings.Contains(errOut.String(), "the previous rights stay in force") {
+		t.Fatalf("stderr: %q", errOut.String())
+	}
+	rightsPath, _ = writeRights(t, dir)
 	cancel()
 	if code := <-done; code != 0 {
 		t.Fatalf("serve exited %d", code)
