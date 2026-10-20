@@ -1,10 +1,12 @@
 # granular_cortex
 
-Couche mince au-dessus de CortexDB pour des graphes de connaissances d'entreprise utilisés par des agents de code. Pour l'instant : un document de révision, un plan de publication et un clone de CortexDB avec six correctifs locaux encore à soumettre (six autres sont fusionnés en amont). Mettre ce fichier à jour dès que la stack de `granular_cortex` elle-même (gateway, plugin, extension) existe.
+Couche mince au-dessus de CortexDB pour des graphes de connaissances d'entreprise utilisés par des agents de code. Contenu : les documents du projet, un clone de CortexDB avec sept PR ouvertes en amont, et depuis le 20 octobre 2026 la première tranche du gateway (`gateway/`). La racine est un dépôt git (initialisé le 20 octobre 2026, branche `main`, aucun remote) ; `cortexdb/` est un dépôt à part, ignoré par la racine.
 
 ## Arborescence
 
 - `docs/` : documents du projet.
+- `gateway/` : module Go `github.com/lfoletti/granular-cortex/gateway` (CortexDB v2.134.1 en bibliothèque, SDK MCP v1.6.1). Paquets `rights` (lecture de `rights.yaml`), `keys` (émission et révocation des clés confinées dans le fichier de clés du serveur), `relay` (serveur MCP HTTP par cerveau, relais gRPC avec la clé de l'appelant, `audit.jsonl`), `cmd/gc-gateway`. Lire `gateway/README.md`.
+- `tests/e2e_gateway.sh` : banc de bout en bout du gateway (serveur gRPC construit depuis `cortexdb/`, 19 contrôles, environ 1 min). `tests/e2e_shared_brain.sh` : le banc du clone seul (30 contrôles).
 - `cortexdb/` : clone complet de `github.com/liliang-cn/cortexdb` (amont, `origin` ; fork de l'utilisateur, `fork` = `lfoletti/cortexdb`). Branche de travail : `proto/granular-cortex`, créée le 18 octobre 2026, reconstruite sur `main` à v2.134.0 le 19 octobre 2026.
 
 ## État de la branche `proto/granular-cortex` (20 octobre 2026)
@@ -26,6 +28,10 @@ Un commit sur `proto` seulement (`d5131f7`, entre 06 et 10) classe dans la liste
 Résumé des demandes du propriétaire (20 octobre 2026) : mémoire CortexDB `feedback:granular-cortex:upstream-review-2026-10-20`. Une PR à part viendra pour `cortex_query` (prefetch sans collection, `pkg/cortexdb/query_api.go`) ; l'outil entre dans la liste blanche après.
 
 Essai de bout en bout (serveur gRPC + fichier de clés + client MCP distant) : `sh tests/e2e_shared_brain.sh` depuis la racine, 30 contrôles, environ 2 minutes. Vert sur `proto` reconstruite le 20 octobre 2026 au soir, dernière fois à 19 h 30 sur `cd5ad43` (30/30, huit commits). Plan de publication : `docs/plan_publication.md`, à valider par l'utilisateur avant toute action publique.
+
+## Gateway (tranche 1, 20 octobre 2026)
+
+Vert : `go test -race ./...` dans `gateway/` (couverture 100 % hors `main`), `python3 -I mutate.py` (29 mutations à la main, 29 tuées, `docs/gateway/failing_first.md`), `sh tests/e2e_gateway.sh` (19/19). Limites connues : `cortexdb-grpc` lit son fichier de clés au démarrage seulement (redémarrage après `key issue` ou `key revoke` ; rechargement à proposer en amont) ; pas d'OIDC, pas de fédération, pas d'extraction. Les mêmes règles de vérification que pour les PR s'appliquent (trois niveaux, tests avant le code, mutation à la main par règle). Prochaines tranches : rechargement des clés, annuaire des cerveaux côté client (plugin), fédération.
 
 ## Règles de publication
 
