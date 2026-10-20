@@ -163,6 +163,15 @@ code=$(rest POST /v1/add "" '{"brain":"team/acme","content":"x"}')
 code=$(rest POST /v1/add "$LF" '{"brain":"org/none","content":"x"}')
 [ "$code" = 404 ] && ok "POST /v1/add on an unknown brain is 404" || ko "unknown brain add" "$code $(cat "$S/rest.out")"
 
+# POST /v1/login: 404 without an identity block; with one (added hot, the
+# rights file reloads), a token that is not a JWT is 401.
+code=$(rest POST /v1/login "" "")
+[ "$code" = 404 ] && ok "POST /v1/login without an identity block is 404" || ko "login 404" "$code $(cat "$S/rest.out")"
+printf 'identity:\n  issuer: http://127.0.0.1:1\n  audience: thalamus\n' >> "$S/data/rights.yaml"
+code=$(rest POST /v1/login "not-a-token" "")
+[ "$code" = 401 ] && grep -q 'three parts' "$S/rest.out" && ok "POST /v1/login with a bad token is 401" || ko "login 401" "$code $(cat "$S/rest.out")"
+sed -i '' '/^identity:/,$d' "$S/data/rights.yaml"
+
 # The rights file changes while the gateway runs: a withdrawn right is
 # refused at the next call, no restart; a restored right is served again.
 # lfoletti reads org/secrets by name only, so one line withdraws it all.

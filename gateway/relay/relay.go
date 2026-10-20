@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/lfoletti/thalamus/gateway/identity"
 	"github.com/lfoletti/thalamus/gateway/keys"
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
@@ -30,7 +31,10 @@ type Server struct {
 	audit *Audit
 
 	mu       sync.Mutex
-	sessions map[string]*mcp.Server // by secret: one MCP server per key, with the brain's tools
+	sessions map[string]*mcp.Server
+	// The verifier of the identity block, rebuilt when the block changes.
+	idp    *identity.Verifier
+	idpFor rights.Identity // by secret: one MCP server per key, with the brain's tools
 }
 
 // New makes a relay for the brains of r, auditing to a.
