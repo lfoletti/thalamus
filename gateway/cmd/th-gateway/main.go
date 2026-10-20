@@ -7,6 +7,7 @@
 //	th-gateway key issue <rights.yaml> <user> <brain>
 //	th-gateway key revoke <rights.yaml> <user> <brain>
 //	th-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]
+//	th-gateway login <gateway> [--env ~/.thalamus/env] [--no-browser]
 package main
 
 import (

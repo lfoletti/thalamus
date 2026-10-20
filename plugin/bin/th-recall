@@ -1,13 +1,15 @@
 #!/bin/sh
 # Thalamus recall launcher for the UserPromptSubmit hook of Claude Code.
 # It runs th-hook recall with the hook payload on stdin. It never blocks the
-# prompt: when the binary or the settings are missing, it exits 0 silently.
+# prompt: when the binary is missing, it exits 0 silently; th-hook itself
+# exits 0 on every problem.
 #
 #   TH_GATEWAY   base URL of the gateway, for example http://gateway.internal:8787
 #   TH_KEY       the key the gateway issued to you
+#                (both read from ~/.thalamus/env, written by th-gateway login,
+#                when they are not in the environment; TH_ENV names another file)
 #   TH_HOOK_BIN  the th-hook binary (default: next to this launcher)
 set -u
 bin="${TH_HOOK_BIN:-$(cd "$(dirname "$0")" 2>/dev/null && pwd)/th-hook}"
 [ -x "$bin" ] || exit 0
-[ -n "${TH_GATEWAY:-}" ] && [ -n "${TH_KEY:-}" ] || exit 0
 exec "$bin" recall

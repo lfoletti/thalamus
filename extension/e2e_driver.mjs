@@ -40,10 +40,14 @@ try {
   (await popup.textContent("#status")).includes("unknown to the gateway") ? ok("a wrong key is told") : ko("wrong key", await popup.textContent("#status"));
   await popup.close();
 
-  // The right key: the page, whole, proposed into team/acme.
-  await options.fill("#key", KEY);
-  await options.click("#save");
-  await options.waitForFunction(() => document.querySelector("#saved").textContent === "Saved.");
+  // Sign in through the identity provider: the key arrives by itself and
+  // is the one the gateway issued.
+  await options.fill("#key", "");
+  await options.click("#signin");
+  await options.waitForSelector('#signed[data-status="signed"]', { timeout: 20000 });
+  const signed = await options.textContent("#signed");
+  signed === "Signed in as lfoletti: 2 brain(s). Your key is saved." ? ok("sign-in through the provider: " + signed) : ko("sign-in", signed);
+  (await options.inputValue("#key")) === KEY ? ok("the key saved is the one the gateway issued") : ko("key", await options.inputValue("#key"));
   await options.close();
   await page.bringToFront();
   popup = await context.newPage();

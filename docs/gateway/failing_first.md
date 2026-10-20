@@ -1,10 +1,10 @@
-# Failing first, gateway et extension (tranches 1 à 10, 20 octobre 2026)
+# Failing first, gateway et extension (tranches 1 à 11, 21 octobre 2026)
 
 Preuve : `gateway/mutate.py`. Le script applique une mutation à la main par règle, lance le test nommé, remet le fichier. Sortie attendue : `KILLED` sur chaque ligne, `alive: 0`.
 
 Commande : `cd gateway && python3 -I mutate.py`.
 
-Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées ; tranches 1 à 6, 98 mutations, 98 tuées ; tranches 1 à 7, 108 mutations, 108 tuées ; tranches 1 à 8, 113 mutations, 113 tuées ; tranches 1 à 9, 128 mutations (15 en JavaScript, `extension/lib.js`, tuées par `node --test --test-name-pattern`), 128 tuées ; tranches 1 à 10, 148 mutations, 148 tuées. Un défaut trouvé par l'essai réel du plugin (tranche 8, `tests/e2e_plugin.sh`) et non par le banc : les extraits du hook sont coupés par le moteur (`compactSnippet`), et sans outil de lecture entière la session rappelait `th_recall` avec la même question jusqu'à `error_max_turns`. Correctif : `th_get`, nommé dans le pied du bloc du hook et dans la compétence ; la session suivante a répondu en un `th_get`. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `th_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke th/ghost/team/acme » absent.
+Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées ; tranches 1 à 6, 98 mutations, 98 tuées ; tranches 1 à 7, 108 mutations, 108 tuées ; tranches 1 à 8, 113 mutations, 113 tuées ; tranches 1 à 9, 128 mutations (15 en JavaScript, `extension/lib.js`, tuées par `node --test --test-name-pattern`), 128 tuées ; tranches 1 à 10, 148 mutations, 148 tuées ; tranches 1 à 11, 183 mutations (dont 25 en JavaScript), 183 tuées. Les tests du paquet `login` tournent sous un contexte de 10 s : une mutation qui attend un navigateur qui ne revient pas meurt par le délai. Un défaut trouvé par l'essai réel du plugin (tranche 8, `tests/e2e_plugin.sh`) et non par le banc : les extraits du hook sont coupés par le moteur (`compactSnippet`), et sans outil de lecture entière la session rappelait `th_recall` avec la même question jusqu'à `error_max_turns`. Correctif : `th_get`, nommé dans le pied du bloc du hook et dans la compétence ; la session suivante a répondu en un `th_get`. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `th_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke th/ghost/team/acme » absent.
 
 | Paquet | Règle mutée | Test qui tombe |
 | :- | :- | :- |
@@ -62,6 +62,18 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | rights (10) | bloc `identity` sans émetteur admis | `TestTheIdentityBlockIsReadAndChecked` |
 | relay (10) | connexion sans cerveau servie ; bloc changé, ancien vérificateur ; `GET` connecte ; connexion ratée non auditée | `TestLoginRefusals` |
 | relay (10) | clé émise à chaque connexion ; clé fédérée d'un autre cerveau ; connexion non auditée ; `/v1/login` non routé | `TestLoginIssuesTheKeysTheRightsAllow` |
+| login (11) | `client_id` absent admis ; `state` forgé admis ; refus du fournisseur ignoré ; autre `nonce` admis ; `id_token` absent non dit ; erreur en texte brut perdue | `TestTheFlowRefusals` |
+| login (11) | points d'entrée absents admis | `TestBadAnswersAreErrors` |
+| login (11) | PKCE sans S256 ; autre vérificateur ; rappel servi après l'ouverture du navigateur ; navigateur en panne non dit ; second rappel bloquant | `TestTheFlowSignsInAndBringsTheKeys` |
+| cmd/th-gateway (11) | `--no-browser` ouvre le navigateur ; fichier lisible par d'autres ; dossier non créé ; barre finale gardée | `TestLoginWritesTheEnvFile` |
+| cmd/th-gateway (11) | `TH_BROWSER` ignoré ; macOS avec `xdg-open` | `TestOpenBrowserRunsTheOpener` |
+| cmd/th-hook (11) | le fichier l'emporte sur l'environnement ; `~/.thalamus/env` non lu ; `TH_ENV` ignoré | `TestTheHookReadsTheEnvFile` |
+| relay (11) | `POST /v1/identity` répond ; `client_id` non rendu ; route absente | `TestIdentityIsPublic` |
+| rights (11) | `client_id` non lu | `TestTheIdentityBlockIsReadAndChecked` |
+| extension (11) | flux `code` demandé ; pas de mode fragment | `authorizeURL carries the id_token request` |
+| extension (11) | fenêtre fermée = erreur de `state` ; refus non dit ; `state` forgé admis ; `id_token` absent = erreur de `nonce` ; autre `nonce` admis | `tokenOf reads the id_token from the fragment and checks state and nonce` |
+| extension (11) | 404 générique ; 403 générique | `signInText says what happened, by status` |
+| extension (11) | chaîne aléatoire courte | `randomString is long and URL-safe` |
 | cmd | secret pas seul sur stdout | `TestKeyIssueAndRevoke` |
 | cmd | erreur d'usage en code 1 | `TestTheCommandLineIsChecked` |
 | cmd | arrêt propre rendu comme erreur | `TestServeListensAndStops` |

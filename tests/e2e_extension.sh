@@ -14,7 +14,7 @@ ko() { fail=$((fail+1)); echo "FAIL  $1: $2" | cut -c1-600; }
 (cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway) || exit 1
 mkdir -p "$S/data" "$S/site"
-ADDR=127.0.0.1:$((20000 + $$ % 10000)); GWADDR=127.0.0.1:$((30000 + $$ % 10000)); SITEPORT=$((40000 + $$ % 10000))
+ADDR=127.0.0.1:$((20000 + $$ % 10000)); GWADDR=127.0.0.1:$((30000 + $$ % 10000)); SITEPORT=$((40000 + $$ % 10000)); IDPPORT=$((50000 + $$ % 10000))
 cat > "$S/data/keys.json" <<K
 {"keys":[{"id":"operator","secret":"op-secret-op-secret-op-secret-op","clearance":"read-write"}]}
 K
@@ -33,9 +33,14 @@ brains:
     readers: [user:lfoletti]
 groups:
   acme: [lfoletti, mdupont]
+identity:
+  issuer: http://127.0.0.1:$IDPPORT
+  audience: thalamus
+  client_id: thalamus
+  strip_domain: true
 R
 LF=$("$S/th-gateway" key issue "$S/data/rights.yaml" lfoletti team/acme) || { echo "key issue failed"; exit 1; }
-"$S/th-gateway" key issue "$S/data/rights.yaml" lfoletti org/secrets >/dev/null || exit 1
+LFS=$("$S/th-gateway" key issue "$S/data/rights.yaml" lfoletti org/secrets) || exit 1
 cat > "$S/site/index.html" <<H
 <!doctype html><meta charset="utf-8"><title>Cutover plan</title>
 <h1>Cutover plan</h1>
@@ -48,10 +53,12 @@ SRV=$!
 GWP=$!
 (cd "$S/site" && python3 -m http.server "$SITEPORT" --bind 127.0.0.1 > /dev/null 2>&1) &
 WEB=$!
-trap 'kill $SRV $GWP $WEB 2>/dev/null; wait $SRV $GWP $WEB 2>/dev/null' EXIT
+node "$ROOT/tests/fake_idp.mjs" --port "$IDPPORT" --client-id thalamus --audience thalamus > "$S/data/idp.log" 2>&1 &
+IDP=$!
+trap 'kill $SRV $GWP $WEB $IDP 2>/dev/null; wait $SRV $GWP $WEB $IDP 2>/dev/null' EXIT
 sleep 1.5
 
-(cd "$ROOT/extension" && EXT="$ROOT/extension" SITE="http://127.0.0.1:$SITEPORT/" GATEWAY="http://$GWADDR" KEY="$LF" node "$ROOT/extension/e2e_driver.mjs") > "$S/driver.out" 2> "$S/driver.err"
+(cd "$ROOT/extension" && EXT="$ROOT/extension" SITE="http://127.0.0.1:$SITEPORT/" GATEWAY="http://$GWADDR" KEY="$LFS" node "$ROOT/extension/e2e_driver.mjs") > "$S/driver.out" 2> "$S/driver.err"
 cat "$S/driver.out"
 pass=$((pass + $(grep -c '^PASS' "$S/driver.out"))); fail=$((fail + $(grep -c '^FAIL' "$S/driver.out")))
 [ -s "$S/driver.err" ] && { echo "driver stderr:"; tail -5 "$S/driver.err"; }

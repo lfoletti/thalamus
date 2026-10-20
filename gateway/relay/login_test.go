@@ -154,3 +154,24 @@ func TestLoginRefusals(t *testing.T) {
 		t.Fatalf("other issuer: %d %s", status, body)
 	}
 }
+
+// GET /v1/identity is public: it names the provider and the client id, so
+// that a tool needs only the gateway's address. 404 without the block,
+// 405 on another method.
+func TestIdentityIsPublic(t *testing.T) {
+	b := start(t)
+	if status, body := b.rest(t, http.MethodGet, "/v1/identity", "", ""); status != http.StatusNotFound || !strings.Contains(body, "no identity provider") {
+		t.Fatalf("no block: %d %s", status, body)
+	}
+	b.rights.Identity = &rights.Identity{Issuer: "https://login.example", Audience: "thalamus", ClientID: "thalamus-cli"}
+	status, body := b.rest(t, http.MethodGet, "/v1/identity", "", "")
+	if status != http.StatusOK || body != `{"issuer":"https://login.example","audience":"thalamus","client_id":"thalamus-cli"}`+"\n" {
+		t.Fatalf("identity: %d %s", status, body)
+	}
+	if status, body := b.rest(t, http.MethodPost, "/v1/identity", "", ""); status != http.StatusMethodNotAllowed || !strings.Contains(body, "GET") {
+		t.Fatalf("post: %d %s", status, body)
+	}
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("a public read is not audited: %+v", lines)
+	}
+}

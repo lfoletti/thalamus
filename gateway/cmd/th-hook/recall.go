@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -80,13 +82,9 @@ func recall(stdin io.Reader, env func(string) string) (string, error) {
 	if prompt == "" || strings.HasPrefix(prompt, "/") || len(strings.Fields(prompt)) < 3 {
 		return "", nil
 	}
-	gateway := strings.TrimRight(strings.TrimSpace(env("TH_GATEWAY")), "/")
-	if gateway == "" {
-		return "", errors.New("TH_GATEWAY is not set")
-	}
-	key := strings.TrimSpace(env("TH_KEY"))
-	if key == "" {
-		return "", errors.New("TH_KEY is not set")
+	gateway, key, err := settings(env)
+	if err != nil {
+		return "", err
 	}
 	topK := 3
 	if v := strings.TrimSpace(env("TH_RECALL_TOPK")); v != "" {
@@ -196,4 +194,38 @@ func fit(header string, lines []string, footer string, budget int) string {
 		parts = append(parts, note)
 	}
 	return strings.Join(append(parts, footer), "\n")
+}
+
+// settings reads TH_GATEWAY and TH_KEY from the environment, or, when one
+// is missing, from the env file that th-gateway login writes (TH_ENV, or
+// ~/.thalamus/env).
+func settings(env func(string) string) (gateway, key string, err error) {
+	gateway, key = strings.TrimSpace(env("TH_GATEWAY")), strings.TrimSpace(env("TH_KEY"))
+	if gateway == "" || key == "" {
+		path := env("TH_ENV")
+		if path == "" {
+			path = filepath.Join(env("HOME"), ".thalamus", "env")
+		}
+		data, _ := os.ReadFile(path)
+		for _, line := range strings.Split(string(data), "\n") {
+			k, v, _ := strings.Cut(line, "=")
+			switch strings.TrimSpace(k) {
+			case "TH_GATEWAY":
+				if gateway == "" {
+					gateway = strings.TrimSpace(v)
+				}
+			case "TH_KEY":
+				if key == "" {
+					key = strings.TrimSpace(v)
+				}
+			}
+		}
+	}
+	if gateway == "" {
+		return "", "", errors.New("TH_GATEWAY is not set, and no env file from th-gateway login")
+	}
+	if key == "" {
+		return "", "", errors.New("TH_KEY is not set, and no env file from th-gateway login")
+	}
+	return strings.TrimRight(gateway, "/"), key, nil
 }

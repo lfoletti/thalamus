@@ -18,8 +18,12 @@ import (
 // serveREST answers the /v1/ routes. It returns false when the path is
 // not one of them.
 func (s *Server) serveREST(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/v1/login" {
+	switch r.URL.Path {
+	case "/v1/login":
 		s.serveLogin(w, r)
+		return
+	case "/v1/identity":
+		s.serveIdentity(w, r)
 		return
 	}
 	user, status, err := s.holderOf(r)
