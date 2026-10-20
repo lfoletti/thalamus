@@ -1,0 +1,8 @@
+# Clone amont de CortexDB : dépôt git à part, jamais versionné ici
+cortexdb/
+# État local du cerveau CortexDB du projet
+.cortexdb/
+# Réglages locaux de session
+.claude/settings.local.json
+# Binaires
+gateway/bin/
