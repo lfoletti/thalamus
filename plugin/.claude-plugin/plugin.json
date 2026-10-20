@@ -1,0 +1,9 @@
+{
+  "name": "granular-cortex",
+  "description": "Enterprise shared brains behind the granular_cortex gateway: federated recall across the brains an employee may read, with provenance and audit, plus the gateway's MCP tools (gc_brains, gc_recall).",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lauro Foletti",
+    "email": "lauro.foletti@gmail.com"
+  }
+}

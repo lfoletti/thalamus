@@ -6,3 +6,4 @@ cortexdb/
 .claude/settings.local.json
 # Binaires
 gateway/bin/
+plugin/bin/gc-hook
