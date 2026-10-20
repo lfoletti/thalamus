@@ -7,3 +7,4 @@ cortexdb/
 # Binaires
 gateway/bin/
 plugin/bin/th-hook
+extension/node_modules/

@@ -22,6 +22,7 @@ The base engine has no way to define or manage a clearance policy on a shared br
 - **Relay.** One MCP endpoint per brain, `/mcp/<brain>`, over streamable HTTP. The caller presents the key the gateway issued. The gateway refuses before it reaches the brain (unknown key, key of another brain, right withdrawn, unknown brain), forwards each tool call over gRPC with the caller's key, and appends one line to `audit.jsonl`: who, which key, which brain, which tool, which ids, success or error.
 - **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `th_brains` lists the caller's brains. `th_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
 - **REST.** `GET /v1/brains` and `POST /v1/add` for clients without MCP, a browser extension or a script: same key, same circuit, same audit.
+- **Browser.** A Chrome extension (`extension/`): propose the page you read, or your selection, into a brain you may write to, for the curators. Same key, same circuit.
 - **Client.** A Claude Code plugin (`plugin/`): the gateway's tools over HTTP under the employee's key, and a `UserPromptSubmit` hook that injects the best extracts with their provenance into each prompt. The hook never blocks a prompt.
 
 ## Layout
@@ -30,6 +31,7 @@ The base engine has no way to define or manage a clearance policy on a shared br
 | :- | :- |
 | `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
 | `plugin/` | The Claude Code plugin. |
+| `extension/` | The Chrome extension. |
 | `tests/e2e_gateway.sh` | End-to-end bench: a CortexDB server, the gateway, keys, calls over HTTP, the hook, the audit file. |
 | `docs/` | Architecture revision, ADRs, the PR pipeline, the upstream PR folders (in French). |
 | `cortexdb/` | Not in this repository: a clone of CortexDB, expected next to `gateway/` for the bench. |
@@ -82,6 +84,7 @@ Le modèle de base ne permet pas de définir ni de gérer une politique de clear
 - **Relais.** Un point MCP par cerveau, `/mcp/<cerveau>`, en HTTP. L'appelant présente la clé émise par le gateway. Le gateway refuse avant de joindre le cerveau (clé inconnue, clé d'un autre cerveau, droit retiré, cerveau inconnu), relaie chaque appel d'outil en gRPC avec la clé de l'appelant, et ajoute une ligne à `audit.jsonl` : qui, quelle clé, quel cerveau, quel outil, quels identifiants, succès ou erreur.
 - **Rappel fédéré.** `/mcp` admet toute clé émise par le gateway et nomme son porteur. `th_brains` liste les cerveaux de l'appelant. `th_recall` interroge en parallèle chaque cerveau lisible avec la clé de l'appelant pour ce cerveau, fusionne les listes par rang réciproque pondéré, réunit un même texte présent dans plusieurs cerveaux, et donne à chaque résultat une ligne de provenance fixe : `[cerveau] titre, id, source, by auteur`.
 - **REST.** `GET /v1/brains` et `POST /v1/add` pour les clients sans MCP, une extension de navigateur ou un script : même clé, même circuit, même audit.
+- **Navigateur.** Une extension Chrome (`extension/`) : proposer la page lue, ou la sélection, dans un cerveau où l'on écrit, pour les curateurs. Même clé, même circuit.
 - **Client.** Un plugin Claude Code (`plugin/`) : les outils du gateway en HTTP sous la clé de l'employé, et un hook `UserPromptSubmit` qui injecte les meilleurs extraits avec leur provenance dans chaque prompt. Le hook ne bloque jamais un prompt.
 
 ## Arborescence
@@ -90,6 +93,7 @@ Le modèle de base ne permet pas de définir ni de gérer une politique de clear
 | :- | :- |
 | `gateway/` | Le module Go (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), ses tests et `mutate.py`, la preuve par mutations à la main. |
 | `plugin/` | Le plugin Claude Code. |
+| `extension/` | L'extension Chrome. |
 | `tests/e2e_gateway.sh` | Banc de bout en bout : un serveur CortexDB, le gateway, les clés, des appels en HTTP, le hook, le fichier d'audit. |
 | `docs/` | Révision d'architecture, ADR, pipeline de PR, dossiers des PR amont. |
 | `cortexdb/` | Hors de ce dépôt : un clone de CortexDB, attendu à côté de `gateway/` pour le banc. |
