@@ -1,10 +1,10 @@
-# Failing first, gateway (tranches 1 à 6, 20 octobre 2026)
+# Failing first, gateway (tranches 1 à 7, 20 octobre 2026)
 
 Preuve : `gateway/mutate.py`. Le script applique une mutation à la main par règle, lance le test nommé, remet le fichier. Sortie attendue : `KILLED` sur chaque ligne, `alive: 0`.
 
 Commande : `cd gateway && python3 -I mutate.py`.
 
-Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées ; tranches 1 à 6, 98 mutations, 98 tuées. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `th_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke th/ghost/team/acme » absent.
+Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées ; tranches 1 à 6, 98 mutations, 98 tuées ; tranches 1 à 7, 108 mutations, 108 tuées. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `th_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke th/ghost/team/acme » absent.
 
 | Paquet | Règle mutée | Test qui tombe |
 | :- | :- | :- |
@@ -47,6 +47,8 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | rights (6) | fichier changé jamais relu ; nouveaux droits parsés mais pas servis ; panne jamais signalée ; panne signalée à chaque lecture ; même texte reparsé | `TestASourceReloadsTheFileWhenItChanges` |
 | relay (6) | droits figés au démarrage | `TestTheRelayFollowsTheRightsFile` |
 | cmd (6) | `serve` ne signale pas une panne de rechargement | `TestServeListensAndStops` |
+| relay (7) | routes `/v1/` non servies ; `POST /v1/brains` liste ; appelant refusé en 200 ; liste REST non auditée | `TestRestListsTheBrains` |
+| relay (7) | cerveau inconnu en 502 ; droit absent en 502 ; mauvais argument en 502 ; ajout refusé en 200 ; réponse du moteur non rendue ; `GET /v1/add` ajoute | `TestRestAddsADocument` |
 | cmd | secret pas seul sur stdout | `TestKeyIssueAndRevoke` |
 | cmd | erreur d'usage en code 1 | `TestTheCommandLineIsChecked` |
 | cmd | arrêt propre rendu comme erreur | `TestServeListensAndStops` |
