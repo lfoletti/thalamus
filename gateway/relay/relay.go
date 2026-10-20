@@ -54,6 +54,10 @@ func (s *Server) Handler() http.Handler {
 		return srv
 	}, &mcp.StreamableHTTPOptions{JSONResponse: true})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/v1/") {
+			s.serveREST(w, r)
+			return
+		}
 		admit := s.admit
 		if r.URL.Path == "/mcp" {
 			admit = s.admitFederated

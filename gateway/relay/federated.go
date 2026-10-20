@@ -25,12 +25,12 @@ import (
 // rrfK is the constant of reciprocal rank fusion: score = weight / (k + rank).
 const rrfK = 60
 
-// admitFederated finds the caller behind a bearer, looking through the key
-// files of every brain, and refuses a caller with no right left.
-func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
+// holderOf finds the caller behind a bearer, looking through the key files
+// of every brain, and refuses a caller with no right left.
+func (s *Server) holderOf(r *http.Request) (string, int, error) {
 	secret, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !found || secret == "" {
-		return nil, http.StatusUnauthorized, errors.New("a key issued by the gateway is required")
+		return "", http.StatusUnauthorized, errors.New("a key issued by the gateway is required")
 	}
 	user := ""
 	for _, name := range sortedBrains(s.rights()) {
@@ -40,15 +40,25 @@ func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
 			break
 		}
 		if !strings.Contains(err.Error(), "unknown key") && !strings.Contains(err.Error(), "not issued") {
-			return nil, http.StatusInternalServerError, fmt.Errorf("key file of %s: %w", name, err)
+			return "", http.StatusInternalServerError, fmt.Errorf("key file of %s: %w", name, err)
 		}
 	}
 	if user == "" {
-		return nil, http.StatusUnauthorized, errors.New("refused: unknown key")
+		return "", http.StatusUnauthorized, errors.New("refused: unknown key")
 	}
 	if len(s.rights().BrainsOf(user)) == 0 {
-		return nil, http.StatusForbidden, fmt.Errorf("%s no longer has access to any brain", user)
+		return "", http.StatusForbidden, fmt.Errorf("%s no longer has access to any brain", user)
 	}
+	return user, 0, nil
+}
+
+// admitFederated serves the federated MCP server of the caller, one per key.
+func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
+	user, status, err := s.holderOf(r)
+	if err != nil {
+		return nil, status, err
+	}
+	secret := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	s.mu.Lock()
 	srv, cached := s.sessions["federated:"+secret]
 	s.mu.Unlock()
@@ -60,6 +70,18 @@ func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
 	s.sessions["federated:"+secret] = srv
 	s.mu.Unlock()
 	return srv, 0, nil
+}
+
+// brainsOf lists the brains the user may read, with the access and whether
+// a key exists, and audits the listing.
+func (s *Server) brainsOf(user string) []brainEntry {
+	var out []brainEntry
+	for _, g := range s.rights().BrainsOf(user) {
+		_, err := keys.SecretOf(s.rights().Brains[g.Brain].KeysFile, user, g.Brain)
+		out = append(out, brainEntry{Brain: g.Brain, Access: g.Access.String(), Key: err == nil})
+	}
+	_ = s.audit.Record(Entry{User: user, Tool: "th_brains", OK: true})
+	return out
 }
 
 func sortedBrains(r *rights.Rights) []string {
@@ -126,13 +148,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: "th-gateway", Title: "Thalamus gateway: federated", Version: "0"}, nil)
 	srv.AddTool(&mcp.Tool{Name: "th_brains", Description: "Lists the brains the caller may read, with the access (read or write) and whether a key was issued for it.", InputSchema: map[string]any{"type": "object"}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			var out []brainEntry
-			for _, g := range s.rights().BrainsOf(user) {
-				_, err := keys.SecretOf(s.rights().Brains[g.Brain].KeysFile, user, g.Brain)
-				out = append(out, brainEntry{Brain: g.Brain, Access: g.Access.String(), Key: err == nil})
-			}
-			_ = s.audit.Record(Entry{User: user, Tool: "th_brains", OK: true})
-			return jsonResult(out), nil
+			return jsonResult(s.brainsOf(user)), nil
 		})
 	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{

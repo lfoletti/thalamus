@@ -142,6 +142,22 @@ ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' |
 if grep -q 'th/mdupont/team/acme' "$S/data/keys.json"; then ko "mdupont key still in the file" ""; else ok "mdupont key removed from the file"; fi
 check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme knowledge_search '{"query":"ledger","collection":"team-acme"}')"
 
+# The REST face, for a browser extension or a script: same keys, same
+# circuit. GET /v1/brains lists, POST /v1/add proposes, refusals by status.
+rest() { # rest <method> <path> <secret> <body>
+  curl -s -o "$S/rest.out" -w '%{http_code}' -X "$1" "http://$GWADDR$2" ${3:+-H "Authorization: Bearer $3"} -H 'Content-Type: application/json' ${4:+--data "$4"}
+}
+code=$(rest GET /v1/brains "$LF" "")
+if [ "$code" = 200 ] && grep -q '"brain":"team/acme".*"access":"write".*"key":true' "$S/rest.out" && grep -q '"brain":"org/secrets".*"access":"read"' "$S/rest.out"; then ok "GET /v1/brains lists lfoletti's two brains"; else ko "GET /v1/brains" "$code $(cat "$S/rest.out")"; fi
+code=$(rest POST /v1/add "$LF" '{"brain":"team/acme","document_id":"spec-4","title":"Spec 4","content":"The REST face proposes a document into the brain.","source_url":"https://intranet/spec4"}')
+if [ "$code" = 200 ] && grep -q 'spec-4' "$S/rest.out"; then ok "POST /v1/add proposes spec-4 as lfoletti"; else ko "POST /v1/add" "$code $(cat "$S/rest.out")"; fi
+code=$(rest POST /v1/add "$LFS" '{"brain":"org/secrets","content":"x"}')
+[ "$code" = 403 ] && ok "POST /v1/add as a reader is 403" || ko "reader add" "$code $(cat "$S/rest.out")"
+code=$(rest POST /v1/add "" '{"brain":"team/acme","content":"x"}')
+[ "$code" = 401 ] && ok "POST /v1/add without a key is 401" || ko "no key add" "$code $(cat "$S/rest.out")"
+code=$(rest POST /v1/add "$LF" '{"brain":"org/none","content":"x"}')
+[ "$code" = 404 ] && ok "POST /v1/add on an unknown brain is 404" || ko "unknown brain add" "$code $(cat "$S/rest.out")"
+
 # The rights file changes while the gateway runs: a withdrawn right is
 # refused at the next call, no restart; a restored right is served again.
 # lfoletti reads org/secrets by name only, so one line withdraws it all.
@@ -163,7 +179,7 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 18 ] && ok "eighteen tool calls audited (the nine refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 20 ] && ok "twenty tool calls audited (the twelve refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "th_recall audited with the brains and the ids read" || ko "th_recall audit line" "$(grep th_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"
