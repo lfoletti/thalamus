@@ -9,7 +9,7 @@ import (
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
 
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 func keysOf(t *testing.T, path string) []authz.Key {
@@ -39,7 +39,7 @@ func TestAnIssuedKeyIsConfinedToTheBrainsCollection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if k.ID != "gc/lfoletti/team/acme" || len(k.Secret) < 32 || k.Clearance != authz.ReadWrite {
+	if k.ID != "th/lfoletti/team/acme" || len(k.Secret) < 32 || k.Clearance != authz.ReadWrite {
 		t.Fatalf("issued: %+v", k)
 	}
 	r, err := Issue(path, "mdupont", "team/acme", "team-acme", rights.Read)
@@ -92,7 +92,7 @@ func TestRevokeRemovesOneKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	ks := keysOf(t, path)
-	if len(ks) != 1 || ks[0].ID != "gc/mdupont/team/acme" {
+	if len(ks) != 1 || ks[0].ID != "th/mdupont/team/acme" {
 		t.Fatalf("file: %+v", ks)
 	}
 	if err := Revoke(path, "lfoletti", "team/acme"); err == nil || !strings.Contains(err.Error(), "no key") {
@@ -244,7 +244,7 @@ func TestAKeyForAWholeServerIsNotConfined(t *testing.T) {
 // the other keys (an operator's) out but counted.
 func TestListReadsTheIssuedKeys(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "keys.json")
-	if err := os.WriteFile(path, []byte(`{"keys":[{"id":"operator","secret":"op","clearance":"read-write"},{"id":"gc/odd","secret":"x","clearance":"read-only"}]}`), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"keys":[{"id":"operator","secret":"op","clearance":"read-write"},{"id":"th/odd","secret":"x","clearance":"read-only"}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []struct {

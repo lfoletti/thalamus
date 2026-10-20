@@ -15,7 +15,7 @@ import (
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
 
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 // Issued is the key handed to the employee.
@@ -26,7 +26,7 @@ type Issued struct {
 	Collection string
 }
 
-const idPrefix = "gc/"
+const idPrefix = "th/"
 
 // ID is the key id the gateway writes for a user on a brain. It names both,
 // so the key file itself says who holds what.

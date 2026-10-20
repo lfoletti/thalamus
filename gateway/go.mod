@@ -1,4 +1,4 @@
-module github.com/lfoletti/granular-cortex/gateway
+module github.com/lfoletti/thalamus/gateway
 
 go 1.26.5
 

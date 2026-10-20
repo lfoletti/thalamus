@@ -14,8 +14,8 @@ import (
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
 
-	"github.com/lfoletti/granular-cortex/gateway/keys"
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/keys"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 func writeRights(t *testing.T, dir string) (rightsPath, keysPath string) {
@@ -82,7 +82,7 @@ func TestKeyIssueAndRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	k, ok := ks.Lookup(secret)
-	if !ok || k.ID != "gc/mdupont/team/acme" || k.Clearance != authz.ReadOnly || strings.Join(k.Scope.Collections, ",") != "team-acme" {
+	if !ok || k.ID != "th/mdupont/team/acme" || k.Clearance != authz.ReadOnly || strings.Join(k.Scope.Collections, ",") != "team-acme" {
 		t.Fatalf("key: %+v %v", k, ok)
 	}
 	if code, _, stderr := call(t, "key", "issue", rightsPath, "stranger", "team/acme"); code != 1 || !strings.Contains(stderr, "no access") {
@@ -91,7 +91,7 @@ func TestKeyIssueAndRevoke(t *testing.T) {
 	if code, _, stderr := call(t, "key", "issue", rightsPath, "lfoletti", "team/acm"); code != 1 || !strings.Contains(stderr, "unknown brain") {
 		t.Fatalf("unknown brain: %d %q", code, stderr)
 	}
-	if code, out, _ := call(t, "key", "revoke", rightsPath, "mdupont", "team/acme"); code != 0 || !strings.Contains(out, "revoked gc/mdupont/team/acme") {
+	if code, out, _ := call(t, "key", "revoke", rightsPath, "mdupont", "team/acme"); code != 0 || !strings.Contains(out, "revoked th/mdupont/team/acme") {
 		t.Fatalf("revoke: %d %q", code, out)
 	}
 	if code, _, stderr := call(t, "key", "revoke", rightsPath, "mdupont", "team/acme"); code != 1 || !strings.Contains(stderr, "no key") {
@@ -232,7 +232,7 @@ func TestKeySyncBringsTheKeysToTheRights(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out, _ := call(t, "key", "sync", rightsPath, "--dry-run")
-	if code != 0 || out != "would issue gc/kmlead/org/ref\nwould revoke gc/ghost/team/acme\nwould issue gc/lfoletti/team/acme\nwould reissue gc/mdupont/team/acme\n" {
+	if code != 0 || out != "would issue th/kmlead/org/ref\nwould revoke th/ghost/team/acme\nwould issue th/lfoletti/team/acme\nwould reissue th/mdupont/team/acme\n" {
 		t.Fatalf("dry run: %d %q", code, out)
 	}
 	ks, _ := authz.Load(keysPath)
@@ -241,7 +241,7 @@ func TestKeySyncBringsTheKeysToTheRights(t *testing.T) {
 	}
 	code, out, _ = call(t, "key", "sync", rightsPath)
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if code != 0 || len(lines) != 4 || !strings.HasPrefix(lines[0], "issued gc/kmlead/org/ref ") || lines[1] != "revoked gc/ghost/team/acme" || !strings.HasPrefix(lines[2], "issued gc/lfoletti/team/acme ") || !strings.HasPrefix(lines[3], "reissued gc/mdupont/team/acme ") {
+	if code != 0 || len(lines) != 4 || !strings.HasPrefix(lines[0], "issued th/kmlead/org/ref ") || lines[1] != "revoked th/ghost/team/acme" || !strings.HasPrefix(lines[2], "issued th/lfoletti/team/acme ") || !strings.HasPrefix(lines[3], "reissued th/mdupont/team/acme ") {
 		t.Fatalf("sync: %d %q", code, out)
 	}
 	secret := strings.Fields(lines[3])[2]
@@ -251,15 +251,15 @@ func TestKeySyncBringsTheKeysToTheRights(t *testing.T) {
 	}
 	for _, k := range held {
 		switch k.ID {
-		case "gc/mdupont/team/acme":
+		case "th/mdupont/team/acme":
 			if k.Secret != secret || strings.Join(k.Scope.Collections, ",") != "team-acme" {
 				t.Fatalf("mdupont: %+v", k)
 			}
-		case "gc/kmlead/org/ref":
+		case "th/kmlead/org/ref":
 			if !k.Scope.IsZero() || k.Clearance != authz.ReadWrite {
 				t.Fatalf("kmlead: %+v", k)
 			}
-		case "gc/lfoletti/team/acme":
+		case "th/lfoletti/team/acme":
 		default:
 			t.Fatalf("unexpected %+v", k)
 		}

@@ -14,14 +14,14 @@ import (
 )
 
 // fakeGateway is the federated endpoint of a gateway: it checks the bearer
-// and answers gc_recall with canned results.
+// and answers th_recall with canned results.
 type fakeGateway struct {
 	secret  string
 	results []map[string]any
 	skipped []map[string]any
 	fail    bool
 	badJSON bool // answer with text that is not JSON
-	noTool  bool // a gateway without gc_recall
+	noTool  bool // a gateway without th_recall
 	odd     int  // 1: an answer with no content, 2: an answer that is not text
 	calls   []map[string]any
 }
@@ -29,16 +29,16 @@ type fakeGateway struct {
 func (g *fakeGateway) start(t *testing.T) string {
 	t.Helper()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "fake"}, nil)
-	name := "gc_recall"
+	name := "th_recall"
 	if g.noTool {
-		name = "gc_other"
+		name = "th_other"
 	}
 	srv.AddTool(&mcp.Tool{Name: name, InputSchema: map[string]any{"type": "object"}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		var args map[string]any
 		_ = json.Unmarshal(req.Params.Arguments, &args)
 		g.calls = append(g.calls, args)
 		if g.fail {
-			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "gc_recall: boom"}}}, nil
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "th_recall: boom"}}}, nil
 		}
 		if g.badJSON {
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "nope"}}}, nil
@@ -100,17 +100,17 @@ func TestTheHookInjectsTheExtractsWithTheirProvenance(t *testing.T) {
 		{"brain": "org/reference", "knowledge_id": "r-1", "snippet": "Rollback is two hours.", "provenance": "[org/reference] Rollback, r-1"},
 	}, skipped: []map[string]any{{"brain": "team/other", "reason": "no key issued to lfoletti for team/other"}}}
 	url := g.start(t)
-	code, out, errOut := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"when does the ledger move?","cwd":"/x"}`)
+	code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?","cwd":"/x"}`)
 	if code != 0 || errOut != "" {
 		t.Fatalf("code %d, stderr %q", code, errOut)
 	}
 	ctx := contextOf(t, out)
 	for _, want := range []string{
-		"Granular Cortex: 2 extracts from the shared brains",
+		"Thalamus: 2 extracts from the shared brains",
 		"- [team/acme] Spec migration, spec-1, by mdupont (also in org/reference): The ledger moves on Sunday.",
 		"- [org/reference] Rollback, r-1: Rollback is two hours.",
 		"Skipped: team/other (no key issued to lfoletti for team/other).",
-		"Ask for more with gc_recall; list the brains with gc_brains.",
+		"Ask for more with th_recall; list the brains with th_brains.",
 	} {
 		if !strings.Contains(ctx, want) {
 			t.Fatalf("context lacks %q:\n%s", want, ctx)
@@ -119,8 +119,8 @@ func TestTheHookInjectsTheExtractsWithTheirProvenance(t *testing.T) {
 	if len(g.calls) != 1 || g.calls[0]["query"] != "when does the ledger move?" || g.calls[0]["top_k"] != float64(3) {
 		t.Fatalf("calls: %+v", g.calls)
 	}
-	// GC_RECALL_TOPK sets the number asked.
-	hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3", "GC_RECALL_TOPK": "7"}, `{"prompt":"ledger rollback window"}`)
+	// TH_RECALL_TOPK sets the number asked.
+	hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_RECALL_TOPK": "7"}, `{"prompt":"ledger rollback window"}`)
 	if g.calls[1]["top_k"] != float64(7) {
 		t.Fatalf("top_k: %+v", g.calls[1])
 	}
@@ -137,16 +137,16 @@ func TestTheHookIsSilentOnEveryProblem(t *testing.T) {
 		stdin string
 		want  string
 	}{
-		{"no gateway", map[string]string{"GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`, "GC_GATEWAY"},
-		{"no key", map[string]string{"GC_GATEWAY": url}, `{"prompt":"a long enough prompt"}`, "GC_KEY"},
-		{"bad key", map[string]string{"GC_GATEWAY": url, "GC_KEY": "wrong"}, `{"prompt":"a long enough prompt"}`, "Unauthorized"},
-		{"gateway down", map[string]string{"GC_GATEWAY": "http://127.0.0.1:1", "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`, "connect"},
-		{"bad stdin", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{`, "hook input"},
-		{"empty prompt", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"  "}`, ""},
-		{"short prompt", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"ok go"}`, ""},
-		{"slash command", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"/gc-brains please now"}`, ""},
-		{"no results", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"nothing matches this one"}`, ""},
-		{"bad top_k", map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3", "GC_RECALL_TOPK": "x"}, `{"prompt":"a long enough prompt"}`, "GC_RECALL_TOPK"},
+		{"no gateway", map[string]string{"TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`, "TH_GATEWAY"},
+		{"no key", map[string]string{"TH_GATEWAY": url}, `{"prompt":"a long enough prompt"}`, "TH_KEY"},
+		{"bad key", map[string]string{"TH_GATEWAY": url, "TH_KEY": "wrong"}, `{"prompt":"a long enough prompt"}`, "Unauthorized"},
+		{"gateway down", map[string]string{"TH_GATEWAY": "http://127.0.0.1:1", "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`, "connect"},
+		{"bad stdin", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{`, "hook input"},
+		{"empty prompt", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"  "}`, ""},
+		{"short prompt", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"ok go"}`, ""},
+		{"slash command", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"/th-brains please now"}`, ""},
+		{"no results", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"nothing matches this one"}`, ""},
+		{"bad top_k", map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_RECALL_TOPK": "x"}, `{"prompt":"a long enough prompt"}`, "TH_RECALL_TOPK"},
 	} {
 		code, out, errOut := hook(t, c.env, c.stdin)
 		if code != 0 || out != "" || !strings.Contains(errOut, c.want) {
@@ -159,21 +159,21 @@ func TestTheHookIsSilentOnEveryProblem(t *testing.T) {
 		t.Fatalf("the gateway was asked %d times: %+v", len(g.calls), g.calls)
 	}
 	g.fail = true
-	if code, out, errOut := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "boom") {
+	if code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "boom") {
 		t.Fatalf("tool error: code %d, stdout %q, stderr %q", code, out, errOut)
 	}
 	g.fail, g.badJSON = false, true
-	if code, out, errOut := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "decode gc_recall") {
+	if code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "decode th_recall") {
 		t.Fatalf("bad json: code %d, stdout %q, stderr %q", code, out, errOut)
 	}
 	for odd := 1; odd <= 2; odd++ {
 		g.badJSON, g.odd = false, odd
-		if code, out, errOut := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "decode gc_recall") {
+		if code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "decode th_recall") {
 			t.Fatalf("odd answer %d: code %d, stdout %q, stderr %q", odd, code, out, errOut)
 		}
 	}
 	other := &fakeGateway{secret: "s3", noTool: true}
-	if code, out, errOut := hook(t, map[string]string{"GC_GATEWAY": other.start(t), "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "gc_recall") {
+	if code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": other.start(t), "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); code != 0 || out != "" || !strings.Contains(errOut, "th_recall") {
 		t.Fatalf("no tool: code %d, stdout %q, stderr %q", code, out, errOut)
 	}
 	if code, _, errOut := hook(t, nil, "", "other"); code != 2 || !strings.Contains(errOut, "usage") {
@@ -192,13 +192,13 @@ func TestTheContextFitsTheBudget(t *testing.T) {
 	}
 	g := &fakeGateway{secret: "s3", results: results}
 	url := g.start(t)
-	_, out, _ := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
+	_, out, _ := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
 	ctx := contextOf(t, out)
-	if len(ctx) > contextBudget || !strings.Contains(ctx, "d-3") || strings.Contains(ctx, "d-4") || !strings.Contains(ctx, "(4 more not shown; ask for them with gc_recall.)") {
+	if len(ctx) > contextBudget || !strings.Contains(ctx, "d-3") || strings.Contains(ctx, "d-4") || !strings.Contains(ctx, "(4 more not shown; ask for them with th_recall.)") {
 		t.Fatalf("len %d:\n%s", len(ctx), ctx[:200])
 	}
 	g.results = []map[string]any{{"brain": "b", "knowledge_id": "d", "snippet": strings.Repeat("y", contextBudget), "provenance": "[b] d"}}
-	if _, out, errOut := hook(t, map[string]string{"GC_GATEWAY": url, "GC_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); out != "" || !strings.Contains(errOut, "budget") {
+	if _, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); out != "" || !strings.Contains(errOut, "budget") {
 		t.Fatalf("one too long: stdout %q, stderr %q", out, errOut)
 	}
 }

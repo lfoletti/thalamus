@@ -13,13 +13,13 @@ import (
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/lfoletti/granular-cortex/gateway/keys"
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/keys"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 // The federated endpoint, /mcp: the caller presents any key the gateway
 // issued, and gets two tools that work across every brain the caller may
-// read. gc_brains lists them; gc_recall asks each one with the caller's own
+// read. th_brains lists them; th_recall asks each one with the caller's own
 // key for it and fuses the answers. The engine still enforces each key.
 
 // rrfK is the constant of reciprocal rank fusion: score = weight / (k + rank).
@@ -123,18 +123,18 @@ type brainHits struct {
 }
 
 func (s *Server) federatedServer(user string) *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "Granular Cortex gateway: federated", Version: "0"}, nil)
-	srv.AddTool(&mcp.Tool{Name: "gc_brains", Description: "Lists the brains the caller may read, with the access (read or write) and whether a key was issued for it.", InputSchema: map[string]any{"type": "object"}},
+	srv := mcp.NewServer(&mcp.Implementation{Name: "th-gateway", Title: "Thalamus gateway: federated", Version: "0"}, nil)
+	srv.AddTool(&mcp.Tool{Name: "th_brains", Description: "Lists the brains the caller may read, with the access (read or write) and whether a key was issued for it.", InputSchema: map[string]any{"type": "object"}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var out []brainEntry
 			for _, g := range s.rights.BrainsOf(user) {
 				_, err := keys.SecretOf(s.rights.Brains[g.Brain].KeysFile, user, g.Brain)
 				out = append(out, brainEntry{Brain: g.Brain, Access: g.Access.String(), Key: err == nil})
 			}
-			_ = s.audit.Record(Entry{User: user, Tool: "gc_brains", OK: true})
+			_ = s.audit.Record(Entry{User: user, Tool: "th_brains", OK: true})
 			return jsonResult(out), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "gc_recall", Description: "Asks every brain the caller may read (or only those named in brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
+	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"query":  map[string]any{"type": "string", "description": "the question"},
 			"top_k":  map[string]any{"type": "integer", "description": "results to return, default 5"},
@@ -143,7 +143,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args recallArgs
 			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-				return errResult(fmt.Errorf("gc_recall: %w", err)), nil
+				return errResult(fmt.Errorf("th_recall: %w", err)), nil
 			}
 			res, err := s.recall(ctx, user, args)
 			if err != nil {
@@ -158,7 +158,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 // recall fans the query out to the caller's brains and fuses the answers.
 func (s *Server) recall(ctx context.Context, user string, args recallArgs) (recallResult, error) {
 	if strings.TrimSpace(args.Query) == "" {
-		return recallResult{}, errors.New("gc_recall: query is required")
+		return recallResult{}, errors.New("th_recall: query is required")
 	}
 	if args.TopK <= 0 {
 		args.TopK = 5
@@ -172,7 +172,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		var kept []rights.Grant
 		for _, name := range args.Brains {
 			if !readable[name] {
-				return recallResult{}, fmt.Errorf("gc_recall: %s is not a brain %s may read", name, user)
+				return recallResult{}, fmt.Errorf("th_recall: %s is not a brain %s may read", name, user)
 			}
 			kept = append(kept, rights.Grant{Brain: name})
 		}
@@ -210,7 +210,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	sort.Slice(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
 	sort.Strings(brains)
 	sort.Strings(read)
-	entry := Entry{User: user, Tool: "gc_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
+	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
 	_ = s.audit.Record(entry)
 	return recallResult{Results: fuse(lists, args.TopK), Skipped: skips}, nil
 }

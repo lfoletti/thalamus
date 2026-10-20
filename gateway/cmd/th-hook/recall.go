@@ -20,7 +20,7 @@ import (
 // block is cut whole extracts at a time under a margin below that.
 const contextBudget = 9000
 
-const usage = "usage: gc-hook recall  (hook payload on stdin; GC_GATEWAY, GC_KEY, GC_RECALL_TOPK)"
+const usage = "usage: th-hook recall  (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK)"
 
 type hookInput struct {
 	Prompt string `json:"prompt"`
@@ -33,7 +33,7 @@ type hookOutput struct {
 	} `json:"hookSpecificOutput"`
 }
 
-// extract is one result of gc_recall, as the gateway returns it.
+// extract is one result of th_recall, as the gateway returns it.
 type extract struct {
 	Snippet    string   `json:"snippet"`
 	Provenance string   `json:"provenance"`
@@ -56,7 +56,7 @@ func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr
 	}
 	text, err := recall(stdin, env)
 	if err != nil {
-		fmt.Fprintf(stderr, "gc-hook: %v\n", err)
+		fmt.Fprintf(stderr, "th-hook: %v\n", err)
 		return 0
 	}
 	if text == "" {
@@ -80,19 +80,19 @@ func recall(stdin io.Reader, env func(string) string) (string, error) {
 	if prompt == "" || strings.HasPrefix(prompt, "/") || len(strings.Fields(prompt)) < 3 {
 		return "", nil
 	}
-	gateway := strings.TrimRight(strings.TrimSpace(env("GC_GATEWAY")), "/")
+	gateway := strings.TrimRight(strings.TrimSpace(env("TH_GATEWAY")), "/")
 	if gateway == "" {
-		return "", errors.New("GC_GATEWAY is not set")
+		return "", errors.New("TH_GATEWAY is not set")
 	}
-	key := strings.TrimSpace(env("GC_KEY"))
+	key := strings.TrimSpace(env("TH_KEY"))
 	if key == "" {
-		return "", errors.New("GC_KEY is not set")
+		return "", errors.New("TH_KEY is not set")
 	}
 	topK := 3
-	if v := strings.TrimSpace(env("GC_RECALL_TOPK")); v != "" {
+	if v := strings.TrimSpace(env("TH_RECALL_TOPK")); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n <= 0 {
-			return "", fmt.Errorf("GC_RECALL_TOPK %q is not a positive integer", v)
+			return "", fmt.Errorf("TH_RECALL_TOPK %q is not a positive integer", v)
 		}
 		topK = n
 	}
@@ -116,17 +116,17 @@ func (b bearer) RoundTrip(req *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(req)
 }
 
-// ask calls gc_recall on the gateway's federated endpoint.
+// ask calls th_recall on the gateway's federated endpoint.
 func ask(ctx context.Context, gateway, key, prompt string, topK int) (recallOut, error) {
 	tr := &mcp.StreamableClientTransport{Endpoint: gateway + "/mcp", HTTPClient: &http.Client{Transport: bearer{key}}, MaxRetries: -1}
-	session, err := mcp.NewClient(&mcp.Implementation{Name: "gc-hook", Version: "0"}, nil).Connect(ctx, tr, nil)
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "th-hook", Version: "0"}, nil).Connect(ctx, tr, nil)
 	if err != nil {
 		return recallOut{}, fmt.Errorf("connect to %s: %w", gateway, err)
 	}
 	defer func() { _ = session.Close() }()
-	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "gc_recall", Arguments: map[string]any{"query": prompt, "top_k": topK}})
+	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "th_recall", Arguments: map[string]any{"query": prompt, "top_k": topK}})
 	if err != nil {
-		return recallOut{}, fmt.Errorf("gc_recall: %w", err)
+		return recallOut{}, fmt.Errorf("th_recall: %w", err)
 	}
 	text := ""
 	if len(res.Content) > 0 {
@@ -139,7 +139,7 @@ func ask(ctx context.Context, gateway, key, prompt string, topK int) (recallOut,
 	}
 	var out recallOut
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
-		return recallOut{}, fmt.Errorf("decode gc_recall: %w", err)
+		return recallOut{}, fmt.Errorf("decode th_recall: %w", err)
 	}
 	return out, nil
 }
@@ -151,7 +151,7 @@ func render(out recallOut) string {
 	if len(out.Results) == 0 {
 		return ""
 	}
-	header := fmt.Sprintf("Granular Cortex: %d extracts from the shared brains, with their provenance.", len(out.Results))
+	header := fmt.Sprintf("Thalamus: %d extracts from the shared brains, with their provenance.", len(out.Results))
 	var lines []string
 	for _, r := range out.Results {
 		p := r.Provenance
@@ -160,7 +160,7 @@ func render(out recallOut) string {
 		}
 		lines = append(lines, "- "+p+": "+strings.TrimSpace(r.Snippet))
 	}
-	footer := "Ask for more with gc_recall; list the brains with gc_brains."
+	footer := "Ask for more with th_recall; list the brains with th_brains."
 	if len(out.Skipped) > 0 {
 		var parts []string
 		for _, s := range out.Skipped {
@@ -186,7 +186,7 @@ func fit(header string, lines []string, footer string, budget int) string {
 	note := ""
 	for len(kept) > 0 && size(append([]string{header, footer, note}, kept...)...) > budget {
 		kept = kept[:len(kept)-1]
-		note = fmt.Sprintf("(%d more not shown; ask for them with gc_recall.)", len(lines)-len(kept))
+		note = fmt.Sprintf("(%d more not shown; ask for them with th_recall.)", len(lines)-len(kept))
 	}
 	if len(kept) == 0 {
 		return ""

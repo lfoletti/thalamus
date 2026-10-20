@@ -10,14 +10,14 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
-// The write circuit of the federated endpoint. gc_add proposes a document
+// The write circuit of the federated endpoint. th_add proposes a document
 // into a brain the caller may write: it lands with review_status proposed,
 // and is served only once a curator accepts it, when the brain's server
 // runs with the review gate. A curator's own document is accepted at once.
-// gc_pending lists what waits in a brain the caller curates; gc_review
+// th_pending lists what waits in a brain the caller curates; th_review
 // decides. The engine records the calling key as the reviewer whatever the
 // client sends; the gateway sends the user's name, which is what the key
 // stands for.
@@ -43,7 +43,7 @@ type reviewArgs struct {
 }
 
 func (s *Server) addWriteTools(srv *mcp.Server, user string) {
-	srv.AddTool(&mcp.Tool{Name: "gc_add", Description: "Proposes a document into a brain the caller may write. It waits for a curator's review; a curator's own document is accepted at once. Returns the engine's ingest report.",
+	srv.AddTool(&mcp.Tool{Name: "th_add", Description: "Proposes a document into a brain the caller may write. It waits for a curator's review; a curator's own document is accepted at once. Returns the engine's ingest report.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":       map[string]any{"type": "string"},
 			"document_id": map[string]any{"type": "string", "description": "stable id; derived from the time when absent"},
@@ -55,11 +55,11 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args addArgs
 			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-				return errResult(fmt.Errorf("gc_add: %w", err)), nil
+				return errResult(fmt.Errorf("th_add: %w", err)), nil
 			}
 			return s.add(ctx, user, args), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "gc_pending", Description: "Lists the documents that wait for review in a brain the caller curates.",
+	srv.AddTool(&mcp.Tool{Name: "th_pending", Description: "Lists the documents that wait for review in a brain the caller curates.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain": map[string]any{"type": "string"},
 			"top_k": map[string]any{"type": "integer", "description": "default 20"},
@@ -67,11 +67,11 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args pendingArgs
 			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-				return errResult(fmt.Errorf("gc_pending: %w", err)), nil
+				return errResult(fmt.Errorf("th_pending: %w", err)), nil
 			}
 			return s.pending(ctx, user, args), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "gc_review", Description: "Accepts or rejects a proposed document, as a curator of the brain.",
+	srv.AddTool(&mcp.Tool{Name: "th_review", Description: "Accepts or rejects a proposed document, as a curator of the brain.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":        map[string]any{"type": "string"},
 			"knowledge_id": map[string]any{"type": "string"},
@@ -80,7 +80,7 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args reviewArgs
 			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-				return errResult(fmt.Errorf("gc_review: %w", err)), nil
+				return errResult(fmt.Errorf("th_review: %w", err)), nil
 			}
 			return s.review(ctx, user, args), nil
 		})
@@ -118,9 +118,9 @@ func (s *Server) audited(ctx context.Context, b rights.Brain, user, name, tool, 
 
 func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallToolResult {
 	if strings.TrimSpace(args.Content) == "" {
-		return errResult(errors.New("gc_add: content is required"))
+		return errResult(errors.New("th_add: content is required"))
 	}
-	b, err := s.brainFor(user, args.Brain, rights.Write, "gc_add")
+	b, err := s.brainFor(user, args.Brain, rights.Write, "th_add")
 	if err != nil {
 		return errResult(err)
 	}
@@ -145,7 +145,7 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	if args.SourceURL != "" {
 		req["source_url"] = args.SourceURL
 	}
-	return s.audited(ctx, b, user, args.Brain, "gc_add", "ingest_document", req, map[string]any{"document_id": args.DocumentID})
+	return s.audited(ctx, b, user, args.Brain, "th_add", "ingest_document", req, map[string]any{"document_id": args.DocumentID})
 }
 
 // pendingHit is one document that waits for review.
@@ -161,7 +161,7 @@ type pendingHit struct {
 // needs a text, a listing does not), then knowledge_get reads each
 // document. One audit line names them all.
 func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mcp.CallToolResult {
-	b, err := s.brainFor(user, args.Brain, rights.Curate, "gc_pending")
+	b, err := s.brainFor(user, args.Brain, rights.Curate, "th_pending")
 	if err != nil {
 		return errResult(err)
 	}
@@ -169,11 +169,11 @@ func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mc
 		args.TopK = 20
 	}
 	hits, err := s.listPending(ctx, b, user, args.Brain, args.TopK)
-	entry := Entry{User: user, Brain: args.Brain, Tool: "gc_pending"}
+	entry := Entry{User: user, Brain: args.Brain, Tool: "th_pending"}
 	if err != nil {
 		entry.Error = err.Error()
 		_ = s.audit.Record(entry)
-		return errResult(fmt.Errorf("gc_pending: %w", err))
+		return errResult(fmt.Errorf("th_pending: %w", err))
 	}
 	var ids []string
 	for _, h := range hits {
@@ -236,15 +236,15 @@ func snippet(content string) string {
 
 func (s *Server) review(ctx context.Context, user string, args reviewArgs) *mcp.CallToolResult {
 	if args.Decision != "accepted" && args.Decision != "rejected" {
-		return errResult(errors.New("gc_review: decision must be accepted or rejected"))
+		return errResult(errors.New("th_review: decision must be accepted or rejected"))
 	}
 	if strings.TrimSpace(args.KnowledgeID) == "" {
-		return errResult(errors.New("gc_review: knowledge_id is required"))
+		return errResult(errors.New("th_review: knowledge_id is required"))
 	}
-	b, err := s.brainFor(user, args.Brain, rights.Curate, "gc_review")
+	b, err := s.brainFor(user, args.Brain, rights.Curate, "th_review")
 	if err != nil {
 		return errResult(err)
 	}
 	req := map[string]any{"knowledge_id": args.KnowledgeID, "metadata": map[string]string{"review_status": args.Decision, "reviewed_by": user}}
-	return s.audited(ctx, b, user, args.Brain, "gc_review", "knowledge_update", req, map[string]any{"knowledge_id": args.KnowledgeID, "decision": args.Decision})
+	return s.audited(ctx, b, user, args.Brain, "th_review", "knowledge_update", req, map[string]any{"knowledge_id": args.KnowledgeID, "decision": args.Decision})
 }
