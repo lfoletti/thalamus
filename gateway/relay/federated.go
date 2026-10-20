@@ -33,8 +33,8 @@ func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
 		return nil, http.StatusUnauthorized, errors.New("a key issued by the gateway is required")
 	}
 	user := ""
-	for _, name := range sortedBrains(s.rights) {
-		u, _, err := keys.Holder(s.rights.Brains[name].KeysFile, secret)
+	for _, name := range sortedBrains(s.rights()) {
+		u, _, err := keys.Holder(s.rights().Brains[name].KeysFile, secret)
 		if err == nil {
 			user = u
 			break
@@ -46,7 +46,7 @@ func (s *Server) admitFederated(r *http.Request) (*mcp.Server, int, error) {
 	if user == "" {
 		return nil, http.StatusUnauthorized, errors.New("refused: unknown key")
 	}
-	if len(s.rights.BrainsOf(user)) == 0 {
+	if len(s.rights().BrainsOf(user)) == 0 {
 		return nil, http.StatusForbidden, fmt.Errorf("%s no longer has access to any brain", user)
 	}
 	s.mu.Lock()
@@ -127,8 +127,8 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 	srv.AddTool(&mcp.Tool{Name: "th_brains", Description: "Lists the brains the caller may read, with the access (read or write) and whether a key was issued for it.", InputSchema: map[string]any{"type": "object"}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var out []brainEntry
-			for _, g := range s.rights.BrainsOf(user) {
-				_, err := keys.SecretOf(s.rights.Brains[g.Brain].KeysFile, user, g.Brain)
+			for _, g := range s.rights().BrainsOf(user) {
+				_, err := keys.SecretOf(s.rights().Brains[g.Brain].KeysFile, user, g.Brain)
 				out = append(out, brainEntry{Brain: g.Brain, Access: g.Access.String(), Key: err == nil})
 			}
 			_ = s.audit.Record(Entry{User: user, Tool: "th_brains", OK: true})
@@ -163,7 +163,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if args.TopK <= 0 {
 		args.TopK = 5
 	}
-	grants := s.rights.BrainsOf(user)
+	grants := s.rights().BrainsOf(user)
 	if len(args.Brains) > 0 {
 		readable := map[string]bool{}
 		for _, g := range grants {
@@ -191,7 +191,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		wg.Add(1)
 		go func(i int, name string) {
 			defer wg.Done()
-			b := s.rights.Brains[name]
+			b := s.rights().Brains[name]
 			hits, err := s.askBrain(ctx, b, user, name, args)
 			mu.Lock()
 			defer mu.Unlock()

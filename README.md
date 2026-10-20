@@ -17,7 +17,7 @@ The base engine has no way to define or manage a clearance policy on a shared br
 
 ## What it does
 
-- **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers and the writers. A writer reads too.
+- **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers, the writers and the curators. A writer reads too. The gateway reads the file again when it changes: a withdrawn right is refused at the next call, without a restart.
 - **Keys.** `th-gateway key issue` writes a key into the server's own key file, confined to the brain's collection, read-only or read-write from the right. The engine enforces the key; the gateway only decides who gets one. A brain that is its whole server gets an unconfined key, which opens the graph tools.
 - **Relay.** One MCP endpoint per brain, `/mcp/<brain>`, over streamable HTTP. The caller presents the key the gateway issued. The gateway refuses before it reaches the brain (unknown key, key of another brain, right withdrawn, unknown brain), forwards each tool call over gRPC with the caller's key, and appends one line to `audit.jsonl`: who, which key, which brain, which tool, which ids, success or error.
 - **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `th_brains` lists the caller's brains. `th_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
@@ -76,7 +76,7 @@ Le modèle de base ne permet pas de définir ni de gérer une politique de clear
 
 ## Ce que ça fait
 
-- **Droits.** `rights.yaml` déclare les cerveaux (un serveur CortexDB chacun, ou une collection d'un serveur partagé), les groupes, les lecteurs et les rédacteurs. Un rédacteur lit aussi.
+- **Droits.** `rights.yaml` déclare les cerveaux (un serveur CortexDB chacun, ou une collection d'un serveur partagé), les groupes, les lecteurs, les rédacteurs et les curateurs. Un rédacteur lit aussi. Le gateway relit le fichier quand il change : un droit retiré est refusé à l'appel suivant, sans redémarrage.
 - **Clés.** `th-gateway key issue` écrit une clé dans le fichier de clés du serveur, confinée à la collection du cerveau, en lecture seule ou en lecture-écriture selon le droit. Le moteur applique la clé ; le gateway décide seulement qui en reçoit une. Un cerveau qui est tout son serveur reçoit une clé non confinée, ce qui ouvre les outils de graphe.
 - **Relais.** Un point MCP par cerveau, `/mcp/<cerveau>`, en HTTP. L'appelant présente la clé émise par le gateway. Le gateway refuse avant de joindre le cerveau (clé inconnue, clé d'un autre cerveau, droit retiré, cerveau inconnu), relaie chaque appel d'outil en gRPC avec la clé de l'appelant, et ajoute une ligne à `audit.jsonl` : qui, quelle clé, quel cerveau, quel outil, quels identifiants, succès ou erreur.
 - **Rappel fédéré.** `/mcp` admet toute clé émise par le gateway et nomme son porteur. `th_brains` liste les cerveaux de l'appelant. `th_recall` interroge en parallèle chaque cerveau lisible avec la clé de l'appelant pour ce cerveau, fusionne les listes par rang réciproque pondéré, réunit un même texte présent dans plusieurs cerveaux, et donne à chaque résultat une ligne de provenance fixe : `[cerveau] titre, id, source, by auteur`.

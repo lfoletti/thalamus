@@ -32,7 +32,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	var err error
 	switch {
 	case len(args) >= 1 && args[0] == "serve":
-		err = serve(ctx, args[1:], stdout)
+		err = serve(ctx, args[1:], stdout, stderr)
 	case len(args) >= 2 && args[0] == "rights" && args[1] == "check":
 		err = withRights(args[2:], 1, func(r *rights.Rights, a []string) error { return rightsCheck(r, stdout) })
 	case len(args) >= 2 && args[0] == "rights" && args[1] == "of":
@@ -273,7 +273,7 @@ func act(out io.Writer, dry bool, verb string, b rights.Brain, user, brain strin
 
 // serve runs the relay until the context ends. It prints the address it
 // listens on, so a caller that asked for port 0 learns the port.
-func serve(ctx context.Context, args []string, out io.Writer) error {
+func serve(ctx context.Context, args []string, out, errOut io.Writer) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	listen := fs.String("listen", "127.0.0.1:8787", "address to listen on")
@@ -284,10 +284,11 @@ func serve(ctx context.Context, args []string, out io.Writer) error {
 	if err := fs.Parse(args[1:]); err != nil {
 		return fmt.Errorf("%w: %v", errUsage, err)
 	}
-	r, err := rights.Load(args[0])
+	src, err := rights.Open(args[0])
 	if err != nil {
 		return err
 	}
+	src.Warn = func(err error) { fmt.Fprintf(errOut, "th-gateway: %v\n", err) }
 	audit, err := relay.OpenAudit(*auditPath)
 	if err != nil {
 		return err
@@ -297,7 +298,7 @@ func serve(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	srv := &http.Server{Handler: relay.New(r, audit).Handler(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: relay.New(src, audit).Handler(), ReadHeaderTimeout: 10 * time.Second}
 	fmt.Fprintf(out, "th-gateway listening on http://%s (/mcp federated, /mcp/<brain> per brain), audit in %s\n", lis.Addr(), *auditPath)
 	go func() {
 		<-ctx.Done()

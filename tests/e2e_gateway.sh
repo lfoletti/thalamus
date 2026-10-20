@@ -142,6 +142,14 @@ ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' |
 if grep -q 'th/mdupont/team/acme' "$S/data/keys.json"; then ko "mdupont key still in the file" ""; else ok "mdupont key removed from the file"; fi
 check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme knowledge_search '{"query":"ledger","collection":"team-acme"}')"
 
+# The rights file changes while the gateway runs: a withdrawn right is
+# refused at the next call, no restart; a restored right is served again.
+# lfoletti reads org/secrets by name only, so one line withdraws it all.
+sed -i '' 's/    readers: \[user:lfoletti\]/    readers: []/' "$S/data/rights.yaml"
+check "lfoletti: right on org/secrets withdrawn in rights.yaml (403, no restart)" denied "$(mcp "$LFS" org/secrets knowledge_search '{"query":"secret","collection":"secrets"}')"
+sed -i '' 's/    readers: \[\]/    readers: [user:lfoletti]/' "$S/data/rights.yaml"
+check "lfoletti: right on org/secrets restored in rights.yaml (served again)" ok "$(mcp "$LFS" org/secrets knowledge_search '{"query":"secret","collection":"secrets"}')"
+
 # The administration: key list shows who holds what against the rights,
 # key sync brings the file back to the rights (mdupont's key is reissued).
 lst=$("$GW" key list "$S/data/rights.yaml")
@@ -155,7 +163,7 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 17 ] && ok "seventeen tool calls audited (the eight refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 18 ] && ok "eighteen tool calls audited (the nine refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "th_recall audited with the brains and the ids read" || ko "th_recall audit line" "$(grep th_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"

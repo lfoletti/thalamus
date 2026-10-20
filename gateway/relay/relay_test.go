@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -178,7 +179,7 @@ groups: {}
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = a.Close() })
-	srv := httptest.NewServer(New(r, a).Handler())
+	srv := httptest.NewServer(New(rights.Static(r), a).Handler())
 	t.Cleanup(srv.Close)
 	return &bench{brain: b, rights: r, keysFile: keysFile, audit: audit, url: srv.URL}
 }
@@ -415,5 +416,64 @@ func TestTheAuditFileAppendsAndNamesItselfOnFailure(t *testing.T) {
 	}
 	if err := a.Close(); err != nil {
 		t.Fatalf("a second close: %v", err)
+	}
+}
+
+// The relay reads the rights file again when it changes: a right withdrawn
+// in the file is refused at the next request, without a restart, and a
+// right added is served. A broken file keeps the previous rights.
+func TestTheRelayFollowsTheRightsFile(t *testing.T) {
+	b := start(t)
+	path := filepath.Join(t.TempDir(), "rights.yaml")
+	text := "brains:\n  team/acme:\n    addr: " + b.rights.Brains["team/acme"].Addr + "\n    keys_file: " + b.keysFile + "\n    collection: team-acme\n    readers: [user:mdupont]\n    writers: [user:lfoletti]\n"
+	write := func(s string, when time.Time) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(s), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, when, when); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t0 := time.Now().Add(-time.Hour)
+	write(text, t0)
+	src, err := rights.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := OpenAudit(b.audit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = a.Close() }()
+	ts := httptest.NewServer(New(src, a).Handler())
+	defer ts.Close()
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	status := func() int {
+		req, _ := http.NewRequest(http.MethodPost, ts.URL+"/mcp/team/acme", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}`))
+		req.Header.Set("Authorization", "Bearer "+k.Secret)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		return res.StatusCode
+	}
+	if got := status(); got != http.StatusOK {
+		t.Fatalf("before: %d", got)
+	}
+	write(strings.Replace(text, "    writers: [user:lfoletti]\n", "", 1), t0.Add(time.Second))
+	if got := status(); got != http.StatusForbidden {
+		t.Fatalf("withdrawn: %d", got)
+	}
+	write("brains: [", t0.Add(2*time.Second))
+	if got := status(); got != http.StatusForbidden {
+		t.Fatalf("broken: %d", got)
+	}
+	write(text, t0.Add(3*time.Second))
+	if got := status(); got != http.StatusOK {
+		t.Fatalf("restored: %d", got)
 	}
 }

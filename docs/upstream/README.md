@@ -1,0 +1,31 @@
+# PR potentielles vers CortexDB (dossier en réserve)
+
+Décision de Lauro, 20 octobre 2026 : les éléments mécaniques que Thalamus contourne aujourd'hui remontent vers CortexDB, par petites PR, quand Thalamus aura atteint une certaine maturité. **Rien ne part maintenant.** Ce dossier prépare chaque PR pour que, le jour venu, il reste à écrire le test, le code et le corps.
+
+Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteur reçoit ce qui est mécanique et vaut pour tout client ; Thalamus garde ce qui est une politique d'organisation (`rights.yaml`, groupes, curateurs, fédération entre serveurs). Chaque PR remontée rend Thalamus plus mince. Mesure du 20 octobre 2026 : Thalamus 1 831 lignes hors tests, CortexDB 160 039.
+
+## Conditions de départ
+
+1. Les sept PR en cours (#72 à #78) sont fusionnées ou closes, et le commentaire de clôture de #66 est posté.
+2. Thalamus a tourné dans une vraie session Claude Code (`claude --plugin-dir ./plugin`), pas seulement sur le banc.
+3. Le dépôt Thalamus est public, pour que chaque PR renvoie au code qui la motive.
+4. Les règles de l'amont restent celles du 20 octobre 2026 : environ 400 lignes hors tests par PR, une règle par PR, tests « failing first », table outil par outil pour tout ce qu'une clé confinée atteint.
+
+## Fiches
+
+| Fiche | Titre | Ce que Thalamus retire après la fusion | Taille estimée | Ordre |
+| :- | :- | :- | :- | :- |
+| [`01-key-file-reload.md`](01-key-file-reload.md) | Rechargement du fichier de clés par `cortexdb-grpc` | Le redémarrage du serveur après `key issue`, `key revoke`, `key sync` (limite connue depuis la tranche 1) | 150 lignes | 1 |
+| [`02-review-pending-tool.md`](02-review-pending-tool.md) | Outil `review_pending` | Les deux appels de `th_pending` (`aggregate_metadata` puis `knowledge_get` par document) | 120 lignes | 2 |
+| [`03-tool-audit-ids.md`](03-tool-audit-ids.md) | Identifiants touchés dans le journal des requêtes | La moitié de `audit.go` (l'extraction des identifiants par outil, `idsOf`) | 200 lignes | 3 |
+| [`04-session-text-permitted.md`](04-session-text-permitted.md) | `loadSessionText` passe par `memoryBucketPermitted` | Rien (sécurité du moteur, déjà couverte par la liste blanche côté clés) | 60 lignes | 4 |
+| [`05-ingest-author-from-key.md`](05-ingest-author-from-key.md) | `author` et `written_by` depuis la clé appelante | La pose de `author` par `th_add` | 80 lignes | 5 |
+
+L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `th-NN-<sujet>` du fork `lfoletti/cortexdb`, selon `docs/pipeline_pr.md`.
+
+## Ce qui ne remonte pas
+
+- `rights.yaml`, les groupes, les lecteurs, rédacteurs et curateurs : une politique, pas un mécanisme.
+- Le point fédéré `/mcp` et la fusion RRF entre serveurs : un serveur CortexDB ne connaît pas ses voisins.
+- Le hook et le plugin Claude Code : un client, pas le moteur.
+- `key list` et `key sync` : ils comparent le fichier de clés à des droits que le moteur ne connaît pas.
