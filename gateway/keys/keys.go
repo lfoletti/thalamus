@@ -89,9 +89,11 @@ func write(path string, f *keyFile) error {
 }
 
 // Issue writes a key for user on brain into the server's key file, confined
-// to the brain's collection, with the clearance of the access. A user with
-// no access gets no key. A key already issued to the user for the brain is
-// not issued twice: revoke it first.
+// to the brain's collection, with the clearance of the access. An empty
+// collection means the brain is the whole server: the key is not confined,
+// and the engine opens every tool of its clearance to it, the graph
+// included. A user with no access gets no key. A key already issued to the
+// user for the brain is not issued twice: revoke it first.
 func Issue(keysFile, user, brain, collection string, access rights.Access) (Issued, error) {
 	if !access.AllowsRead() {
 		return Issued{}, fmt.Errorf("%s has no access to %s: no key issued", user, brain)
@@ -108,7 +110,11 @@ func Issue(keysFile, user, brain, collection string, access rights.Access) (Issu
 	}
 	secret := rand.Text() + rand.Text()
 	issued := Issued{ID: id, Secret: secret, Clearance: access.Clearance(), Collection: collection}
-	f.Keys = append(f.Keys, authz.Key{ID: id, Secret: secret, Clearance: issued.Clearance, Scope: authz.Scope{Collections: []string{collection}}})
+	var scope authz.Scope
+	if collection != "" {
+		scope.Collections = []string{collection}
+	}
+	f.Keys = append(f.Keys, authz.Key{ID: id, Secret: secret, Clearance: issued.Clearance, Scope: scope})
 	if err := write(keysFile, f); err != nil {
 		return Issued{}, err
 	}
@@ -133,6 +139,23 @@ func Revoke(keysFile, user, brain string) error {
 	}
 	f.Keys = kept
 	return write(keysFile, f)
+}
+
+// SecretOf finds the key the gateway issued to user for brain, so the
+// gateway can call that brain on the user's behalf. A missing file is a
+// missing key; a broken file is an error.
+func SecretOf(keysFile, user, brain string) (string, error) {
+	f, err := read(keysFile)
+	if err != nil {
+		return "", err
+	}
+	id := ID(user, brain)
+	for _, k := range f.Keys {
+		if k.ID == id {
+			return k.Secret, nil
+		}
+	}
+	return "", fmt.Errorf("no key issued to %s for %s", user, brain)
 }
 
 // Holder maps a secret presented to the gateway back to the user and brain

@@ -26,17 +26,27 @@ import (
 // every call, and answers like a CortexDB server would.
 type brain struct {
 	rpcv1.UnimplementedToolsServiceServer
-	mu     sync.Mutex
-	bearer string
-	calls  []rpcv1.CallToolRequest
-	fail   bool
+	mu      sync.Mutex
+	bearer  string
+	bearers map[string]string // by collection
+	calls   []call
+	fail    bool
+	failOn  string               // a collection whose calls fail
+	hits    map[string][]fakeHit // knowledge_search answers by collection
+	badJSON bool                 // answer knowledge_search with text that is not JSON
 }
 
-func (b *brain) seen(ctx context.Context) {
+type fakeHit struct{ ID, Title, Snippet string }
+
+type call struct{ Name, ArgsJson string }
+
+func (b *brain) seen(ctx context.Context) string {
 	md, _ := metadata.FromIncomingContext(ctx)
 	if v := md.Get("authorization"); len(v) > 0 {
 		b.bearer = v[0]
+		return v[0]
 	}
+	return ""
 }
 
 func (b *brain) ListTools(ctx context.Context, _ *rpcv1.ListToolsRequest) (*rpcv1.ListToolsResponse, error) {
@@ -52,10 +62,39 @@ func (b *brain) ListTools(ctx context.Context, _ *rpcv1.ListToolsRequest) (*rpcv
 func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv1.CallToolResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.seen(ctx)
-	b.calls = append(b.calls, rpcv1.CallToolRequest{Name: req.GetName(), ArgsJson: req.GetArgsJson()})
-	if b.fail {
+	bearer := b.seen(ctx)
+	b.calls = append(b.calls, call{Name: req.GetName(), ArgsJson: req.GetArgsJson()})
+	var args struct {
+		Collection string `json:"collection"`
+		TopK       int    `json:"top_k"`
+	}
+	_ = json.Unmarshal([]byte(req.GetArgsJson()), &args)
+	if b.bearers == nil {
+		b.bearers = map[string]string{}
+	}
+	b.bearers[args.Collection] = bearer
+	if b.fail || (b.failOn != "" && b.failOn == args.Collection) {
 		return nil, errors.New("brain says no")
+	}
+	if b.badJSON {
+		return &rpcv1.CallToolResponse{ResultJson: "not json"}, nil
+	}
+	if req.GetName() == "knowledge_search" && b.hits != nil {
+		type h struct {
+			KnowledgeID string  `json:"knowledge_id"`
+			Title       string  `json:"title"`
+			Snippet     string  `json:"snippet"`
+			Score       float64 `json:"score"`
+		}
+		var hs []h
+		for i, x := range b.hits[args.Collection] {
+			if args.TopK > 0 && i >= args.TopK {
+				break
+			}
+			hs = append(hs, h{x.ID, x.Title, x.Snippet, 1 / float64(i+1)})
+		}
+		out, _ := json.Marshal(map[string]any{"query": "q", "results": hs})
+		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
 	}
 	return &rpcv1.CallToolResponse{ResultJson: `{"echo":` + req.GetArgsJson() + `}`}, nil
 }
@@ -95,6 +134,7 @@ brains:
     keys_file: ` + keysFile + `
     collection: other
     writers: [user:lfoletti]
+    weight: 0.5
 groups: {}
 `))
 	if err != nil {
@@ -232,7 +272,7 @@ func TestRefusalsHappenBeforeTheBrainIsReached(t *testing.T) {
 		{"right withdrawn", "/mcp/team/acme", stale.Secret, http.StatusForbidden},
 		{"unknown brain", "/mcp/team/acm", k.Secret, http.StatusNotFound},
 		{"no token", "/mcp/team/acme", "", http.StatusUnauthorized},
-		{"no brain in the path", "/mcp", k.Secret, http.StatusNotFound},
+		{"a path under the brains", "/mcp/", k.Secret, http.StatusNotFound},
 	} {
 		req, _ := http.NewRequest(http.MethodPost, b.url+c.path, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`))
 		if c.token != "" {

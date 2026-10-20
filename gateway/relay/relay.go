@@ -40,7 +40,8 @@ func New(r *rights.Rights, a *Audit) *Server {
 
 type ctxKey struct{}
 
-// Handler serves /mcp/<brain> for every brain of the rights file.
+// Handler serves /mcp/<brain> for every brain of the rights file, and /mcp,
+// the federated endpoint (federated.go).
 func (s *Server) Handler() http.Handler {
 	// JSON responses: a plain HTTP client (curl, a script) reads them; the SDK
 	// client accepts both.
@@ -49,7 +50,11 @@ func (s *Server) Handler() http.Handler {
 		return srv
 	}, &mcp.StreamableHTTPOptions{JSONResponse: true})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		srv, status, err := s.admit(r)
+		admit := s.admit
+		if r.URL.Path == "/mcp" {
+			admit = s.admitFederated
+		}
+		srv, status, err := admit(r)
 		if err != nil {
 			http.Error(w, err.Error(), status)
 			return

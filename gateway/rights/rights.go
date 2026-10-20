@@ -47,14 +47,31 @@ func (a Access) Clearance() authz.Clearance {
 	return authz.ReadOnly
 }
 
-// Brain is one CortexDB server and the collection it serves for this brain.
+// Brain is one CortexDB server and, when the server is shared between
+// brains, the collection this brain lives in. Without a collection the
+// brain is the whole server: its keys are not confined, and the engine
+// opens the graph tools to them, which a confined key never gets.
 type Brain struct {
-	Addr       string   `yaml:"addr"`
-	KeysFile   string   `yaml:"keys_file"`
+	Addr     string `yaml:"addr"`
+	KeysFile string `yaml:"keys_file"`
+	// Collection is empty when the brain is the whole server.
 	Collection string   `yaml:"collection"`
 	Readers    []string `yaml:"readers"`
 	Writers    []string `yaml:"writers"`
+	// RankWeight scales the brain's ranks in a federated recall; nil means 1.
+	RankWeight *float64 `yaml:"weight"`
 }
+
+// Weight is the rank weight of the brain, 1 when the file says nothing.
+func (b Brain) Weight() float64 {
+	if b.RankWeight == nil {
+		return 1
+	}
+	return *b.RankWeight
+}
+
+// WholeServer reports whether the brain is its server's only brain.
+func (b Brain) WholeServer() bool { return b.Collection == "" }
 
 // Rights is the parsed, validated file.
 type Rights struct {
@@ -91,7 +108,7 @@ func Parse(data []byte) (*Rights, error) {
 		return nil, errors.New("parse rights file: no brains declared")
 	}
 	for name, b := range r.Brains {
-		for field, value := range map[string]string{"addr": b.Addr, "keys_file": b.KeysFile, "collection": b.Collection} {
+		for field, value := range map[string]string{"addr": b.Addr, "keys_file": b.KeysFile} {
 			if strings.TrimSpace(value) == "" {
 				return nil, fmt.Errorf("parse rights file: brain %q has no %s", name, field)
 			}
@@ -100,6 +117,9 @@ func Parse(data []byte) (*Rights, error) {
 			if err := r.checkMember(m); err != nil {
 				return nil, fmt.Errorf("parse rights file: brain %q: %w", name, err)
 			}
+		}
+		if b.Weight() <= 0 {
+			return nil, fmt.Errorf("parse rights file: brain %q: weight must be positive", name)
 		}
 	}
 	return &r, nil

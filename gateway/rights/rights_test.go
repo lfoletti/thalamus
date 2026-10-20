@@ -23,6 +23,7 @@ brains:
     collection: reference
     readers: [group:acme, group:acme-devs]
     writers: [user:kmlead]
+    weight: 0.8
 groups:
   acme: [lfoletti, mdupont]
   acme-devs: [lfoletti]
@@ -108,15 +109,21 @@ func TestAMemberMustBeAGroupOrAUser(t *testing.T) {
 	}
 }
 
-// A brain needs its address, its key file and its collection.
-func TestABrainNeedsItsThreeFields(t *testing.T) {
-	for _, field := range []string{"addr: 127.0.0.1:47821", "keys_file: /srv/acme/keys.json", "collection: team-acme"} {
+// A brain needs its address and its key file. The collection is optional:
+// without it, the brain is the whole server and its keys are not confined,
+// which is what opens the graph tools to them.
+func TestABrainNeedsItsAddressAndKeyFile(t *testing.T) {
+	for _, field := range []string{"addr: 127.0.0.1:47821", "keys_file: /srv/acme/keys.json"} {
 		bad := strings.Replace(sample, field, "", 1)
 		_, err := Parse([]byte(bad))
 		name := strings.SplitN(field, ":", 2)[0]
 		if err == nil || !strings.Contains(err.Error(), name) {
 			t.Fatalf("without %s: got %v", name, err)
 		}
+	}
+	r := parse(t, strings.Replace(sample, "collection: team-acme", "", 1))
+	if b := r.Brains["team/acme"]; b.Collection != "" || !b.WholeServer() || r.Brains["org/reference"].WholeServer() {
+		t.Fatalf("whole server: %+v", b)
 	}
 }
 
@@ -170,6 +177,24 @@ func TestAMemberOfAnotherKindIsRefused(t *testing.T) {
 		bad := strings.Replace(sample, "user:guest", m, 1)
 		if _, err := Parse([]byte(bad)); err == nil || !strings.Contains(err.Error(), `member "`+m+`"`) {
 			t.Fatalf("%s: got %v", m, err)
+		}
+	}
+}
+
+// A brain's weight scales its ranks in a federated recall; it is 1 when
+// the file says nothing, and must be positive.
+func TestABrainHasAPositiveWeight(t *testing.T) {
+	r := parse(t, sample)
+	if w := r.Brains["team/acme"].Weight(); w != 1 {
+		t.Fatalf("default weight %v", w)
+	}
+	if w := r.Brains["org/reference"].Weight(); w != 0.8 {
+		t.Fatalf("weight %v", w)
+	}
+	for _, bad := range []string{"weight: 0", "weight: -1"} {
+		text := strings.Replace(sample, "weight: 0.8", bad, 1)
+		if _, err := Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), "weight") {
+			t.Fatalf("%s: got %v", bad, err)
 		}
 	}
 }
