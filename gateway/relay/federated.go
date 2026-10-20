@@ -151,6 +151,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			}
 			return jsonResult(res), nil
 		})
+	s.addWriteTools(srv, user)
 	return srv
 }
 
@@ -214,30 +215,42 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	return recallResult{Results: fuse(lists, args.TopK), Skipped: skips}, nil
 }
 
-// askBrain calls knowledge_search on one brain with the user's key for it.
-func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name string, args recallArgs) ([]hit, error) {
+// callBrain calls one tool on one brain with the user's key for it. The
+// brain's collection is added to the arguments when the brain has one,
+// unless the caller set "collection" to nil: that tool takes none.
+func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool string, req map[string]any) (string, error) {
 	secret, err := keys.SecretOf(b.KeysFile, user, name)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	conn, err := dial(b.Addr, secret)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer func() { _ = conn.Close() }()
-	req := map[string]any{"query": args.Query, "top_k": args.TopK}
-	if b.Collection != "" {
+	if v, set := req["collection"]; set && v == nil {
+		delete(req, "collection")
+	} else if b.Collection != "" {
 		req["collection"] = b.Collection
 	}
 	raw, _ := json.Marshal(req)
-	resp, err := rpcv1.NewToolsServiceClient(conn).CallTool(ctx, &rpcv1.CallToolRequest{Name: "knowledge_search", ArgsJson: string(raw)})
+	resp, err := rpcv1.NewToolsServiceClient(conn).CallTool(ctx, &rpcv1.CallToolRequest{Name: tool, ArgsJson: string(raw)})
+	if err != nil {
+		return "", err
+	}
+	return resp.GetResultJson(), nil
+}
+
+// askBrain calls knowledge_search on one brain with the user's key for it.
+func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name string, args recallArgs) ([]hit, error) {
+	result, err := s.callBrain(ctx, b, user, name, "knowledge_search", map[string]any{"query": args.Query, "top_k": args.TopK})
 	if err != nil {
 		return nil, err
 	}
 	var out struct {
 		Results []hit `json:"results"`
 	}
-	if err := json.Unmarshal([]byte(resp.GetResultJson()), &out); err != nil {
+	if err := json.Unmarshal([]byte(result), &out); err != nil {
 		return nil, fmt.Errorf("decode knowledge_search: %w", err)
 	}
 	return out.Results, nil

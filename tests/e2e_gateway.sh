@@ -27,6 +27,7 @@ brains:
     collection: team-acme
     readers: [group:acme]
     writers: [user:lfoletti]
+    curators: [user:kmlead]
   org/secrets:
     addr: $ADDR
     keys_file: $S/data/keys.json
@@ -55,6 +56,7 @@ LF=$("$GW" key issue "$S/data/rights.yaml" lfoletti team/acme) || ko "issue lfol
 LFS=$("$GW" key issue "$S/data/rights.yaml" lfoletti org/secrets) || ko "issue lfoletti on secrets" "$LFS"
 MD=$("$GW" key issue "$S/data/rights.yaml" mdupont team/acme) || ko "issue mdupont" "$MD"
 KM=$("$GW" key issue "$S/data/rights.yaml" kmlead org/secrets) || ko "issue kmlead" "$KM"
+KMA=$("$GW" key issue "$S/data/rights.yaml" kmlead team/acme) || ko "issue kmlead on team/acme" "$KMA"
 if "$GW" key issue "$S/data/rights.yaml" mdupont org/secrets >/dev/null 2>&1; then ko "mdupont on secrets issued" ""; else ok "mdupont has no key on org/secrets"; fi
 kill $SERVER; wait $SERVER 2>/dev/null
 CORTEXDB_REVIEW_GATE=1 "$GRPC" -db "$S/data/brain.db" -addr "$ADDR" -keys "$S/data/keys.json" > "$S/data/server.log" 2>&1 &
@@ -108,6 +110,23 @@ rec=$(mcp "$LF" "" gc_recall '{"query":"secret retainer"}')
 if printf '%s' "$rec" | grep -q 'secret-doc' && printf '%s' "$rec" | grep -q '\[org/secrets\]'; then ok "gc_recall finds secret-doc in org/secrets with lfoletti's read key"; else ko "gc_recall retainer" "$rec"; fi
 check "operator key on /mcp (401)" denied "$(mcp op-secret "" gc_brains '{}')"
 
+# The write circuit: a writer proposes, the review gate hides the document,
+# the curator lists what waits and accepts, the document is served.
+add=$(mcp "$LF" "" gc_add '{"brain":"team/acme","document_id":"spec-3","title":"Spec 3","content":"The cutover rehearsal is on Thursday evening with the whole team.","source_url":"smb://share/spec3.docx"}')
+if printf '%s' "$add" | grep -q 'spec-3' && ! printf '%s' "$add" | grep -q isError; then ok "gc_add proposes spec-3 into team/acme"; else ko "gc_add" "$add"; fi
+hid=$(mcp "$LF" team/acme knowledge_search '{"query":"cutover rehearsal","collection":"team-acme","top_k":5}')
+if printf '%s' "$hid" | grep -q 'spec-3'; then ko "proposed spec-3 served before review" "$hid"; else ok "proposed spec-3 is hidden until review"; fi
+check "mdupont (reader): gc_add refused" denied "$(mcp "$MD" "" gc_add '{"brain":"team/acme","content":"x"}')"
+pend=$(mcp "$KMA" "" gc_pending '{"brain":"team/acme"}')
+printf '%s' "$pend" | grep -q 'spec-3' && ok "gc_pending lists spec-3 for the curator" || ko "gc_pending" "$pend"
+check "lfoletti (writer): gc_pending refused" denied "$(mcp "$LF" "" gc_pending '{"brain":"team/acme"}')"
+rev=$(mcp "$KMA" "" gc_review '{"brain":"team/acme","knowledge_id":"spec-3","decision":"accepted"}')
+if printf '%s' "$rev" | grep -q isError; then ko "gc_review" "$rev"; else ok "gc_review accepts spec-3"; fi
+srv=$(mcp "$LF" team/acme knowledge_search '{"query":"cutover rehearsal","collection":"team-acme","top_k":5}')
+printf '%s' "$srv" | grep -q 'spec-3' && ok "accepted spec-3 is served" || ko "accepted spec-3 missing" "$srv"
+got=$(mcp "$KMA" team/acme knowledge_get '{"knowledge_id":"spec-3"}')
+printf '%s' "$got" | grep -q 'reviewed_by.*gc/kmlead/team/acme' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
+
 # The client: the plugin's hook asks gc_recall with the employee's key and
 # hands the extracts to Claude Code; a prompt too short asks nothing.
 ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?","cwd":"/tmp"}' | GC_GATEWAY="http://$GWADDR" GC_KEY="$LF" GC_HOOK_BIN="$S/gc-hook" "$ROOT/plugin/bin/gc-recall")
@@ -136,11 +155,12 @@ printf '%s' "$done_" | grep -q '^issued gc/mdupont/team/acme ' && ok "key sync r
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 11 ] && ok "eleven tool calls audited (the six refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 17 ] && ok "seventeen tool calls audited (the eight refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"gc_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "gc_recall audited with the brains and the ids read" || ko "gc_recall audit line" "$(grep gc_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"gc/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"
 grep -q '"user":"kmlead".*"brain":"org/secrets".*"knowledge_id":"secret-doc"' "$S/data/audit.jsonl" && ok "kmlead's save audited on org/secrets" || ko "kmlead audit line" "$(grep kmlead "$S/data/audit.jsonl")"
+grep -q '"user":"kmlead".*"brain":"team/acme","tool":"gc_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$S/data/audit.jsonl" && ok "the review is audited with its decision" || ko "gc_review audit line" "$(grep gc_review "$S/data/audit.jsonl")"
 echo
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]

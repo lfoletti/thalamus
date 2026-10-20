@@ -16,13 +16,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Access is what a user may do on a brain. Write implies Read.
+// Access is what a user may do on a brain. Write implies Read; Curate
+// implies Write and adds the review of what others propose.
 type Access int
 
 const (
 	None Access = iota
 	Read
 	Write
+	Curate
 )
 
 func (a Access) String() string {
@@ -31,17 +33,22 @@ func (a Access) String() string {
 		return "read"
 	case Write:
 		return "write"
+	case Curate:
+		return "curate"
 	}
 	return "none"
 }
 
 // AllowsRead reports whether the access lets the user read the brain.
-func (a Access) AllowsRead() bool { return a == Read || a == Write }
+func (a Access) AllowsRead() bool { return a >= Read }
+
+// AllowsWrite reports whether the access lets the user write to the brain.
+func (a Access) AllowsWrite() bool { return a >= Write }
 
 // Clearance is the CortexDB clearance a key issued for this access carries.
 // None has no key.
 func (a Access) Clearance() authz.Clearance {
-	if a == Write {
+	if a.AllowsWrite() {
 		return authz.ReadWrite
 	}
 	return authz.ReadOnly
@@ -58,6 +65,8 @@ type Brain struct {
 	Collection string   `yaml:"collection"`
 	Readers    []string `yaml:"readers"`
 	Writers    []string `yaml:"writers"`
+	// Curators write, and review what the writers propose.
+	Curators []string `yaml:"curators"`
 	// RankWeight scales the brain's ranks in a federated recall; nil means 1.
 	RankWeight *float64 `yaml:"weight"`
 }
@@ -68,6 +77,13 @@ func (b Brain) Weight() float64 {
 		return 1
 	}
 	return *b.RankWeight
+}
+
+// members lists every member of the brain's three lists.
+func (b Brain) members() []string {
+	out := append([]string{}, b.Readers...)
+	out = append(out, b.Writers...)
+	return append(out, b.Curators...)
 }
 
 // WholeServer reports whether the brain is its server's only brain.
@@ -113,7 +129,7 @@ func Parse(data []byte) (*Rights, error) {
 				return nil, fmt.Errorf("parse rights file: brain %q has no %s", name, field)
 			}
 		}
-		for _, m := range append(append([]string{}, b.Readers...), b.Writers...) {
+		for _, m := range b.members() {
 			if err := r.checkMember(m); err != nil {
 				return nil, fmt.Errorf("parse rights file: brain %q: %w", name, err)
 			}
@@ -148,6 +164,9 @@ func (r *Rights) Access(user, brain string) (Access, error) {
 	b, ok := r.Brains[brain]
 	if !ok {
 		return None, fmt.Errorf("unknown brain %q", brain)
+	}
+	if r.listed(user, b.Curators) {
+		return Curate, nil
 	}
 	if r.listed(user, b.Writers) {
 		return Write, nil
@@ -187,7 +206,7 @@ func (r *Rights) Users() []string {
 		}
 	}
 	for _, b := range r.Brains {
-		for _, m := range append(append([]string{}, b.Readers...), b.Writers...) {
+		for _, m := range b.members() {
 			if kind, name, _ := strings.Cut(m, ":"); kind == "user" {
 				seen[name] = true
 			}
