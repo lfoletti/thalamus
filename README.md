@@ -1,12 +1,12 @@
 # granular_cortex
 
-A thin layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge brains of an organisation, used by code agents such as Claude Code. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. granular_cortex adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
+A governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge brains of an organisation: which employee may read or write which brain, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. granular_cortex adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
 
 *Version française plus bas.*
 
 ## Why
 
-The base engine has no way to define or manage a clearance policy on a shared brain, for a company or across projects. Its key file is a list of secrets written by hand. granular_cortex adds that policy: a rights file (brains, groups, readers, writers), keys issued and revoked from it, a gateway that applies it and logs every call under a person's name, and one recall across the brains a person may read. It serves the team that runs the brains, the curators and the employees.
+The base engine has no way to define or manage a clearance policy on a shared brain, for a company or across projects. Its key file is a list of secrets written by hand. granular_cortex is a governance layer over CortexDB: it decides which employee gets which key on which brain. It brings a rights file (brains, groups, readers, writers), keys issued and revoked from it, a gateway that applies it and logs every call under a person's name, and one recall across the brains a person may read. It serves the team that runs the brains, the curators and the employees.
 
 1. **No fork of the engine.** The fixes this layer needed went upstream as small pull requests. The layer imports CortexDB at a pinned version. No maintenance debt.
 2. **The engine enforces, not a proxy.** Every employee reaches a brain with their own confined key. The gateway cannot err in the caller's favour: it decides who gets a key, the engine decides what the key may do.
@@ -61,11 +61,11 @@ MIT. CortexDB is MIT too.
 
 # granular_cortex (français)
 
-Une couche mince au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les cerveaux de connaissances partagés d'une organisation, utilisés par des agents de code comme Claude Code. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. granular_cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
+Une couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les cerveaux de connaissances partagés d'une organisation : quel employé peut lire ou écrire quel cerveau, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. granular_cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
 
 ## Pourquoi
 
-Le modèle de base ne permet pas de définir ni de gérer une politique de clearance sur un cerveau partagé, d'entreprise ou multi-projets. Son fichier de clés est une liste de secrets écrite à la main. granular_cortex apporte cette politique : un fichier de droits (cerveaux, groupes, lecteurs, rédacteurs), des clés émises et révoquées à partir de ces droits, un gateway qui les applique et journalise chaque appel au nom d'une personne, et un rappel sur tous les cerveaux qu'une personne peut lire. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés.
+Le modèle de base ne permet pas de définir ni de gérer une politique de clearance sur un cerveau partagé, d'entreprise ou multi-projets. Son fichier de clés est une liste de secrets écrite à la main. granular_cortex est une couche de gouvernance au-dessus de CortexDB : elle décide quel employé reçoit quelle clé sur quel cerveau. Elle apporte un fichier de droits (cerveaux, groupes, lecteurs, rédacteurs), des clés émises et révoquées à partir de ces droits, un gateway qui les applique et journalise chaque appel au nom d'une personne, et un rappel sur tous les cerveaux qu'une personne peut lire. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés.
 
 1. **Pas de fork du moteur.** Les correctifs dont cette couche a besoin sont partis en amont en petites PR. La couche importe CortexDB à une version épinglée. Pas de dette de maintenance.
 2. **C'est le moteur qui applique, pas un proxy.** Chaque employé joint un cerveau avec sa propre clé confinée. Le gateway ne peut pas se tromper en faveur de l'appelant : il décide qui reçoit une clé, le moteur décide ce que la clé peut faire.
