@@ -36,6 +36,11 @@ type pendingArgs struct {
 	TopK  int    `json:"top_k,omitempty"`
 }
 
+type getArgs struct {
+	Brain       string `json:"brain"`
+	KnowledgeID string `json:"knowledge_id"`
+}
+
 type reviewArgs struct {
 	Brain       string `json:"brain"`
 	KnowledgeID string `json:"knowledge_id"`
@@ -58,6 +63,18 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 				return errResult(fmt.Errorf("th_add: %w", err)), nil
 			}
 			return s.add(ctx, user, args), nil
+		})
+	srv.AddTool(&mcp.Tool{Name: "th_get", Description: "Reads one document whole, by brain and knowledge_id (both are on the provenance line of a th_recall result or of the hook's extract), in a brain the caller may read.",
+		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
+			"brain":        map[string]any{"type": "string"},
+			"knowledge_id": map[string]any{"type": "string"},
+		}, "required": []string{"brain", "knowledge_id"}}},
+		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args getArgs
+			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
+				return errResult(fmt.Errorf("th_get: %w", err)), nil
+			}
+			return s.get(ctx, user, args), nil
 		})
 	srv.AddTool(&mcp.Tool{Name: "th_pending", Description: "Lists the documents that wait for review in a brain the caller curates.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
@@ -94,6 +111,8 @@ func (s *Server) brainFor(user, name string, need rights.Access, tool string) (r
 	}
 	access, _ := s.rights().Access(user, name)
 	switch {
+	case need == rights.Read && !access.AllowsRead():
+		return rights.Brain{}, fmt.Errorf("%s: %s may not read %s", tool, user, name)
 	case need == rights.Curate && access < rights.Curate:
 		return rights.Brain{}, fmt.Errorf("%s: %s is not a curator of %s", tool, user, name)
 	case need == rights.Write && !access.AllowsWrite():
@@ -160,6 +179,20 @@ type pendingHit struct {
 // groups the chunks by document under the review_status filter (a search
 // needs a text, a listing does not), then knowledge_get reads each
 // document. One audit line names them all.
+// get reads one document whole. knowledge_get takes no collection: the
+// brain's row guard checks the document against the key.
+func (s *Server) get(ctx context.Context, user string, args getArgs) *mcp.CallToolResult {
+	if strings.TrimSpace(args.KnowledgeID) == "" {
+		return errResult(errors.New("th_get: knowledge_id is required"))
+	}
+	b, err := s.brainFor(user, args.Brain, rights.Read, "th_get")
+	if err != nil {
+		return errResult(err)
+	}
+	req := map[string]any{"knowledge_id": args.KnowledgeID, "collection": nil}
+	return s.audited(ctx, b, user, args.Brain, "th_get", "knowledge_get", req, map[string]any{"knowledge_id": args.KnowledgeID})
+}
+
 func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mcp.CallToolResult {
 	b, err := s.brainFor(user, args.Brain, rights.Curate, "th_pending")
 	if err != nil {
