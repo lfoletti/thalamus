@@ -44,6 +44,6 @@ prepr: precommit mutate
 ## hooks : installe le hook pre-push dans le clone (vaut aussi pour ses copies de travail).
 hooks:
 	@H=$$(cd $(REPO) && git rev-parse --path-format=absolute --git-common-dir)/hooks; mkdir -p "$$H"; \
-	printf '%s\n' '#!/bin/sh' '# Installé par `make hooks` de granular_cortex : rien ne part sans precommit.' \
+	printf '%s\n' '#!/bin/sh' '# Installé par `make hooks` de Granular Cortex : rien ne part sans precommit.' \
 	  'exec make -C /Users/mini/Documents/granular_cortex precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
 	chmod +x "$$H/pre-push"; echo "hook installé : $$H/pre-push"

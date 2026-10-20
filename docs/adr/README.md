@@ -1,6 +1,6 @@
 # Décisions d'architecture (ADR)
 
-Un fichier par décision, numéroté, jamais réécrit : une décision qui change reçoit un nouvel ADR qui remplace l'ancien. Champs : Statut, Date, Contexte, Décision, Options écartées, Conséquences, Références. Les ADR décrivent les décisions de `granular_cortex` et des correctifs que le projet pousse vers CortexDB. Ils ne sont pas repris dans les PR amont : le propriétaire lit les corps de PR et tient seul son changelog.
+Un fichier par décision, numéroté, jamais réécrit : une décision qui change reçoit un nouvel ADR qui remplace l'ancien. Champs : Statut, Date, Contexte, Décision, Options écartées, Conséquences, Références. Les ADR décrivent les décisions de Granular Cortex et des correctifs que le projet pousse vers CortexDB. Ils ne sont pas repris dans les PR amont : le propriétaire lit les corps de PR et tient seul son changelog.
 
 | N° | Titre | Statut |
 | :- | :- | :- |

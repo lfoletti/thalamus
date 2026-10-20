@@ -1,9 +1,9 @@
 ---
 name: granular-cortex
-description: How to use the shared brains of the organisation through the granular_cortex gateway (gc_brains, gc_recall), and what the recall hook injects.
+description: How to use the shared brains of the organisation through the Granular Cortex gateway (gc_brains, gc_recall), and what the recall hook injects.
 ---
 
-# granular_cortex: shared brains
+# Granular Cortex: shared brains
 
 The gateway gives you two tools, under your own key. The engine applies your rights on each brain; the gateway records who asked what.
 

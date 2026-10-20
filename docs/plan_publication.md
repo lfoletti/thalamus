@@ -44,11 +44,11 @@ Conséquences : des PR **petites, une par sujet, avec tests**, sont fusionnées 
 
 ### 2.1 Le but, dit au propriétaire
 
-Un seul but, en termes CortexDB et non en termes `granular_cortex` :
+Un seul but, en termes CortexDB et non en termes Granular Cortex :
 
 > **Un serveur CortexDB partagé par plusieurs équipes et plusieurs agents, où une clé confinée suffit à un client MCP, où un document garde sa provenance, sa durée de vie et son état de relecture, et où rien ne fuit d'une collection à l'autre.**
 
-Chaque révision se lit comme un problème de ce serveur partagé, reproduit par un test qui échoue avant et passe après. Aucune PR ne parle de « granular_cortex », de « gateway » ni de « fédération ». Ces mots sont notre couche, pas la leur.
+Chaque révision se lit comme un problème de ce serveur partagé, reproduit par un test qui échoue avant et passe après. Aucune PR ne parle de « Granular Cortex », de « gateway » ni de « fédération ». Ces mots sont notre couche, pas la leur.
 
 Texte de la discussion publique : `docs/discussion_amont.md` (validé en principe le 18 octobre 2026, texte à relire avant publication).
 
@@ -56,7 +56,7 @@ Si la discussion n'est pas validée, le même texte, réduit à son premier para
 
 ### 2.2 Objectifs internes et replis
 
-| Réf. | Objectif pour `granular_cortex` | Révisions | Repli si tout est refusé |
+| Réf. | Objectif pour Granular Cortex | Révisions | Repli si tout est refusé |
 | :- | :- | :- | :- |
 | OBJ-1 | Audit par identité : savoir quelle clé a appelé quel outil | GC-01 | `gc-gateway` journalise chaque appel dans `audit.jsonl` |
 | OBJ-2 | Intégrité documentaire : provenance, hash, doublons | GC-02, GC-08 | le gateway porte la provenance en métadonnées de passage et tient son propre index de hachage |

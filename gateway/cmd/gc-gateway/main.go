@@ -1,4 +1,4 @@
-// Command gc-gateway is the granular_cortex gateway: it reads rights.yaml,
+// Command gc-gateway is the Granular Cortex gateway: it reads rights.yaml,
 // issues and revokes the confined CortexDB keys of employees, and serves the
 // MCP relay that audits every tool call.
 //

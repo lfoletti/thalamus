@@ -106,7 +106,7 @@ func TestTheHookInjectsTheExtractsWithTheirProvenance(t *testing.T) {
 	}
 	ctx := contextOf(t, out)
 	for _, want := range []string{
-		"granular_cortex: 2 extracts from the shared brains",
+		"Granular Cortex: 2 extracts from the shared brains",
 		"- [team/acme] Spec migration, spec-1, by mdupont (also in org/reference): The ledger moves on Sunday.",
 		"- [org/reference] Rollback, r-1: Rollback is two hours.",
 		"Skipped: team/other (no key issued to lfoletti for team/other).",

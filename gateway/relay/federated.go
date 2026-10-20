@@ -123,7 +123,7 @@ type brainHits struct {
 }
 
 func (s *Server) federatedServer(user string) *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "granular_cortex gateway: federated", Version: "0"}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "Granular Cortex gateway: federated", Version: "0"}, nil)
 	srv.AddTool(&mcp.Tool{Name: "gc_brains", Description: "Lists the brains the caller may read, with the access (read or write) and whether a key was issued for it.", InputSchema: map[string]any{"type": "object"}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var out []brainEntry
