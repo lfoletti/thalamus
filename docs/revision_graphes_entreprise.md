@@ -16,7 +16,7 @@ Contrainte de méthode retenue : le projet évolue par **forks successives et me
 
 1. CortexDB est un bon **moteur** : stockage, graphe, faits bitemporels, outils MCP, backend PostgreSQL, mode lexical sans modèle. Il n'est pas une **plateforme de gestion des connaissances** : pas de multi-cerveaux, pas d'audit par identité, pas de classification, pas de conservation, pas de relecture humaine intégrée.
 2. Le point bloquant découvert dans le code : **une clé confinée ne peut appeler aucun outil du toolbox**. Le plugin MCP en mode distant passe par ce toolbox. Donc le modèle de droits actuel et le plugin MCP sont incompatibles. C'est corrigeable par une PR de taille moyenne.
-3. Décision recommandée : **CortexDB comme moteur, derrière une couche mince maison (« Granular Cortex ») qui porte la fédération, les droits, la classification, l'audit et la file de relecture.** La couche s'amincit à chaque PR acceptée en amont.
+3. Décision recommandée : **CortexDB comme moteur, derrière une couche mince maison (« Thalamus ») qui porte la fédération, les droits, la classification, l'audit et la file de relecture.** La couche s'amincit à chaque PR acceptée en amont.
 4. Aucune alternative examinée (Graphiti, Mem0, Cognee, LightRAG) n'est meilleure sous la contrainte « Ollama seul + MCP + conformité ». Toutes exigent un modèle pour fonctionner. Aucune ne porte des droits par graphe et par document.
 5. Deux exigences sont mal posées. Voir la section 7 : « mémoire personnelle de l'employé » et « traitement exclusivement interne ».
 
@@ -117,7 +117,7 @@ Sources web consultées le 18 octobre 2026 : [FalkorDB, Graphiti MCP Server](htt
 
 ### 2.2 Décision
 
-**Option B, avec une méthode de l'option A.** CortexDB reste le moteur. Une couche mince Granular Cortex porte ce que l'amont n'a pas. Chaque fonction de la couche qui a un sens général est proposée en amont comme petite PR. Quand la PR est acceptée, la couche s'amincit.
+**Option B, avec une méthode de l'option A.** CortexDB reste le moteur. Une couche mince Thalamus porte ce que l'amont n'a pas. Chaque fonction de la couche qui a un sens général est proposée en amont comme petite PR. Quand la PR est acceptée, la couche s'amincit.
 
 Pourquoi pas A seul : un fork du plugin qui porte la fédération et les droits diverge vite d'un amont qui publie plusieurs versions par jour. Le coût de rebase dépasse le gain.
 
@@ -144,39 +144,39 @@ La PR 1, 2, 7 sont des bonnes premières contributions : petites, sans débat de
 
 ---
 
-## 3. Architecture proposée : Granular Cortex
+## 3. Architecture proposée : Thalamus
 
 ### 3.1 Composants
 
 ```
  Postes de travail                          Serveurs internes (réseau de confiance, TLS par proxy)
  ┌─────────────────────────────┐            ┌────────────────────────────────────────────────────┐
- │ Claude Code / Codex         │            │ gc-gateway  (Go, service maison)                   │
- │  ├ plugin granular-cortex   │  MCP/HTTPS │  ├ /mcp         : outils fédérés (recall, add…)     │
+ │ Claude Code / Codex         │            │ th-gateway  (Go, service maison)                   │
+ │  ├ plugin thalamus   │  MCP/HTTPS │  ├ /mcp         : outils fédérés (recall, add…)     │
  │  │  ├ hooks (recall, files) ├───────────►│  ├ /v1/brains   : cerveaux visibles par l'appelant  │
- │  │  ├ skill /gc-add         │            │  ├ /v1/ingest   : ajout de document (skill, Chrome) │
- │  │  └ skill /gc-review      │            │  ├ /v1/review   : file de relecture                 │
+ │  │  ├ skill /th-add         │            │  ├ /v1/ingest   : ajout de document (skill, Chrome) │
+ │  │  └ skill /th-review      │            │  ├ /v1/review   : file de relecture                 │
  │  └ cerveau local SQLite     │            │  ├ rights.yaml  : droits, groupes, classification   │
  │     (user/<emp>/<projet>)   │            │  └ audit.jsonl  : qui, quoi, quand, quel cerveau    │
  ├─────────────────────────────┤            │          │ gRPC + clé par cerveau                   │
  │ Chrome                      │  HTTPS     │  ┌───────┴────────┬──────────────┬───────────────┐  │
- │  └ extension granular-cortex├───────────►│  │cortexdb-grpc   │cortexdb-grpc │cortexdb-grpc  │  │
+ │  └ extension thalamus├───────────►│  │cortexdb-grpc   │cortexdb-grpc │cortexdb-grpc  │  │
  └─────────────────────────────┘            │  │team/<projet-A> │team/<proj-B> │org/reference  │  │
                                             │  └───────┬────────┴──────┬───────┴──────┬────────┘  │
  Annuaire (LDAP / Entra ID)                 │          └───────────────┴──────────────┘           │
   groupes → rights.yaml                     │             PostgreSQL + pgvector (1 schéma/cerveau)│
                                             │  Ollama (extraction, embeddings, reclassement)      │
-                                            │  gc-sync (cron) : sources suivies, hachages, retraits│
+                                            │  th-sync (cron) : sources suivies, hachages, retraits│
                                             └────────────────────────────────────────────────────┘
 ```
 
 Rôle de chaque composant :
 
-- **cortexdb-grpc, un processus par cerveau partagé.** Base PostgreSQL, un schéma par cerveau. Fichier de clés par serveur : une clé pour `gc-gateway` (lecture-écriture), aucune clé distribuée aux employés. [Backend PostgreSQL vérifié : `pkg/core/store_postgres.go`]
-- **gc-gateway.** Service Go, importe les paquets `cortexdb` comme bibliothèque et parle gRPC aux serveurs. Il est le seul client des serveurs. Il authentifie l'employé (jeton OIDC de l'annuaire, ou clé personnelle émise par l'administrateur), lit `rights.yaml`, fédère, journalise. Il expose un serveur MCP (HTTP) et une API REST.
-- **Plugin `granular-cortex`** pour Claude Code et Codex. Il remplace les hooks du plugin CortexDB (désactivés par `cortexdb-recall --disable` et `cortexdb-session-end --disable` [Vérifié : README ligne 65]). Ses hooks appellent `gc-gateway`. Le cerveau local SQLite (notes personnelles par projet) reste un fichier dans `.cortexdb/` du dépôt, non versionné.
+- **cortexdb-grpc, un processus par cerveau partagé.** Base PostgreSQL, un schéma par cerveau. Fichier de clés par serveur : une clé pour `th-gateway` (lecture-écriture), aucune clé distribuée aux employés. [Backend PostgreSQL vérifié : `pkg/core/store_postgres.go`]
+- **th-gateway.** Service Go, importe les paquets `cortexdb` comme bibliothèque et parle gRPC aux serveurs. Il est le seul client des serveurs. Il authentifie l'employé (jeton OIDC de l'annuaire, ou clé personnelle émise par l'administrateur), lit `rights.yaml`, fédère, journalise. Il expose un serveur MCP (HTTP) et une API REST.
+- **Plugin `thalamus`** pour Claude Code et Codex. Il remplace les hooks du plugin CortexDB (désactivés par `cortexdb-recall --disable` et `cortexdb-session-end --disable` [Vérifié : README ligne 65]). Ses hooks appellent `th-gateway`. Le cerveau local SQLite (notes personnelles par projet) reste un fichier dans `.cortexdb/` du dépôt, non versionné.
 - **Extension Chrome** (Manifest V3). Elle lit `/v1/brains?writable=1`, envoie la page ou la sélection à `/v1/ingest`.
-- **gc-sync.** Tâche planifiée. Elle relit la table des sources suivies, compare les hachages, ré-ingère ou retire.
+- **th-sync.** Tâche planifiée. Elle relit la table des sources suivies, compare les hachages, ré-ingère ou retire.
 - **Ollama.** Un serveur interne. Voir section 3.6.
 
 ### 3.2 Modèle de données : cerveaux
@@ -200,7 +200,7 @@ Un cerveau est déclaré dans `rights.yaml` :
 brains:
   team/acme-migration:
     addr: cortexdb-acme.internal:47821
-    key_ref: vault:gc/team-acme-migration
+    key_ref: vault:th/team-acme-migration
     classification_max: confidential     # rien de plus sensible n'y entre
     retention_default: P5Y                # ISO 8601
     curators: [group:proj-acme-leads]
@@ -237,8 +237,8 @@ Un fait (entité ou relation) porte : `source_document_id`, `source_chunk`, `ext
 ### 3.4 Circuit d'un document
 
 ```
-Employé                 Plugin / Chrome          gc-gateway                      cortexdb-grpc        Ollama
-  │ /gc-add spec.docx         │                      │                               │                 │
+Employé                 Plugin / Chrome          th-gateway                      cortexdb-grpc        Ollama
+  │ /th-add spec.docx         │                      │                               │                 │
   │   --brain team/acme ─────►│ extrait le texte     │                               │                 │
   │                           │ (pandoc, pdftotext)  │                               │                 │
   │                           │ POST /v1/ingest ────►│ 1 vérifie: writer du cerveau ?│                 │
@@ -261,12 +261,12 @@ Détails :
 1. L'extraction du texte se fait **sur le poste** pour un fichier (pandoc pour Word et Markdown, `pdftotext` de poppler pour PDF, OCR hors périmètre du pilote). Pour une page web, l'extension envoie le texte lisible (Readability) ou la sélection.
 2. La classification est une **proposition** : règles d'abord (chemin du fichier, domaine de l'URL, mots-clés, présence d'un numéro AVS ou d'un e-mail), modèle ensuite. L'employé confirme. La classification ne peut pas dépasser `classification_max` du cerveau.
 3. Le doublon est détecté par `source_hash` et par `source_uri` canonique. Même URI, hachage différent : mise à jour (ré-ingestion sous le même `document_id`, version incrémentée). Même hachage, URI différente : lien vers le document existant, pas de nouvelle copie.
-4. La source est inscrite dans la table `sources` de `gc-sync` : `uri`, `hash`, `brain`, `document_id`, `last_checked`, `check_interval`, `status`. Un fichier retiré ou une page qui répond 404 ou 410 passe `status: gone`. Le curateur choisit : retrait du graphe (`delete_document_graph`) ou conservation marquée « source disparue ».
+4. La source est inscrite dans la table `sources` de `th-sync` : `uri`, `hash`, `brain`, `document_id`, `last_checked`, `check_interval`, `status`. Un fichier retiré ou une page qui répond 404 ou 410 passe `status: gone`. Le curateur choisit : retrait du graphe (`delete_document_graph`) ou conservation marquée « source disparue ».
 
 ### 3.5 Circuit d'une question
 
 ```
-Hook UserPromptSubmit          gc-gateway                             cerveaux accessibles
+Hook UserPromptSubmit          th-gateway                             cerveaux accessibles
   │ prompt, projet courant,       │                                        │
   │ identité ───────────────────► │ 1 plan de requête (mots-clés, entités) │
   │                               │   lexical, ou haiku via Claude Code    │
@@ -289,21 +289,21 @@ Règles de fusion et de classement :
 - **Dédoublonnage** : deux extraits avec le même `source_hash` et le même `chunk_index` sont un seul extrait. La provenance liste alors tous les cerveaux qui le contiennent.
 - **Provenance** : chaque extrait injecté porte une ligne `— [team/acme-migration] spec.docx §3, source 2026-09-02, ajouté par mdupont, interne`. Le format est fixe pour que l'agent et l'humain le lisent.
 - **Contradictions** : deux faits sur la même entité et le même attribut, avec des valeurs différentes, dans deux cerveaux. Règle : le fait **accepté par un curateur** dans un cerveau partagé l'emporte sur un fait personnel. Entre deux cerveaux partagés, le plus récent par `valid_from` l'emporte. Dans tous les cas, l'extrait porte la mention `⚠ contredit par [user/lfoletti] note du 2026-10-01`. Le gateway crée une entrée dans la file de relecture du curateur.
-- **Classification injectable** : voir 7.2. Par défaut, un extrait `confidential` ou `personal-data` est injecté seulement si le contrat avec le fournisseur de l'agent le permet, sinon il est remplacé par `— [team/acme] 1 extrait confidentiel non affiché, ouvrir avec /gc-show <id>`.
+- **Classification injectable** : voir 7.2. Par défaut, un extrait `confidential` ou `personal-data` est injecté seulement si le contrat avec le fournisseur de l'agent le permet, sinon il est remplacé par `— [team/acme] 1 extrait confidentiel non affiché, ouvrir avec /th-show <id>`.
 
 Règle d'écriture d'un fait nouveau :
 
 | Origine | Destination par défaut | Qui décide |
 | :- | :- | :- |
 | Capture de session (automatique) | `user/<employé>/<projet>` (local) | personne, c'est la zone brouillon |
-| `/gc-remember` explicite de l'employé | `user/<employé>` ou `user/<employé>/<projet>` au choix | l'employé |
+| `/th-remember` explicite de l'employé | `user/<employé>` ou `user/<employé>/<projet>` au choix | l'employé |
 | Fait extrait d'un document ajouté à `team/<projet>` | file de relecture de `team/<projet>` | le curateur |
 | Promotion d'une note personnelle | file de relecture du cerveau cible | l'employé propose, le curateur accepte |
 
 ### 3.6 Circuit d'un fait extrait
 
 ```
-Source (document, session)          gc-gateway                                   Curateur
+Source (document, session)          th-gateway                                   Curateur
   │                                    │                                             │
   │ texte ──────────────────────────►  │ 1 Ollama extrait entités + relations        │
   │                                    │   (JSON contraint, schéma d'ontologie)      │
@@ -312,7 +312,7 @@ Source (document, session)          gc-gateway                                  
   │                                    │   qui contient ses termes, sinon rejet      │
   │                                    │ 4 écrit review/<brain>/<id>.json           │
   │                                    │   status: proposed                          │
-  │                                    │ ─────────────── /gc-review team/acme ─────► │ lit, pour chaque fait:
+  │                                    │ ─────────────── /th-review team/acme ─────► │ lit, pour chaque fait:
   │                                    │                                             │ accepte / corrige / refuse (motif)
   │                                    │ ◄─────────────────────────────────────────  │
   │                                    │ 5 accepté → knowledge_graph_upsert avec     │
@@ -325,7 +325,7 @@ Points fermes :
 
 - Rien d'extrait par un modèle n'entre dans un cerveau partagé sans un clic humain. C'est la leçon du premier usage réel (« l'étude a lu la réserve »).
 - L'étape 3 est une vérification mécanique, pas un second modèle : les termes du fait doivent apparaître dans le passage cité. Elle élimine une part des hallucinations à coût nul. [Outil `verify_claims` de CortexDB : à vérifier s'il fait cela]
-- La file de relecture est un répertoire de fichiers JSON dans un dépôt Git interne par cerveau, ou une table PostgreSQL de `gc-gateway`. Le dépôt Git a l'avantage de la revue par PR, familière aux équipes de code. Pour le pilote : Git.
+- La file de relecture est un répertoire de fichiers JSON dans un dépôt Git interne par cerveau, ou une table PostgreSQL de `th-gateway`. Le dépôt Git a l'avantage de la revue par PR, familière aux équipes de code. Pour le pilote : Git.
 - Un fait refusé reste visible du gateway avec son motif. Si Ollama le repropose, le gateway le filtre.
 
 ### 3.7 Modèles Ollama
@@ -353,12 +353,12 @@ Ce que les pages disent :
 3. Les interdictions visent deux cas : un tiers qui route les requêtes de ses utilisateurs par des identifiants Free, Pro ou Max, et un client qui revend ou intermédie l'usage pour les utilisateurs finaux de son produit. Un pipeline interne de l'entreprise sur son propre siège n'est ni l'un ni l'autre.
 4. `claude --bare -p` ne lit pas `CLAUDE_CODE_OAUTH_TOKEN` et exige une clé d'API. Le gateway n'utilise donc pas `--bare`. Il passe le contexte par `--mcp-config`, `--append-system-prompt` et `--json-schema`.
 
-Règles pour Granular Cortex :
+Règles pour Thalamus :
 
 | Usage | Cadre | Décision |
 | :- | :- | :- |
 | Planification de requête, capture de session, dans la session Claude Code de l'employé | Usage individuel ordinaire, siège de l'employé | **Admis.** C'est le modèle de `cortexdb-live`. |
-| Relecture assistée : l'employé lance `/gc-review`, le modèle de sa session résume les faits proposés | Siège de l'employé | **Admis.** |
+| Relecture assistée : l'employé lance `/th-review`, le modèle de sa session résume les faits proposés | Siège de l'employé | **Admis.** |
 | Siège « bot » Team ou Enterprise, jeton `setup-token` dans le gateway, pour l'extraction d'entités, la classification et le résumé des documents `public` et `internal` | Usage documenté (CI, scripts). Quota d'un siège. | **Admis.** Pratique courante. Le gateway surveille le quota et bascule sur Ollama à l'approche du plafond. |
 | Le même siège bot pour les documents `confidential` et `personal-data` | Licence : admis. Données : dépend du contrat Enterprise (DPA, pas d'entraînement, localisation) | **À trancher par l'entreprise.** Voir 7.2 et question 1 de 7.4. Par défaut : Ollama. |
 | Ingestion de masse (centaines de documents, réindexation complète, embeddings) | Admis, mais hors de l'échelle d'un siège | **Ollama.** Les embeddings et le reclassement sont toujours sur Ollama : Claude Code ne fournit pas d'embeddings. |
@@ -368,7 +368,7 @@ Conséquence sur l'architecture : le gateway porte **un** jeton de siège bot, s
 Format d'appel depuis le gateway :
 
 ```bash
-CLAUDE_CODE_OAUTH_TOKEN="$(vault read gc/bot-seat)" \
+CLAUDE_CODE_OAUTH_TOKEN="$(vault read th/bot-seat)" \
 claude -p "Extrais les entités et relations du document ci-joint." \
   --append-system-prompt-file prompts/extract.md \
   --output-format json --json-schema schemas/facts.json \
@@ -429,7 +429,7 @@ props:  brain, node_id, snapshot_at, label (titre seul, jamais le contenu)
 
 et une arête locale vers lui : `promoted_to`, `contradicts`, `see_also`. Le gateway résout la référence si l'employé est lecteur du cerveau cible. Sinon il affiche « 1 référence vers [client/acme], non accessible ». Usages : la promotion (4.3), les contradictions (3.5), les renvois d'une note personnelle vers un document d'équipe.
 
-**C. Index de fédération dans gc-gateway.** Une table `canonical_id → [cerveau, dernière vue]`, remplie à l'acceptation d'un fait et à l'ingestion. Elle répond à « où Acme est-il connu ? » sans interroger tous les cerveaux. Étape 3 du plan, facultative pour le pilote.
+**C. Index de fédération dans th-gateway.** Une table `canonical_id → [cerveau, dernière vue]`, remplie à l'acceptation d'un fait et à l'ingestion. Elle répond à « où Acme est-il connu ? » sans interroger tous les cerveaux. Étape 3 du plan, facultative pour le pilote.
 
 #### Ce qui n'est pas proposé
 
@@ -457,14 +457,14 @@ et une arête locale vers lui : `promoted_to`, `contradicts`, `see_also`. Le gat
 
 | De | Vers | Procédure |
 | :- | :- | :- |
-| `user/<e>/<p>` | `team/<p>` | `/gc-promote <id>`. Le fait part dans la file de `team/<p>`. Le curateur accepte. Le fait original reste chez l'employé avec `promoted_to`. |
+| `user/<e>/<p>` | `team/<p>` | `/th-promote <id>`. Le fait part dans la file de `team/<p>`. Le curateur accepte. Le fait original reste chez l'employé avec `promoted_to`. |
 | `team/<p>` | `dept/`, `org/reference` | Le curateur du cerveau source propose. Le curateur du cerveau cible accepte. |
 | `team/<p>` | `client/<c>` | Idem, avec vérification de la classification et du contrat. |
 | Tout | `user/<e>` | Jamais de promotion automatique d'un fait de projet vers la mémoire transverse d'un employé. L'employé copie à la main. Voir 7.1. |
 
 ### 4.4 Retrait d'un fait faux
 
-1. Toute personne qui lit le cerveau peut marquer un fait `disputed` avec un motif (`/gc-dispute <id> "raison"`).
+1. Toute personne qui lit le cerveau peut marquer un fait `disputed` avec un motif (`/th-dispute <id> "raison"`).
 2. Le fait reste rappelé, avec la mention `⚠ contesté`.
 3. Le curateur tranche : rétractation (`retracted_at` posé, le fait reste dans l'historique, il n'est plus rappelé) ou confirmation.
 4. Si le fait vient d'un document, le curateur vérifie les autres faits du même document.
@@ -488,8 +488,8 @@ Oui, un jeu de questions de référence est nécessaire. Sans lui, aucun changem
 Livrables :
 
 - 1 serveur `cortexdb-grpc` pour `team/<pilote>`, PostgreSQL, proxy TLS, fichier de clés avec 1 clé gateway. Déploiement d'après `deploy/docker` et `deploy/systemd`. [Vérifié : répertoires présents]
-- `gc-gateway` v0 : MCP + REST, 1 cerveau, authentification par jeton OIDC ou clé personnelle, `rights.yaml`, `audit.jsonl` (qui, quoi, quand, quel cerveau, quels ids).
-- Plugin `granular-cortex` v0 : hook de rappel, skill `/gc-add` (Markdown, PDF, Word), skill `/gc-review`.
+- `th-gateway` v0 : MCP + REST, 1 cerveau, authentification par jeton OIDC ou clé personnelle, `rights.yaml`, `audit.jsonl` (qui, quoi, quand, quel cerveau, quels ids).
+- Plugin `thalamus` v0 : hook de rappel, skill `/th-add` (Markdown, PDF, Word), skill `/th-review`.
 - Ollama avec `qwen3:14b` et `bge-m3`. Mode lexical en repli.
 - Golden set de 30 questions.
 
@@ -522,13 +522,13 @@ Risque : l'auteur refuse ou réécrit autrement. Mitigation : petites PR, tests 
 
 ### Étape 3 : fédération et cerveaux personnels (6 semaines, 1 personne)
 
-Livrables : 3 cerveaux (team, user, user/projet local), fan-out, RRF, provenance, contradictions, `/gc-promote`, `/gc-dispute`. Ajout de `org/reference`.
+Livrables : 3 cerveaux (team, user, user/projet local), fan-out, RRF, provenance, contradictions, `/th-promote`, `/th-dispute`. Ajout de `org/reference`.
 
 Risque : bruit du cerveau personnel transverse dans le rappel (observé en usage réel avec la base globale). Mitigation : pondération 0,7 et golden set étendu.
 
 ### Étape 4 : ajout par Chrome et synchronisation (4 semaines, 1 personne)
 
-Livrables : extension Chrome MV3 (sélection ou page, choix du cerveau parmi les cerveaux autorisés, classification à l'ajout), `gc-sync` (table des sources, hachages, retraits), déploiement de l'extension par la politique d'entreprise de Chrome.
+Livrables : extension Chrome MV3 (sélection ou page, choix du cerveau parmi les cerveaux autorisés, classification à l'ajout), `th-sync` (table des sources, hachages, retraits), déploiement de l'extension par la politique d'entreprise de Chrome.
 
 Risque : pages derrière authentification, contenu dynamique. Mitigation : l'extension envoie le DOM rendu, pas l'URL seule.
 

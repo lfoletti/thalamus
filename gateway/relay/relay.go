@@ -20,8 +20,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/lfoletti/granular-cortex/gateway/keys"
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/keys"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 // Server relays MCP tool calls to the brains of a rights file.
@@ -119,7 +119,7 @@ func (s *Server) serverFor(ctx context.Context, name string, brain rights.Brain,
 		_ = conn.Close()
 		return nil, fmt.Errorf("list tools: %w", err)
 	}
-	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "Granular Cortex gateway: " + name, Version: "0"}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "th-gateway", Title: "Thalamus gateway: " + name, Version: "0"}, nil)
 	for _, def := range list.GetTools() {
 		s.addTool(srv, client, def, Entry{User: user, Key: keyID, Brain: name})
 	}

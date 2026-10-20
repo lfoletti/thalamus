@@ -4,7 +4,7 @@ Preuve : `gateway/mutate.py`. Le script applique une mutation à la main par rè
 
 Commande : `cd gateway && python3 -I mutate.py`.
 
-Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `gc_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke gc/ghost/team/acme » absent.
+Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `th_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke th/ghost/team/acme » absent.
 
 | Paquet | Règle mutée | Test qui tombe |
 | :- | :- | :- |
@@ -32,10 +32,10 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | relay (2) | clé inconnue admise sur `/mcp` ; porteur sans droit admis | `TestTheFederatedEndpointAdmitsOnlyGatewayKeys` |
 | relay (2) | cerveau non lisible interrogé ; audit sans identifiants ; cerveau sauté non signalé ; question vide envoyée | `TestGcRecallFusesTheBrains` |
 | relay (2) | restriction `brains` ignorée ; collection envoyée à un serveur entier | `TestGcRecallCanBeRestrictedToSomeBrains` |
-| relay (2) | `gc_brains` dit que chaque cerveau a une clé | `TestGcBrainsListsTheCallersBrains` |
-| gc-hook (3) | un problème bloque le prompt (exit 1) ; prompt court ou commande demandé ; `GC_RECALL_TOPK` invalide admis ; erreur d'outil lue comme résultat | `TestTheHookIsSilentOnEveryProblem` |
-| gc-hook (3) | `GC_RECALL_TOPK` ignoré ; `also_in` absent ; cerveaux sautés absents | `TestTheHookInjectsTheExtractsWithTheirProvenance` |
-| gc-hook (3) | la coupe vide tout ; budget ignoré ; en-tête sur rien envoyé | `TestTheContextFitsTheBudget` |
+| relay (2) | `th_brains` dit que chaque cerveau a une clé | `TestGcBrainsListsTheCallersBrains` |
+| th-hook (3) | un problème bloque le prompt (exit 1) ; prompt court ou commande demandé ; `TH_RECALL_TOPK` invalide admis ; erreur d'outil lue comme résultat | `TestTheHookIsSilentOnEveryProblem` |
+| th-hook (3) | `TH_RECALL_TOPK` ignoré ; `also_in` absent ; cerveaux sautés absents | `TestTheHookInjectsTheExtractsWithTheirProvenance` |
+| th-hook (3) | la coupe vide tout ; budget ignoré ; en-tête sur rien envoyé | `TestTheContextFitsTheBudget` |
 | rights (4) | `Users` oublie les membres directs | `TestUsersListsEveryLoginOnce` |
 | keys (4) | autres clés non comptées ; liste non triée par utilisateur | `TestListReadsTheIssuedKeys` |
 | cmd (4) | clé sans droit dite `ok` ; mauvaise clearance dite `ok` ; mauvaise collection dite `ok` ; clés d'un autre cerveau listées sous celui-ci | `TestKeyListShowsTheKeysAgainstTheRights` |
@@ -43,9 +43,9 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | rights (5) | curateur réduit à rédacteur ; curateur sans écriture ; curateurs ni vérifiés ni comptés | `TestACuratorWritesAndReviews` |
 | relay (5) | document d'un rédacteur accepté d'office ; document d'un curateur en attente ; auteur absent ; écriture non auditée ; collection non envoyée | `TestGcAddProposesADocumentForReview` |
 | relay (5) | lecteur qui ajoute ; document vide ajouté ; échec d'écriture non audité | `TestGcAddIsRefusedWithoutAWriteRight` |
-| relay (5) | rédacteur qui relit ; `gc_pending` sans filtre ; `top_k` ignoré ; identifiants listés non audités ; extrait coupé au milieu d'un mot ; liste en échec non auditée ; `knowledge_get` avec collection ; décision quelconque admise ; relecteur non nommé | `TestGcPendingAndGcReviewAreForCurators` |
+| relay (5) | rédacteur qui relit ; `th_pending` sans filtre ; `top_k` ignoré ; identifiants listés non audités ; extrait coupé au milieu d'un mot ; liste en échec non auditée ; `knowledge_get` avec collection ; décision quelconque admise ; relecteur non nommé | `TestGcPendingAndGcReviewAreForCurators` |
 | cmd | secret pas seul sur stdout | `TestKeyIssueAndRevoke` |
 | cmd | erreur d'usage en code 1 | `TestTheCommandLineIsChecked` |
 | cmd | arrêt propre rendu comme erreur | `TestServeListensAndStops` |
 
-Couverture mesurée (`go test -race -coverprofile`) : `keys`, `relay`, `rights` à 100 %, `cmd/gc-gateway` et `cmd/gc-hook` à 100 % hors `main`.
+Couverture mesurée (`go test -race -coverprofile`) : `keys`, `relay`, `rights` à 100 %, `cmd/th-gateway` et `cmd/th-hook` à 100 % hors `main`.

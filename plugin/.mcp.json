@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "granular-cortex": {
+    "thalamus": {
       "type": "http",
-      "url": "${GC_GATEWAY}/mcp",
+      "url": "${TH_GATEWAY}/mcp",
       "headers": {
-        "Authorization": "Bearer ${GC_KEY}"
+        "Authorization": "Bearer ${TH_KEY}"
       }
     }
   }

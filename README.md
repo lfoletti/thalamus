@@ -1,12 +1,12 @@
-# Granular Cortex
+# Thalamus
 
-A governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge of an organisation: which employee may read or write which part, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Granular Cortex adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
+A small governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge of an organisation: which employee may read or write which part, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Thalamus adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
 
 *Version française plus bas.*
 
 ## Why
 
-The base engine has no way to define or manage a clearance policy on a shared brain, for a company or across projects. Its key file is a list of secrets written by hand. Granular Cortex is a governance layer over CortexDB: it decides which employee gets which key on which brain. It brings a rights file (brains, groups, readers, writers), keys issued and revoked from it, a gateway that applies it and logs every call under a person's name, and one recall across the brains a person may read. It serves the team that runs the brains, the curators and the employees.
+The base engine has no way to define or manage a clearance policy on a shared brain, for a company or across projects. Its key file is a list of secrets written by hand. Thalamus is a governance layer over CortexDB: it decides which employee gets which key on which brain. It brings a rights file (brains, groups, readers, writers), keys issued and revoked from it, a gateway that applies it and logs every call under a person's name, and one recall across the brains a person may read. It serves the team that runs the brains, the curators and the employees.
 
 1. **No fork of the engine.** The fixes this layer needed went upstream as small pull requests. The layer imports CortexDB at a pinned version. No maintenance debt.
 2. **The engine enforces, not a proxy.** Every employee reaches a brain with their own confined key. The gateway cannot err in the caller's favour: it decides who gets a key, the engine decides what the key may do.
@@ -18,16 +18,16 @@ The base engine has no way to define or manage a clearance policy on a shared br
 ## What it does
 
 - **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers and the writers. A writer reads too.
-- **Keys.** `gc-gateway key issue` writes a key into the server's own key file, confined to the brain's collection, read-only or read-write from the right. The engine enforces the key; the gateway only decides who gets one. A brain that is its whole server gets an unconfined key, which opens the graph tools.
+- **Keys.** `th-gateway key issue` writes a key into the server's own key file, confined to the brain's collection, read-only or read-write from the right. The engine enforces the key; the gateway only decides who gets one. A brain that is its whole server gets an unconfined key, which opens the graph tools.
 - **Relay.** One MCP endpoint per brain, `/mcp/<brain>`, over streamable HTTP. The caller presents the key the gateway issued. The gateway refuses before it reaches the brain (unknown key, key of another brain, right withdrawn, unknown brain), forwards each tool call over gRPC with the caller's key, and appends one line to `audit.jsonl`: who, which key, which brain, which tool, which ids, success or error.
-- **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `gc_brains` lists the caller's brains. `gc_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
+- **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `th_brains` lists the caller's brains. `th_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
 - **Client.** A Claude Code plugin (`plugin/`): the gateway's tools over HTTP under the employee's key, and a `UserPromptSubmit` hook that injects the best extracts with their provenance into each prompt. The hook never blocks a prompt.
 
 ## Layout
 
 | Path | Content |
 | :- | :- |
-| `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/gc-gateway`, `cmd/gc-hook`), its tests and `mutate.py`, the hand-mutation proof. |
+| `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
 | `plugin/` | The Claude Code plugin. |
 | `tests/e2e_gateway.sh` | End-to-end bench: a CortexDB server, the gateway, keys, calls over HTTP, the hook, the audit file. |
 | `docs/` | Architecture revision, ADRs, the PR pipeline, the upstream PR folders (in French). |
@@ -59,13 +59,13 @@ MIT. CortexDB is MIT too.
 
 ---
 
-# Granular Cortex (français)
+# Thalamus (français)
 
-Une couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les connaissances partagées d'une organisation : quel employé peut lire ou écrire quelle partie, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Granular Cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
+Une petite couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les connaissances partagées d'une organisation : quel employé peut lire ou écrire quelle partie, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
 
 ## Pourquoi
 
-Le modèle de base ne permet pas de définir ni de gérer une politique de clearance sur un cerveau partagé, d'entreprise ou multi-projets. Son fichier de clés est une liste de secrets écrite à la main. Granular Cortex est une couche de gouvernance au-dessus de CortexDB : elle décide quel employé reçoit quelle clé sur quel cerveau. Elle apporte un fichier de droits (cerveaux, groupes, lecteurs, rédacteurs), des clés émises et révoquées à partir de ces droits, un gateway qui les applique et journalise chaque appel au nom d'une personne, et un rappel sur tous les cerveaux qu'une personne peut lire. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés.
+Le modèle de base ne permet pas de définir ni de gérer une politique de clearance sur un cerveau partagé, d'entreprise ou multi-projets. Son fichier de clés est une liste de secrets écrite à la main. Thalamus est une couche de gouvernance au-dessus de CortexDB : elle décide quel employé reçoit quelle clé sur quel cerveau. Elle apporte un fichier de droits (cerveaux, groupes, lecteurs, rédacteurs), des clés émises et révoquées à partir de ces droits, un gateway qui les applique et journalise chaque appel au nom d'une personne, et un rappel sur tous les cerveaux qu'une personne peut lire. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés.
 
 1. **Pas de fork du moteur.** Les correctifs dont cette couche a besoin sont partis en amont en petites PR. La couche importe CortexDB à une version épinglée. Pas de dette de maintenance.
 2. **C'est le moteur qui applique, pas un proxy.** Chaque employé joint un cerveau avec sa propre clé confinée. Le gateway ne peut pas se tromper en faveur de l'appelant : il décide qui reçoit une clé, le moteur décide ce que la clé peut faire.
@@ -77,16 +77,16 @@ Le modèle de base ne permet pas de définir ni de gérer une politique de clear
 ## Ce que ça fait
 
 - **Droits.** `rights.yaml` déclare les cerveaux (un serveur CortexDB chacun, ou une collection d'un serveur partagé), les groupes, les lecteurs et les rédacteurs. Un rédacteur lit aussi.
-- **Clés.** `gc-gateway key issue` écrit une clé dans le fichier de clés du serveur, confinée à la collection du cerveau, en lecture seule ou en lecture-écriture selon le droit. Le moteur applique la clé ; le gateway décide seulement qui en reçoit une. Un cerveau qui est tout son serveur reçoit une clé non confinée, ce qui ouvre les outils de graphe.
+- **Clés.** `th-gateway key issue` écrit une clé dans le fichier de clés du serveur, confinée à la collection du cerveau, en lecture seule ou en lecture-écriture selon le droit. Le moteur applique la clé ; le gateway décide seulement qui en reçoit une. Un cerveau qui est tout son serveur reçoit une clé non confinée, ce qui ouvre les outils de graphe.
 - **Relais.** Un point MCP par cerveau, `/mcp/<cerveau>`, en HTTP. L'appelant présente la clé émise par le gateway. Le gateway refuse avant de joindre le cerveau (clé inconnue, clé d'un autre cerveau, droit retiré, cerveau inconnu), relaie chaque appel d'outil en gRPC avec la clé de l'appelant, et ajoute une ligne à `audit.jsonl` : qui, quelle clé, quel cerveau, quel outil, quels identifiants, succès ou erreur.
-- **Rappel fédéré.** `/mcp` admet toute clé émise par le gateway et nomme son porteur. `gc_brains` liste les cerveaux de l'appelant. `gc_recall` interroge en parallèle chaque cerveau lisible avec la clé de l'appelant pour ce cerveau, fusionne les listes par rang réciproque pondéré, réunit un même texte présent dans plusieurs cerveaux, et donne à chaque résultat une ligne de provenance fixe : `[cerveau] titre, id, source, by auteur`.
+- **Rappel fédéré.** `/mcp` admet toute clé émise par le gateway et nomme son porteur. `th_brains` liste les cerveaux de l'appelant. `th_recall` interroge en parallèle chaque cerveau lisible avec la clé de l'appelant pour ce cerveau, fusionne les listes par rang réciproque pondéré, réunit un même texte présent dans plusieurs cerveaux, et donne à chaque résultat une ligne de provenance fixe : `[cerveau] titre, id, source, by auteur`.
 - **Client.** Un plugin Claude Code (`plugin/`) : les outils du gateway en HTTP sous la clé de l'employé, et un hook `UserPromptSubmit` qui injecte les meilleurs extraits avec leur provenance dans chaque prompt. Le hook ne bloque jamais un prompt.
 
 ## Arborescence
 
 | Chemin | Contenu |
 | :- | :- |
-| `gateway/` | Le module Go (`rights`, `keys`, `relay`, `cmd/gc-gateway`, `cmd/gc-hook`), ses tests et `mutate.py`, la preuve par mutations à la main. |
+| `gateway/` | Le module Go (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), ses tests et `mutate.py`, la preuve par mutations à la main. |
 | `plugin/` | Le plugin Claude Code. |
 | `tests/e2e_gateway.sh` | Banc de bout en bout : un serveur CortexDB, le gateway, les clés, des appels en HTTP, le hook, le fichier d'audit. |
 | `docs/` | Révision d'architecture, ADR, pipeline de PR, dossiers des PR amont. |

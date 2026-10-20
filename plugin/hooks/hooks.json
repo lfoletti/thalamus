@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/gc-recall",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/th-recall",
             "timeout": 10,
             "statusMessage": "Recalling from the shared brains..."
           }

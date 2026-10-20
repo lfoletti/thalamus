@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/lfoletti/granular-cortex/gateway/keys"
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/keys"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 // brain is a fake ToolsService: it records the bearer and the arguments of

@@ -12,19 +12,19 @@ import (
 	"sort"
 	"time"
 
-	"github.com/lfoletti/granular-cortex/gateway/keys"
-	"github.com/lfoletti/granular-cortex/gateway/relay"
-	"github.com/lfoletti/granular-cortex/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/keys"
+	"github.com/lfoletti/thalamus/gateway/relay"
+	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
 const usage = `usage:
-  gc-gateway rights check <rights.yaml>
-  gc-gateway rights of <rights.yaml> <user>
-  gc-gateway key issue <rights.yaml> <user> <brain>
-  gc-gateway key revoke <rights.yaml> <user> <brain>
-  gc-gateway key list <rights.yaml>
-  gc-gateway key sync <rights.yaml> [--dry-run]
-  gc-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]`
+  th-gateway rights check <rights.yaml>
+  th-gateway rights of <rights.yaml> <user>
+  th-gateway key issue <rights.yaml> <user> <brain>
+  th-gateway key revoke <rights.yaml> <user> <brain>
+  th-gateway key list <rights.yaml>
+  th-gateway key sync <rights.yaml> [--dry-run]
+  th-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]`
 
 // run dispatches the subcommand and returns the exit code: 0 done, 1 the
 // command failed, 2 the command line is wrong.
@@ -50,7 +50,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if err != nil {
-		fmt.Fprintf(stderr, "gc-gateway: %v\n", err)
+		fmt.Fprintf(stderr, "th-gateway: %v\n", err)
 		if errors.Is(err, errUsage) {
 			fmt.Fprintln(stderr, usage)
 			return 2
@@ -298,7 +298,7 @@ func serve(ctx context.Context, args []string, out io.Writer) error {
 		return fmt.Errorf("listen: %w", err)
 	}
 	srv := &http.Server{Handler: relay.New(r, audit).Handler(), ReadHeaderTimeout: 10 * time.Second}
-	fmt.Fprintf(out, "gc-gateway listening on http://%s (/mcp federated, /mcp/<brain> per brain), audit in %s\n", lis.Addr(), *auditPath)
+	fmt.Fprintf(out, "th-gateway listening on http://%s (/mcp federated, /mcp/<brain> per brain), audit in %s\n", lis.Addr(), *auditPath)
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)

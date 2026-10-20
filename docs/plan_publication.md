@@ -44,11 +44,11 @@ Conséquences : des PR **petites, une par sujet, avec tests**, sont fusionnées 
 
 ### 2.1 Le but, dit au propriétaire
 
-Un seul but, en termes CortexDB et non en termes Granular Cortex :
+Un seul but, en termes CortexDB et non en termes Thalamus :
 
 > **Un serveur CortexDB partagé par plusieurs équipes et plusieurs agents, où une clé confinée suffit à un client MCP, où un document garde sa provenance, sa durée de vie et son état de relecture, et où rien ne fuit d'une collection à l'autre.**
 
-Chaque révision se lit comme un problème de ce serveur partagé, reproduit par un test qui échoue avant et passe après. Aucune PR ne parle de « Granular Cortex », de « gateway » ni de « fédération ». Ces mots sont notre couche, pas la leur.
+Chaque révision se lit comme un problème de ce serveur partagé, reproduit par un test qui échoue avant et passe après. Aucune PR ne parle de « Thalamus », de « gateway » ni de « fédération ». Ces mots sont notre couche, pas la leur.
 
 Texte de la discussion publique : `docs/discussion_amont.md` (validé en principe le 18 octobre 2026, texte à relire avant publication).
 
@@ -56,15 +56,15 @@ Si la discussion n'est pas validée, le même texte, réduit à son premier para
 
 ### 2.2 Objectifs internes et replis
 
-| Réf. | Objectif pour Granular Cortex | Révisions | Repli si tout est refusé |
+| Réf. | Objectif pour Thalamus | Révisions | Repli si tout est refusé |
 | :- | :- | :- | :- |
-| OBJ-1 | Audit par identité : savoir quelle clé a appelé quel outil | GC-01 | `gc-gateway` journalise chaque appel dans `audit.jsonl` |
+| OBJ-1 | Audit par identité : savoir quelle clé a appelé quel outil | GC-01 | `th-gateway` journalise chaque appel dans `audit.jsonl` |
 | OBJ-2 | Intégrité documentaire : provenance, hash, doublons | GC-02, GC-08 | le gateway porte la provenance en métadonnées de passage et tient son propre index de hachage |
 | OBJ-3 | Clé confinée utilisable par le plugin MCP, plusieurs collections par clé | GC-03, GC-04, GC-10, GC-11 | un serveur `cortexdb-grpc` par cerveau, clé non confinée tenue par le gateway ; isolation par processus |
 | OBJ-4 | Cycle de vie : rétention, expiration, balayage | GC-05 | `retention_until` en métadonnée, balayage par le gateway via `knowledge_delete` et `memory_delete` |
 | OBJ-5 | Relecture humaine native dans le moteur | GC-06 | file de relecture entièrement dans le gateway (fichiers Git), seuls les faits acceptés entrent dans le cerveau |
 | OBJ-6 | Étanchéité d'un serveur partagé entre collections | GC-09, GC-10, GC-11 | un serveur par équipe tant que la fuite existe |
-| OBJ-7 | Hygiène du plugin (aucun fichier résiduel) | GC-07 | le plugin `granular-cortex` embarque son propre lanceur |
+| OBJ-7 | Hygiène du plugin (aucun fichier résiduel) | GC-07 | le plugin `thalamus` embarque son propre lanceur |
 
 Les replis OBJ-3 et OBJ-6 coûtent de l'exploitation (N processus), pas des fonctions. Le repli OBJ-5 est le modèle principal du document de révision (section 3.6) : la révision GC-06 est un **confort**, pas une condition.
 
