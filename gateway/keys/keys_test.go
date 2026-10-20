@@ -239,3 +239,47 @@ func TestAKeyForAWholeServerIsNotConfined(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// List reads the keys the gateway issued in a file, by brain, and leaves
+// the other keys (an operator's) out but counted.
+func TestListReadsTheIssuedKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "keys.json")
+	if err := os.WriteFile(path, []byte(`{"keys":[{"id":"operator","secret":"op","clearance":"read-write"},{"id":"gc/odd","secret":"x","clearance":"read-only"}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		user, brain, coll string
+		a                 rights.Access
+	}{
+		{"lfoletti", "team/acme", "team-acme", rights.Write},
+		{"mdupont", "team/acme", "team-acme", rights.Read},
+		{"lfoletti", "org/ref", "", rights.Read},
+	} {
+		if _, err := Issue(path, c.user, c.brain, c.coll, c.a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	held, others, err := List(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if others != 2 || len(held) != 3 {
+		t.Fatalf("held %+v, others %d", held, others)
+	}
+	// Sorted by brain then user.
+	if held[0].Brain != "org/ref" || held[0].User != "lfoletti" || held[0].Clearance != authz.ReadOnly || held[0].Collection != "" {
+		t.Fatalf("held[0] %+v", held[0])
+	}
+	if held[1].User != "lfoletti" || held[1].Brain != "team/acme" || held[1].Clearance != authz.ReadWrite || held[1].Collection != "team-acme" || held[2].User != "mdupont" || held[2].Clearance != authz.ReadOnly {
+		t.Fatalf("held %+v", held)
+	}
+	if _, _, err := List(filepath.Join(t.TempDir(), "absent.json")); err != nil {
+		t.Fatalf("a missing file is an empty list: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := List(path); err == nil {
+		t.Fatal("a broken file was listed")
+	}
+}

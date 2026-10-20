@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -21,6 +22,8 @@ const usage = `usage:
   gc-gateway rights of <rights.yaml> <user>
   gc-gateway key issue <rights.yaml> <user> <brain>
   gc-gateway key revoke <rights.yaml> <user> <brain>
+  gc-gateway key list <rights.yaml>
+  gc-gateway key sync <rights.yaml> [--dry-run]
   gc-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]`
 
 // run dispatches the subcommand and returns the exit code: 0 done, 1 the
@@ -38,6 +41,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = withRights(args[2:], 3, func(r *rights.Rights, a []string) error { return keyIssue(r, a[1], a[2], stdout) })
 	case len(args) >= 2 && args[0] == "key" && args[1] == "revoke":
 		err = withRights(args[2:], 3, func(r *rights.Rights, a []string) error { return keyRevoke(r, a[1], a[2], stdout) })
+	case len(args) >= 2 && args[0] == "key" && args[1] == "list":
+		err = withRights(args[2:], 1, func(r *rights.Rights, a []string) error { return keyList(r, stdout) })
+	case len(args) >= 2 && args[0] == "key" && args[1] == "sync":
+		err = keySync(args[2:], stdout)
 	default:
 		fmt.Fprintln(stderr, usage)
 		return 2
@@ -114,6 +121,153 @@ func keyRevoke(r *rights.Rights, user, brain string, out io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(out, "revoked %s\n", keys.ID(user, brain))
+	return nil
+}
+
+// stale says why a held key no longer matches the right, or "" when it
+// still does.
+func stale(r *rights.Rights, b rights.Brain, h keys.Held) string {
+	access, _ := r.Access(h.User, h.Brain)
+	if !access.AllowsRead() {
+		return "no right"
+	}
+	if access.Clearance() != h.Clearance {
+		return "right is " + access.String()
+	}
+	if h.Collection != b.Collection {
+		if b.Collection == "" {
+			return "brain is the whole server"
+		}
+		return "collection is " + b.Collection
+	}
+	return ""
+}
+
+// keyList prints, per brain, the keys the gateway issued and whether each
+// still matches the right.
+func keyList(r *rights.Rights, out io.Writer) error {
+	others := map[string]int{}
+	for _, name := range sortedBrains(r) {
+		b := r.Brains[name]
+		held, n, err := keys.List(b.KeysFile)
+		if err != nil {
+			return err
+		}
+		others[b.KeysFile] = n
+		for _, h := range held {
+			if h.Brain != name {
+				continue
+			}
+			status := "ok"
+			if why := stale(r, b, h); why != "" {
+				status = "stale: " + why
+			}
+			fmt.Fprintf(out, "%s  %s  %s  %s\n", name, h.User, h.Clearance, status)
+		}
+	}
+	files := make([]string, 0, len(others))
+	for f := range others {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	for _, f := range files {
+		if others[f] > 0 {
+			fmt.Fprintf(out, "%d other key(s) in %s\n", others[f], f)
+		}
+	}
+	return nil
+}
+
+// keySync brings the key files to the rights: it issues the missing keys,
+// reissues the stale ones (a new secret), and revokes the keys of users
+// without a right. Each action is printed, with the secret when one was
+// made. --dry-run prints the plan and changes nothing.
+func keySync(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("sync", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	dry := fs.Bool("dry-run", false, "print the plan, change nothing")
+	if len(args) < 1 {
+		return fmt.Errorf("%w: sync needs the rights file", errUsage)
+	}
+	if err := fs.Parse(args[1:]); err != nil {
+		return fmt.Errorf("%w: %v", errUsage, err)
+	}
+	r, err := rights.Load(args[0])
+	if err != nil {
+		return err
+	}
+	// The plan first, then the actions: one place to stop on a failure.
+	type action struct {
+		verb, user, brain string
+		b                 rights.Brain
+		access            rights.Access
+	}
+	var plan []action
+	for _, name := range sortedBrains(r) {
+		b := r.Brains[name]
+		held, _, err := keys.List(b.KeysFile)
+		if err != nil {
+			return err
+		}
+		have := map[string]keys.Held{}
+		for _, h := range held {
+			if h.Brain == name {
+				have[h.User] = h
+			}
+		}
+		// Every login the rights name, and every holder of a key on this
+		// brain: a holder the rights no longer name must lose the key.
+		users := r.Users()
+		for user := range have {
+			users = append(users, user)
+		}
+		sort.Strings(users)
+		users = slices.Compact(users)
+		for _, user := range users {
+			access, _ := r.Access(user, name)
+			h, has := have[user]
+			switch {
+			case !has && access.AllowsRead():
+				plan = append(plan, action{"issue", user, name, b, access})
+			case has && !access.AllowsRead():
+				plan = append(plan, action{"revoke", user, name, b, access})
+			case has && stale(r, b, h) != "":
+				plan = append(plan, action{"reissue", user, name, b, access})
+			}
+		}
+	}
+	if len(plan) == 0 {
+		fmt.Fprintln(out, "nothing to do")
+	}
+	for _, a := range plan {
+		if err := act(out, *dry, a.verb, a.b, a.user, a.brain, a.access); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// act does one sync action, or prints what it would do.
+func act(out io.Writer, dry bool, verb string, b rights.Brain, user, brain string, access rights.Access) error {
+	id := keys.ID(user, brain)
+	if dry {
+		fmt.Fprintf(out, "would %s %s\n", verb, id)
+		return nil
+	}
+	if verb != "issue" {
+		if err := keys.Revoke(b.KeysFile, user, brain); err != nil {
+			return err
+		}
+		if verb == "revoke" {
+			fmt.Fprintf(out, "revoked %s\n", id)
+			return nil
+		}
+	}
+	k, err := keys.Issue(b.KeysFile, user, brain, b.Collection, access)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "%sd %s %s\n", verb, id, k.Secret)
 	return nil
 }
 

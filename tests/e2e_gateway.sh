@@ -123,6 +123,16 @@ ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' |
 if grep -q 'gc/mdupont/team/acme' "$S/data/keys.json"; then ko "mdupont key still in the file" ""; else ok "mdupont key removed from the file"; fi
 check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme knowledge_search '{"query":"ledger","collection":"team-acme"}')"
 
+# The administration: key list shows who holds what against the rights,
+# key sync brings the file back to the rights (mdupont's key is reissued).
+lst=$("$GW" key list "$S/data/rights.yaml")
+if printf '%s' "$lst" | grep -q '^team/acme  lfoletti  read-write  ok$' && printf '%s' "$lst" | grep -q '^org/secrets  kmlead  read-write  ok$' && ! printf '%s' "$lst" | grep -q mdupont && printf '%s' "$lst" | grep -q '^1 other key(s) in '; then ok "key list shows the keys against the rights"; else ko "key list" "$lst"; fi
+plan=$("$GW" key sync "$S/data/rights.yaml" --dry-run)
+[ "$plan" = "would issue gc/mdupont/team/acme" ] && ok "key sync --dry-run plans mdupont's key only" || ko "key sync dry run" "$plan"
+done_=$("$GW" key sync "$S/data/rights.yaml")
+printf '%s' "$done_" | grep -q '^issued gc/mdupont/team/acme ' && ok "key sync reissues mdupont's key" || ko "key sync" "$done_"
+[ "$("$GW" key sync "$S/data/rights.yaml")" = "nothing to do" ] && ok "key sync is idempotent" || ko "key sync again" ""
+
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
