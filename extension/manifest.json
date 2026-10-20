@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Thalamus",
+  "version": "0.1.0",
+  "description": "Propose the page you read, or your selection, into a shared brain of the organisation, for the curators' review.",
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Propose to Thalamus" },
+  "options_page": "options.html"
+}

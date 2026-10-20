@@ -122,6 +122,22 @@ M = [
  ("relay/write.go", "req := map[string]any{\"knowledge_id\": args.KnowledgeID, \"collection\": nil}", "req := map[string]any{\"knowledge_id\": args.KnowledgeID}", "relay", "TestThGetReadsADocumentWhole", "th_get sends a collection"),
  ("relay/write.go", "return s.audited(ctx, b, user, args.Brain, \"th_get\", \"knowledge_get\", req, map[string]any{\"knowledge_id\": args.KnowledgeID})", "return s.audited(ctx, b, user, args.Brain, \"th_get\", \"knowledge_get\", req, nil)", "relay", "TestThGetReadsADocumentWhole", "the read id is not audited"),
  ("cmd/th-hook/recall.go", "An extract is a cut: read a document whole with th_get {brain, knowledge_id} from its provenance line. ", "", "cmd/th-hook", "TestTheHookInjectsTheExtractsWithTheirProvenance", "the hook does not name th_get"),
+ # tranche 9 : extension Chrome (lib.js, node --test)
+ ("../extension/lib.js", "(b.access === \"write\" || b.access === \"curate\") && b.key", "(b.access === \"write\" || b.access === \"curate\")", "extension", "writableBrains keeps the brains one may write to, with a key, sorted", "a brain without a key is offered"),
+ ("../extension/lib.js", "b.access === \"write\" || b.access === \"curate\"", "b.access === \"write\"", "extension", "writableBrains keeps the brains one may write to, with a key, sorted", "a curated brain is not offered"),
+ ("../extension/lib.js", ".sort((a, b) => (a.brain < b.brain ? -1 : a.brain > b.brain ? 1 : 0))", "", "extension", "writableBrains keeps the brains one may write to, with a key, sorted", "the brains are not sorted"),
+ ("../extension/lib.js", "const s = String(url).split(\"#\")[0];", "const s = String(url);", "extension", "documentID is stable per page and ignores the fragment", "the fragment changes the id"),
+ ("../extension/lib.js", "const text = (sel || collapse(content)).slice(0, 100000);", "const text = (collapse(content) || sel).slice(0, 100000);", "extension", "buildAdd prefers the selection and bounds the fields", "the page text wins over the selection"),
+ ("../extension/lib.js", ".slice(0, 100000);", ".slice(0, 200000);", "extension", "buildAdd prefers the selection and bounds the fields", "the content is not bounded"),
+ ("../extension/lib.js", "title: collapse(title).slice(0, 200),", "title: collapse(title),", "extension", "buildAdd prefers the selection and bounds the fields", "the title is not bounded"),
+ ("../extension/lib.js", "if (!text) throw new Error(\"nothing to propose", "if (false) throw new Error(\"nothing to propose", "extension", "buildAdd prefers the selection and bounds the fields", "an empty page is proposed"),
+ ("../extension/lib.js", "if (!brain) throw new Error(\"choose a brain\");", "", "extension", "buildAdd prefers the selection and bounds the fields", "no brain passes"),
+ ("../extension/lib.js", "kind: sel ? \"selection\" : \"page\"", "kind: \"page\"", "extension", "buildAdd prefers the selection and bounds the fields", "a selection is marked as the page"),
+ ("../extension/lib.js", "return access === \"curate\"", "return false", "extension", "statusText says what happened, by status", "a curator is told to wait"),
+ ("../extension/lib.js", "case 403:\n      return \"You may not write to this brain.\";", "", "extension", "statusText says what happened, by status", "403 is a generic error"),
+ ("../extension/lib.js", "case 0:\n      return \"The gateway did not answer: check the address in the options.\";", "", "extension", "statusText says what happened, by status", "no answer is a generic error"),
+ ("../extension/lib.js", ".replace(/\\/+$/, \"\")", "", "extension", "settingsOf trims, requires both fields and drops the trailing slash", "the trailing slash stays"),
+ ("../extension/lib.js", "return gateway && key ? { gateway, key } : null;", "return { gateway, key };", "extension", "settingsOf trims, requires both fields and drops the trailing slash", "a missing field passes"),
  ("cmd/th-gateway/run.go", "fmt.Fprintln(out, k.Secret)", "fmt.Fprintln(out, \"issued\", k.Secret)", "cmd/th-gateway", "TestKeyIssueAndRevoke", "the secret is not alone on stdout"),
  ("cmd/th-gateway/run.go", "if errors.Is(err, errUsage) {\n\t\t\tfmt.Fprintln(stderr, usage)\n\t\t\treturn 2", "if errors.Is(err, errUsage) {\n\t\t\tfmt.Fprintln(stderr, usage)\n\t\t\treturn 1", "cmd/th-gateway", "TestTheCommandLineIsChecked", "a usage error is 1"),
  ("cmd/th-gateway/run.go", "err = srv.Serve(lis)\n\tif errors.Is(err, http.ErrServerClosed) {\n\t\terr = nil\n\t}", "err = srv.Serve(lis)", "cmd/th-gateway", "TestServeListensAndStops", "a clean stop is an error"),
@@ -134,7 +150,12 @@ for f, old, new, pkg, test, label in M:
         print(f"??    {label}: pattern not found once in {f}"); bad += 1; continue
     p.write_text(src.replace(old, new))
     try:
-        r = subprocess.run(["go", "test", "./" + pkg + "/", "-run", "^" + test + "$", "-count=1"], capture_output=True, text=True)
+        if pkg == "extension":
+            # The extension's rules live in JavaScript: node --test, by name.
+            r = subprocess.run(["node", "--test", "--test-name-pattern=^" + test + "$", "lib.test.js"], cwd="../extension", capture_output=True, text=True)
+            r.stdout += "FAIL" if r.returncode != 0 else ""
+        else:
+            r = subprocess.run(["go", "test", "./" + pkg + "/", "-run", "^" + test + "$", "-count=1"], capture_output=True, text=True)
     finally:
         p.write_text(src)
     if r.returncode != 0 and ("FAIL" in r.stdout or "FAIL" in r.stderr):

@@ -1,0 +1,12 @@
+{
+  "name": "thalamus-extension",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension of Thalamus: propose a page or a selection into a shared brain.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}
