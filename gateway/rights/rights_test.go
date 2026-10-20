@@ -331,3 +331,21 @@ func TestASourceReloadsTheFileWhenItChanges(t *testing.T) {
 		}
 	}
 }
+
+// The identity block names the OpenID Connect issuer the gateway trusts,
+// the audience, the claim that gives the login and whether to strip the
+// domain. Issuer and audience are required when the block is present.
+func TestTheIdentityBlockIsReadAndChecked(t *testing.T) {
+	r := parse(t, sample+"identity:\n  issuer: https://login.example\n  audience: thalamus\n  claim: preferred_username\n  strip_domain: true\n")
+	if r.Identity == nil || r.Identity.Issuer != "https://login.example" || r.Identity.Audience != "thalamus" || r.Identity.Claim != "preferred_username" || !r.Identity.StripDomain {
+		t.Fatalf("identity: %+v", r.Identity)
+	}
+	if parse(t, sample).Identity != nil {
+		t.Fatal("an absent block is not nil")
+	}
+	for _, bad := range []string{"identity:\n  audience: thalamus\n", "identity:\n  issuer: https://login.example\n", "identity:\n  issuer: ' '\n  audience: thalamus\n"} {
+		if _, err := Parse([]byte(sample + bad)); err == nil || !strings.Contains(err.Error(), "identity") {
+			t.Fatalf("%q: %v", bad, err)
+		}
+	}
+}

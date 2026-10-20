@@ -89,10 +89,23 @@ func (b Brain) members() []string {
 // WholeServer reports whether the brain is its server's only brain.
 func (b Brain) WholeServer() bool { return b.Collection == "" }
 
+// Identity names the OpenID Connect issuer the gateway trusts for
+// POST /v1/login: an id_token of this issuer, for this audience, gives the
+// login from Claim ("email" by default), with the domain stripped when
+// StripDomain is set.
+type Identity struct {
+	Issuer      string `yaml:"issuer"`
+	Audience    string `yaml:"audience"`
+	Claim       string `yaml:"claim"`
+	StripDomain bool   `yaml:"strip_domain"`
+}
+
 // Rights is the parsed, validated file.
 type Rights struct {
 	Brains map[string]Brain    `yaml:"brains"`
 	Groups map[string][]string `yaml:"groups"`
+	// Identity is optional: without it, /v1/login answers 404.
+	Identity *Identity `yaml:"identity"`
 }
 
 // Grant is one brain a user may reach, with the access level.
@@ -137,6 +150,9 @@ func Parse(data []byte) (*Rights, error) {
 		if b.Weight() <= 0 {
 			return nil, fmt.Errorf("parse rights file: brain %q: weight must be positive", name)
 		}
+	}
+	if r.Identity != nil && (strings.TrimSpace(r.Identity.Issuer) == "" || strings.TrimSpace(r.Identity.Audience) == "") {
+		return nil, errors.New("identity needs issuer and audience")
 	}
 	return &r, nil
 }
