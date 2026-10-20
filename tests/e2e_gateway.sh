@@ -163,14 +163,33 @@ code=$(rest POST /v1/add "" '{"brain":"team/acme","content":"x"}')
 code=$(rest POST /v1/add "$LF" '{"brain":"org/none","content":"x"}')
 [ "$code" = 404 ] && ok "POST /v1/add on an unknown brain is 404" || ko "unknown brain add" "$code $(cat "$S/rest.out")"
 
-# POST /v1/login: 404 without an identity block; with one (added hot, the
-# rights file reloads), a token that is not a JWT is 401.
-code=$(rest POST /v1/login "" "")
-[ "$code" = 404 ] && ok "POST /v1/login without an identity block is 404" || ko "login 404" "$code $(cat "$S/rest.out")"
-printf 'identity:\n  issuer: http://127.0.0.1:1\n  audience: thalamus\n' >> "$S/data/rights.yaml"
+# Sign-in through the identity provider: 404 without an identity block;
+# with one (added hot, the rights file reloads), a bad token is 401, and
+# th-gateway login, driven by curl as the browser, brings lfoletti's key
+# into the env file: the key the gateway issued before.
+code=$(rest GET /v1/identity "" "")
+[ "$code" = 404 ] && ok "GET /v1/identity without an identity block is 404" || ko "identity 404" "$code $(cat "$S/rest.out")"
+IDPPORT=$((50000 + $$ % 10000))
+node "$ROOT/tests/fake_idp.mjs" --port "$IDPPORT" --client-id thalamus-cli --audience thalamus > "$S/data/idp.log" 2>&1 &
+IDP=$!
+printf 'identity:\n  issuer: http://127.0.0.1:%s\n  audience: thalamus\n  client_id: thalamus-cli\n  strip_domain: true\n' "$IDPPORT" >> "$S/data/rights.yaml"
+sleep 1
 code=$(rest POST /v1/login "not-a-token" "")
 [ "$code" = 401 ] && grep -q 'three parts' "$S/rest.out" && ok "POST /v1/login with a bad token is 401" || ko "login 401" "$code $(cat "$S/rest.out")"
+code=$(rest GET /v1/identity "" "")
+[ "$code" = 200 ] && grep -q '"client_id":"thalamus-cli"' "$S/rest.out" && ok "GET /v1/identity names the provider and the client" || ko "identity" "$code $(cat "$S/rest.out")"
+"$S/th-gateway" login "http://$GWADDR" --env "$S/data/env" --no-browser > "$S/data/login.out" 2>&1 &
+LOGIN=$!
+for i in 1 2 3 4 5 6 7 8 9 10; do grep -q '^http' "$S/data/login.out" && break; sleep 0.3; done
+curl -sL "$(grep '^http' "$S/data/login.out" | head -1)" > "$S/data/browser.out"
+wait $LOGIN; lcode=$?
+if [ "$lcode" = 0 ] && grep -q 'Signed in as lfoletti' "$S/data/login.out" && grep -q 'Signed in. You can close this window' "$S/data/browser.out"; then ok "th-gateway login signs lfoletti in through the provider"; else ko "login" "$lcode $(cat "$S/data/login.out") $(cat "$S/data/browser.out")"; fi
+[ "$(cat "$S/data/env")" = "TH_GATEWAY=http://$GWADDR
+TH_KEY=$LFS" ] && ok "the env file holds the gateway and the first brain's key, issued before" || ko "env file" "$(cat "$S/data/env")"
+grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
+kill $IDP 2>/dev/null; wait $IDP 2>/dev/null
 sed -i '' '/^identity:/,$d' "$S/data/rights.yaml"
+sleep 0.5
 
 # The rights file changes while the gateway runs: a withdrawn right is
 # refused at the next call, no restart; a restored right is served again.
@@ -193,7 +212,7 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 21 ] && ok "twenty-one tool calls audited (the thirteen refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 22 ] && ok "twenty-two tool calls audited, the login among them (the thirteen refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "th_recall audited with the brains and the ids read" || ko "th_recall audit line" "$(grep th_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"

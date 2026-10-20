@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -200,5 +202,38 @@ func TestTheContextFitsTheBudget(t *testing.T) {
 	g.results = []map[string]any{{"brain": "b", "knowledge_id": "d", "snippet": strings.Repeat("y", contextBudget), "provenance": "[b] d"}}
 	if _, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`); out != "" || !strings.Contains(errOut, "budget") {
 		t.Fatalf("one too long: stdout %q, stderr %q", out, errOut)
+	}
+}
+
+// Without TH_GATEWAY and TH_KEY in the environment, the hook reads the
+// env file that th-gateway login writes: TH_ENV, or ~/.thalamus/env. The
+// environment wins over the file, field by field.
+func TestTheHookReadsTheEnvFile(t *testing.T) {
+	g := &fakeGateway{secret: "s3", results: []map[string]any{{"brain": "team/acme", "knowledge_id": "spec-1", "snippet": "The code word is MARMOT.", "provenance": "[team/acme] Spec, spec-1"}}}
+	url := g.start(t)
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".thalamus"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".thalamus", "env"), []byte("# written by th-gateway login\nTH_GATEWAY="+url+"/\nTH_KEY = s3\nJUNK\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut := hook(t, map[string]string{"HOME": dir}, `{"prompt":"when does the ledger move?","cwd":"/x"}`)
+	if code != 0 || errOut != "" || !strings.Contains(contextOf(t, out), "MARMOT") {
+		t.Fatalf("home file: %d %s %s", code, out, errOut)
+	}
+	other := filepath.Join(dir, "other.env")
+	if err := os.WriteFile(other, []byte("TH_GATEWAY=http://127.0.0.1:1\nTH_KEY=s3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut = hook(t, map[string]string{"TH_ENV": other, "TH_GATEWAY": url}, `{"prompt":"when does the ledger move?"}`)
+	if code != 0 || errOut != "" || !strings.Contains(contextOf(t, out), "MARMOT") {
+		t.Fatalf("TH_ENV and environment: %d %s %s", code, out, errOut)
+	}
+	if _, _, errOut = hook(t, map[string]string{"TH_ENV": filepath.Join(dir, "missing.env"), "TH_KEY": "wrong"}, `{"prompt":"when does the ledger move?"}`); !strings.Contains(errOut, "TH_GATEWAY is not set, and no env file") {
+		t.Fatalf("missing gateway: %s", errOut)
+	}
+	if _, _, errOut = hook(t, map[string]string{"HOME": t.TempDir(), "TH_GATEWAY": url}, `{"prompt":"when does the ledger move?"}`); !strings.Contains(errOut, "TH_KEY is not set, and no env file") {
+		t.Fatalf("missing key: %s", errOut)
 	}
 }

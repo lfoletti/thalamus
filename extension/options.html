@@ -6,6 +6,8 @@
 <p>The gateway of your organisation and the key it issued to you. Both stay in this browser.</p>
 <label for="gateway">Gateway address</label>
 <input id="gateway" placeholder="http://gateway.internal:8787">
+<p><button id="signin">Sign in</button> <span id="signed" data-status=""></span></p>
+<p>Sign in with the organisation's account: the gateway hands you your key. If the gateway has no identity provider, paste the key you were given.</p>
 <label for="key">Your key</label>
 <input id="key" type="password" autocomplete="off">
 <button id="save">Save</button><span id="saved"></span>

@@ -98,6 +98,9 @@ type Identity struct {
 	Audience    string `yaml:"audience"`
 	Claim       string `yaml:"claim"`
 	StripDomain bool   `yaml:"strip_domain"`
+	// ClientID is the client the provider knows the employees' tools by
+	// (th-gateway login, the extension); GET /v1/identity hands it out.
+	ClientID string `yaml:"client_id"`
 }
 
 // Rights is the parsed, validated file.

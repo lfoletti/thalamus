@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writableBrains, documentID, buildAdd, statusText, settingsOf } from "./lib.js";
+import { writableBrains, documentID, buildAdd, statusText, settingsOf, authorizeURL, tokenOf, signInText, randomString } from "./lib.js";
 
 // Only the brains the employee may write to, with a key, sorted by name.
 test("writableBrains keeps the brains one may write to, with a key, sorted", () => {
@@ -65,4 +65,49 @@ test("settingsOf trims, requires both fields and drops the trailing slash", () =
   assert.equal(settingsOf({ gateway: "", key: "k" }), null);
   assert.equal(settingsOf({ gateway: "http://gw", key: " " }), null);
   assert.equal(settingsOf({}), null);
+});
+
+// The sign-in address of the provider, for the implicit id_token flow of
+// the extension: every parameter the provider needs, the fragment mode.
+test("authorizeURL carries the id_token request", () => {
+  const u = new URL(authorizeURL({ endpoint: "https://login.example/authorize?tenant=t", clientID: "thalamus-ext", redirect: "https://abc.chromiumapp.org/", state: "s1", nonce: "n1" }));
+  assert.equal(u.origin + u.pathname, "https://login.example/authorize");
+  assert.equal(u.searchParams.get("tenant"), "t");
+  assert.equal(u.searchParams.get("response_type"), "id_token");
+  assert.equal(u.searchParams.get("response_mode"), "fragment");
+  assert.equal(u.searchParams.get("scope"), "openid email");
+  assert.equal(u.searchParams.get("client_id"), "thalamus-ext");
+  assert.equal(u.searchParams.get("redirect_uri"), "https://abc.chromiumapp.org/");
+  assert.equal(u.searchParams.get("state"), "s1");
+  assert.equal(u.searchParams.get("nonce"), "n1");
+});
+
+// The id_token comes back in the fragment: the state must be ours, the
+// nonce must be ours, a refusal is said.
+test("tokenOf reads the id_token from the fragment and checks state and nonce", () => {
+  const tok = "h." + Buffer.from(JSON.stringify({ nonce: "n1" })).toString("base64url") + ".s";
+  assert.equal(tokenOf("https://abc.chromiumapp.org/#id_token=" + tok + "&state=s1", "s1", "n1"), tok);
+  assert.throws(() => tokenOf("https://abc.chromiumapp.org/#id_token=" + tok + "&state=other", "s1", "n1"), /state/);
+  assert.throws(() => tokenOf("https://abc.chromiumapp.org/#id_token=" + tok + "&state=s1", "s1", "n2"), /nonce/);
+  assert.throws(() => tokenOf("https://abc.chromiumapp.org/#error=access_denied&state=s1", "s1", "n1"), /refused: access_denied/);
+  assert.throws(() => tokenOf("https://abc.chromiumapp.org/#state=s1", "s1", "n1"), /no id_token/);
+  assert.throws(() => tokenOf("https://abc.chromiumapp.org/#id_token=not-a-jwt&state=s1", "s1", "n1"), /nonce/);
+  assert.throws(() => tokenOf(undefined, "s1", "n1"), /no answer/);
+});
+
+// One sentence after the sign-in, by status.
+test("signInText says what happened, by status", () => {
+  assert.equal(signInText(200, { login: "lfoletti", brains: [{}, {}] }), "Signed in as lfoletti: 2 brain(s). Your key is saved.");
+  assert.equal(signInText(404, { error: "no identity provider is configured" }), "This gateway has no identity provider: paste your key instead.");
+  assert.equal(signInText(401, { error: "token: expired" }), "The gateway refused the sign-in: token: expired");
+  assert.equal(signInText(403, { error: "x has no brain" }), "You have no brain in the rights: ask the administrator.");
+  assert.equal(signInText(0, null), "The gateway did not answer: check the address.");
+  assert.equal(signInText(500, { error: "key file: broken" }), "Error 500: key file: broken");
+});
+
+// A random string is long, URL-safe and new each time.
+test("randomString is long and URL-safe", () => {
+  const a = randomString(), b = randomString();
+  assert.match(a, /^[A-Za-z0-9_-]{32,}$/);
+  assert.notEqual(a, b);
 });

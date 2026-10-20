@@ -71,3 +71,60 @@ export function settingsOf(stored) {
   const key = String((stored && stored.key) || "").trim();
   return gateway && key ? { gateway, key } : null;
 }
+
+// authorizeURL is the provider's sign-in address for the implicit flow:
+// the id_token comes back in the fragment of the redirect.
+export function authorizeURL({ endpoint, clientID, redirect, state, nonce }) {
+  const u = new URL(endpoint);
+  for (const [k, v] of Object.entries({ response_type: "id_token", response_mode: "fragment", scope: "openid email", client_id: clientID, redirect_uri: redirect, state, nonce })) {
+    u.searchParams.set(k, v);
+  }
+  return u.toString();
+}
+
+function nonceOf(token) {
+  try {
+    return JSON.parse(atob(String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).nonce;
+  } catch {
+    return undefined;
+  }
+}
+
+// tokenOf reads the id_token from the redirect the provider made, and
+// checks that it answers this sign-in (state) and this request (nonce).
+export function tokenOf(redirectURL, state, nonce) {
+  if (!redirectURL) throw new Error("the provider gave no answer: the sign-in window was closed");
+  const p = new URLSearchParams(String(redirectURL).split("#")[1] || "");
+  if (p.get("error")) throw new Error("the provider refused: " + p.get("error"));
+  if (p.get("state") !== state) throw new Error("the state of the answer is not this sign-in's");
+  const token = p.get("id_token");
+  if (!token) throw new Error("no id_token in the provider's answer");
+  if (nonceOf(token) !== nonce) throw new Error("the id_token does not carry the nonce of this sign-in");
+  return token;
+}
+
+// signInText is the one sentence shown after a sign-in, by HTTP status.
+export function signInText(status, body) {
+  const err = body && body.error ? body.error : "";
+  switch (status) {
+    case 200:
+      return `Signed in as ${body.login}: ${body.brains.length} brain(s). Your key is saved.`;
+    case 0:
+      return "The gateway did not answer: check the address.";
+    case 401:
+      return `The gateway refused the sign-in: ${err}`;
+    case 403:
+      return "You have no brain in the rights: ask the administrator.";
+    case 404:
+      return "This gateway has no identity provider: paste your key instead.";
+    default:
+      return `Error ${status}: ${err}`;
+  }
+}
+
+// randomString is a state or a nonce: 32 bytes, URL-safe.
+export function randomString() {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}

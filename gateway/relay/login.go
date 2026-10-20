@@ -44,6 +44,25 @@ func (s *Server) verifier(id *rights.Identity) *identity.Verifier {
 	return s.idp
 }
 
+// serveIdentity answers GET /v1/identity: the provider, the audience and
+// the client id, for the tools that sign the employee in.
+func (s *Server) serveIdentity(w http.ResponseWriter, r *http.Request) {
+	id := s.rights().Identity
+	if id == nil {
+		restError(w, http.StatusNotFound, errors.New("no identity provider is configured: the rights file has no identity block"))
+		return
+	}
+	if r.Method != http.MethodGet {
+		restError(w, http.StatusMethodNotAllowed, errors.New("use GET"))
+		return
+	}
+	restJSON(w, http.StatusOK, struct {
+		Issuer   string `json:"issuer"`
+		Audience string `json:"audience"`
+		ClientID string `json:"client_id"`
+	}{id.Issuer, id.Audience, id.ClientID})
+}
+
 func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 	id := s.rights().Identity
 	if id == nil {

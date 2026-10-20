@@ -11,12 +11,14 @@ Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 
 ```sh
 go build -o plugin/bin/th-hook ./gateway/cmd/th-hook     # depuis la racine du projet
-export TH_GATEWAY=http://gateway.interne:8787             # le gateway
-export TH_KEY=<la clé émise par th-gateway key issue>     # votre clé
+th-gateway login http://gateway.interne:8787             # connexion par le compte de l'organisation : écrit ~/.thalamus/env
+set -a; . ~/.thalamus/env; set +a                        # TH_GATEWAY et TH_KEY dans le shell, pour le serveur MCP
 claude --plugin-dir ./plugin
 ```
 
-Variables : `TH_GATEWAY`, `TH_KEY`, `TH_RECALL_TOPK` (3 par défaut), `TH_HOOK_BIN` (chemin du binaire, sinon `bin/th-hook` à côté du lanceur).
+Sans fournisseur d'identité sur le gateway, exporter `TH_GATEWAY` et `TH_KEY` (clé émise par `th-gateway key issue`) à la main.
+
+Variables : `TH_GATEWAY`, `TH_KEY` (le hook les lit aussi dans `~/.thalamus/env`, ou le fichier `TH_ENV` ; l'environnement l'emporte champ par champ), `TH_RECALL_TOPK` (3 par défaut), `TH_HOOK_BIN` (chemin du binaire, sinon `bin/th-hook` à côté du lanceur). Le serveur MCP (`.mcp.json`) ne lit que l'environnement : d'où le `set -a`.
 
 Le hook ne bloque jamais un prompt : sans réglage, sans binaire, gateway injoignable, clé refusée ou aucun résultat, il sort en 0 sans rien injecter. Prompt vide, de moins de 3 mots, ou commande `/…` : rien n'est demandé.
 

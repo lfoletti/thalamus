@@ -336,8 +336,8 @@ func TestASourceReloadsTheFileWhenItChanges(t *testing.T) {
 // the audience, the claim that gives the login and whether to strip the
 // domain. Issuer and audience are required when the block is present.
 func TestTheIdentityBlockIsReadAndChecked(t *testing.T) {
-	r := parse(t, sample+"identity:\n  issuer: https://login.example\n  audience: thalamus\n  claim: preferred_username\n  strip_domain: true\n")
-	if r.Identity == nil || r.Identity.Issuer != "https://login.example" || r.Identity.Audience != "thalamus" || r.Identity.Claim != "preferred_username" || !r.Identity.StripDomain {
+	r := parse(t, sample+"identity:\n  issuer: https://login.example\n  audience: thalamus\n  claim: preferred_username\n  strip_domain: true\n  client_id: thalamus-cli\n")
+	if r.Identity == nil || r.Identity.Issuer != "https://login.example" || r.Identity.Audience != "thalamus" || r.Identity.Claim != "preferred_username" || !r.Identity.StripDomain || r.Identity.ClientID != "thalamus-cli" {
 		t.Fatalf("identity: %+v", r.Identity)
 	}
 	if parse(t, sample).Identity != nil {
