@@ -4,6 +4,17 @@ A thin layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the sha
 
 *Version française plus bas.*
 
+## Why
+
+An organisation wants its code agents to read its shared knowledge: the team's specifications, the reference documents, a person's own notes. With the engine alone, that means one operator key for everyone, or nothing. granular_cortex is for the team that runs the brains, the curators who answer for their content, and the employees who ask.
+
+1. **No fork of the engine.** The fixes this layer needed went upstream as small pull requests. The layer imports CortexDB at a pinned version. No maintenance debt.
+2. **The engine enforces, not a proxy.** Every employee reaches a brain with their own confined key. The gateway cannot err in the caller's favour: it decides who gets a key, the engine decides what the key may do.
+3. **One key per person and per brain.** Revocation is individual. Every audit line names a person, not a shared token.
+4. **Provenance on every extract.** The agent and the reader know which brain, which document and which author a sentence comes from.
+5. **One recall for every readable brain.** The employee does not choose where to look, and sees only what their rights allow.
+6. **Thin and proven.** A few hundred lines. Every test was written before its code and fails without it. Every rule has a recorded hand mutation that its test catches. An end-to-end bench runs a real server.
+
 ## What it does
 
 - **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers and the writers. A writer reads too.
@@ -51,6 +62,17 @@ MIT. CortexDB is MIT too.
 # granular_cortex (français)
 
 Une couche mince au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les cerveaux de connaissances partagés d'une organisation, utilisés par des agents de code comme Claude Code. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. granular_cortex ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
+
+## Pourquoi
+
+Une organisation veut que ses agents de code lisent ses connaissances partagées : les spécifications de l'équipe, les documents de référence, les notes d'une personne. Avec le moteur seul, c'est une clé d'opérateur pour tout le monde, ou rien. granular_cortex s'adresse à l'équipe qui exploite les cerveaux, aux curateurs qui répondent de leur contenu, et aux employés qui interrogent.
+
+1. **Pas de fork du moteur.** Les correctifs dont cette couche a besoin sont partis en amont en petites PR. La couche importe CortexDB à une version épinglée. Pas de dette de maintenance.
+2. **C'est le moteur qui applique, pas un proxy.** Chaque employé joint un cerveau avec sa propre clé confinée. Le gateway ne peut pas se tromper en faveur de l'appelant : il décide qui reçoit une clé, le moteur décide ce que la clé peut faire.
+3. **Une clé par personne et par cerveau.** La révocation est individuelle. Chaque ligne d'audit nomme une personne, pas un jeton partagé.
+4. **Provenance sur chaque extrait.** L'agent et le lecteur savent de quel cerveau, de quel document et de quel auteur vient une phrase.
+5. **Un rappel pour tous les cerveaux lisibles.** L'employé ne choisit pas où chercher, et ne voit que ce que ses droits permettent.
+6. **Mince et prouvé.** Quelques centaines de lignes. Chaque test a été écrit avant son code et tombe sans lui. Chaque règle a une mutation à la main consignée, que son test attrape. Un banc de bout en bout tourne sur un vrai serveur.
 
 ## Ce que ça fait
 
