@@ -1,10 +1,10 @@
-# Failing first, gateway (tranches 1 à 4, 20 octobre 2026)
+# Failing first, gateway (tranches 1 à 5, 20 octobre 2026)
 
 Preuve : `gateway/mutate.py`. Le script applique une mutation à la main par règle, lance le test nommé, remet le fichier. Sortie attendue : `KILLED` sur chaque ligne, `alive: 0`.
 
 Commande : `cd gateway && python3 -I mutate.py`.
 
-Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées. Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke gc/ghost/team/acme » absent.
+Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway) ; tranches 1 à 4, 71 mutations, 71 tuées ; tranches 1 à 5, 91 mutations, 91 tuées. Un fait appris par le banc, tranche 5 : `knowledge_search` avec un filtre exige un texte de requête (« empty text provided »), donc `gc_pending` liste par `aggregate_metadata` puis `knowledge_get`, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (la garde des lignes suffit). Un vrai défaut attrapé par un test écrit d'abord, tranche 4 : la première version de `key sync` ne parcourait que les utilisateurs nommés par `rights.yaml`, donc ne révoquait jamais la clé d'un porteur retiré du fichier ; `TestKeySyncBringsTheKeysToTheRights` est tombé sur « would revoke gc/ghost/team/acme » absent.
 
 | Paquet | Règle mutée | Test qui tombe |
 | :- | :- | :- |
@@ -40,6 +40,10 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | keys (4) | autres clés non comptées ; liste non triée par utilisateur | `TestListReadsTheIssuedKeys` |
 | cmd (4) | clé sans droit dite `ok` ; mauvaise clearance dite `ok` ; mauvaise collection dite `ok` ; clés d'un autre cerveau listées sous celui-ci | `TestKeyListShowsTheKeysAgainstTheRights` |
 | cmd (4) | porteur non nommé par les droits gardé ; clé périmée gardée ; clé manquante non émise ; `--dry-run` qui écrit ; réémission qui garde l'ancienne clé ; nouveau secret non imprimé | `TestKeySyncBringsTheKeysToTheRights` |
+| rights (5) | curateur réduit à rédacteur ; curateur sans écriture ; curateurs ni vérifiés ni comptés | `TestACuratorWritesAndReviews` |
+| relay (5) | document d'un rédacteur accepté d'office ; document d'un curateur en attente ; auteur absent ; écriture non auditée ; collection non envoyée | `TestGcAddProposesADocumentForReview` |
+| relay (5) | lecteur qui ajoute ; document vide ajouté ; échec d'écriture non audité | `TestGcAddIsRefusedWithoutAWriteRight` |
+| relay (5) | rédacteur qui relit ; `gc_pending` sans filtre ; `top_k` ignoré ; identifiants listés non audités ; extrait coupé au milieu d'un mot ; liste en échec non auditée ; `knowledge_get` avec collection ; décision quelconque admise ; relecteur non nommé | `TestGcPendingAndGcReviewAreForCurators` |
 | cmd | secret pas seul sur stdout | `TestKeyIssueAndRevoke` |
 | cmd | erreur d'usage en code 1 | `TestTheCommandLineIsChecked` |
 | cmd | arrêt propre rendu comme erreur | `TestServeListensAndStops` |

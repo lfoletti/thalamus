@@ -207,3 +207,27 @@ func TestUsersListsEveryLoginOnce(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+// A curator writes and reviews; the role sits above writer. A curator who
+// is on no other list still reads and writes.
+func TestACuratorWritesAndReviews(t *testing.T) {
+	text := strings.Replace(sample, "    writers: [group:acme-devs]\n", "    writers: [group:acme-devs]\n    curators: [user:kmlead]\n", 1)
+	r := parse(t, text)
+	got, err := r.Access("kmlead", "team/acme")
+	if err != nil || got != Curate || !got.AllowsRead() || !got.AllowsWrite() || got.Clearance() != authz.ReadWrite || got.String() != "curate" {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	if Write.AllowsWrite() != true || Read.AllowsWrite() || None.AllowsWrite() {
+		t.Fatal("AllowsWrite is wrong")
+	}
+	if a, _ := r.Access("lfoletti", "team/acme"); a != Write {
+		t.Fatalf("a writer is %v", a)
+	}
+	bad := strings.Replace(text, "curators: [user:kmlead]", "curators: [kmlead]", 1)
+	if _, err := Parse([]byte(bad)); err == nil || !strings.Contains(err.Error(), `member "kmlead"`) {
+		t.Fatalf("bare curator: got %v", err)
+	}
+	if got := strings.Join(r.Users(), ","); got != "guest,kmlead,lfoletti,mdupont" {
+		t.Fatalf("users %s", got)
+	}
+}

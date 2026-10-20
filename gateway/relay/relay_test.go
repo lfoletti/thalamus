@@ -26,14 +26,16 @@ import (
 // every call, and answers like a CortexDB server would.
 type brain struct {
 	rpcv1.UnimplementedToolsServiceServer
-	mu      sync.Mutex
-	bearer  string
-	bearers map[string]string // by collection
-	calls   []call
-	fail    bool
-	failOn  string               // a collection whose calls fail
-	hits    map[string][]fakeHit // knowledge_search answers by collection
-	badJSON bool                 // answer knowledge_search with text that is not JSON
+	mu                sync.Mutex
+	bearer            string
+	bearers           map[string]string // by collection
+	calls             []call
+	fail              bool
+	failOn            string               // a collection whose calls fail
+	hits              map[string][]fakeHit // knowledge_search answers by collection
+	badJSON           bool                 // answer knowledge_search with text that is not JSON
+	pending           map[string][]fakeHit // what aggregate_metadata and knowledge_get serve, by collection
+	failTool, badTool string               // one tool that fails, one that answers text that is not JSON
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -76,8 +78,38 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	if b.fail || (b.failOn != "" && b.failOn == args.Collection) {
 		return nil, errors.New("brain says no")
 	}
-	if b.badJSON {
+	if b.badJSON || b.badTool == req.GetName() {
 		return &rpcv1.CallToolResponse{ResultJson: "not json"}, nil
+	}
+	if b.failTool == req.GetName() {
+		return nil, errors.New("brain says no to " + req.GetName())
+	}
+	if req.GetName() == "aggregate_metadata" {
+		var lim struct {
+			Limit int `json:"limit"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &lim)
+		groups := []map[string]any{}
+		for i, x := range b.pending[args.Collection] {
+			if i >= lim.Limit {
+				break
+			}
+			groups = append(groups, map[string]any{"keys": map[string]string{"document_id": x.ID}, "count": 1})
+		}
+		out, _ := json.Marshal(map[string]any{"results": groups})
+		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
+	}
+	if req.GetName() == "knowledge_get" {
+		var get struct {
+			KnowledgeID string `json:"knowledge_id"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &get)
+		for _, x := range b.pending["team-acme"] {
+			if x.ID == get.KnowledgeID {
+				out, _ := json.Marshal(map[string]any{"knowledge": map[string]any{"id": x.ID, "title": x.Title, "author": "mdupont", "content": x.Snippet}})
+				return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
+			}
+		}
 	}
 	if req.GetName() == "knowledge_search" && b.hits != nil {
 		type h struct {

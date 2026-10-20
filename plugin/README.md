@@ -2,7 +2,8 @@
 
 Le client des cerveaux partagés derrière `gc-gateway`. Il apporte :
 
-- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `gc_brains` et `gc_recall`, sous la clé de l'employé ;
+- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `gc_brains`, `gc_recall`, `gc_add`, `gc_pending` et `gc_review`, sous la clé de l'employé ;
+- une commande `/gc-add <cerveau> <fichier ou texte>` qui propose un document à la relecture des curateurs ;
 - un hook `UserPromptSubmit` (`bin/gc-recall` → `gc-hook recall`) qui injecte dans chaque prompt les 3 meilleurs extraits des cerveaux lisibles, avec leur provenance, et les cerveaux sautés ;
 - une compétence (`skills/granular-cortex`) qui dit à l'agent comment citer la provenance et quand appeler `gc_recall`.
 
