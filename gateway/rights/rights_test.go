@@ -198,3 +198,12 @@ func TestABrainHasAPositiveWeight(t *testing.T) {
 		}
 	}
 }
+
+// Users lists every login the file names, through groups or directly,
+// sorted and without duplicates.
+func TestUsersListsEveryLoginOnce(t *testing.T) {
+	r := parse(t, sample)
+	if got := strings.Join(r.Users(), ","); got != "guest,kmlead,lfoletti,mdupont" {
+		t.Fatalf("got %s", got)
+	}
+}

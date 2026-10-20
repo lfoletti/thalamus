@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
@@ -156,6 +157,44 @@ func SecretOf(keysFile, user, brain string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no key issued to %s for %s", user, brain)
+}
+
+// Held is one key the gateway issued, as the file holds it.
+type Held struct {
+	ID         string
+	User       string
+	Brain      string
+	Clearance  authz.Clearance
+	Collection string // empty for a whole-server key
+}
+
+// List reads the keys the gateway issued in a file, sorted by brain then
+// user, and counts the other keys (an operator's, for one). A missing file
+// is an empty list.
+func List(keysFile string) (held []Held, others int, err error) {
+	f, err := read(keysFile)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, k := range f.Keys {
+		user, brain, ok := holderOf(k.ID)
+		if !ok {
+			others++
+			continue
+		}
+		h := Held{ID: k.ID, User: user, Brain: brain, Clearance: k.Clearance}
+		if len(k.Scope.Collections) > 0 {
+			h.Collection = k.Scope.Collections[0]
+		}
+		held = append(held, h)
+	}
+	sort.Slice(held, func(i, j int) bool {
+		if held[i].Brain != held[j].Brain {
+			return held[i].Brain < held[j].Brain
+		}
+		return held[i].User < held[j].User
+	})
+	return held, others, nil
 }
 
 // Holder maps a secret presented to the gateway back to the user and brain

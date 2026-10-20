@@ -177,6 +177,30 @@ func (r *Rights) listed(user string, members []string) bool {
 	return false
 }
 
+// Users lists every login the file names, through a group or directly,
+// sorted and once each.
+func (r *Rights) Users() []string {
+	seen := map[string]bool{}
+	for _, members := range r.Groups {
+		for _, u := range members {
+			seen[u] = true
+		}
+	}
+	for _, b := range r.Brains {
+		for _, m := range append(append([]string{}, b.Readers...), b.Writers...) {
+			if kind, name, _ := strings.Cut(m, ":"); kind == "user" {
+				seen[name] = true
+			}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for u := range seen {
+		out = append(out, u)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // BrainsOf lists the brains the user may at least read, sorted by name.
 func (r *Rights) BrainsOf(user string) []Grant {
 	var out []Grant
