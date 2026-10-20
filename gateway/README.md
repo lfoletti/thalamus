@@ -1,6 +1,6 @@
 # gc-gateway
 
-La couche mince de `granular_cortex` au-dessus d'un ou plusieurs serveurs CortexDB. Tranche 1 (20 octobre 2026) : droits, clés, relais MCP, audit. Tranche 2 (même jour) : point fédéré, cerveau dédié à clé non confinée. Tranche 3 (même jour) : le client, `cmd/gc-hook` et le plugin `../plugin/`. Tranche 4 (même jour) : administration des clés, `key list` et `key sync`. Tranche 5 (même jour) : le circuit d'écriture, `gc_add`, `gc_pending`, `gc_review`, et les `curators`. Le moteur reste seul à appliquer la portée d'une clé ; le gateway décide qui reçoit quelle clé et note qui a fait quoi.
+La couche mince de Granular Cortex au-dessus d'un ou plusieurs serveurs CortexDB. Tranche 1 (20 octobre 2026) : droits, clés, relais MCP, audit. Tranche 2 (même jour) : point fédéré, cerveau dédié à clé non confinée. Tranche 3 (même jour) : le client, `cmd/gc-hook` et le plugin `../plugin/`. Tranche 4 (même jour) : administration des clés, `key list` et `key sync`. Tranche 5 (même jour) : le circuit d'écriture, `gc_add`, `gc_pending`, `gc_review`, et les `curators`. Le moteur reste seul à appliquer la portée d'une clé ; le gateway décide qui reçoit quelle clé et note qui a fait quoi.
 
 ## Paquets
 

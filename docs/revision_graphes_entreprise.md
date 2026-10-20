@@ -16,7 +16,7 @@ Contrainte de méthode retenue : le projet évolue par **forks successives et me
 
 1. CortexDB est un bon **moteur** : stockage, graphe, faits bitemporels, outils MCP, backend PostgreSQL, mode lexical sans modèle. Il n'est pas une **plateforme de gestion des connaissances** : pas de multi-cerveaux, pas d'audit par identité, pas de classification, pas de conservation, pas de relecture humaine intégrée.
 2. Le point bloquant découvert dans le code : **une clé confinée ne peut appeler aucun outil du toolbox**. Le plugin MCP en mode distant passe par ce toolbox. Donc le modèle de droits actuel et le plugin MCP sont incompatibles. C'est corrigeable par une PR de taille moyenne.
-3. Décision recommandée : **CortexDB comme moteur, derrière une couche mince maison (« granular_cortex ») qui porte la fédération, les droits, la classification, l'audit et la file de relecture.** La couche s'amincit à chaque PR acceptée en amont.
+3. Décision recommandée : **CortexDB comme moteur, derrière une couche mince maison (« Granular Cortex ») qui porte la fédération, les droits, la classification, l'audit et la file de relecture.** La couche s'amincit à chaque PR acceptée en amont.
 4. Aucune alternative examinée (Graphiti, Mem0, Cognee, LightRAG) n'est meilleure sous la contrainte « Ollama seul + MCP + conformité ». Toutes exigent un modèle pour fonctionner. Aucune ne porte des droits par graphe et par document.
 5. Deux exigences sont mal posées. Voir la section 7 : « mémoire personnelle de l'employé » et « traitement exclusivement interne ».
 
@@ -117,7 +117,7 @@ Sources web consultées le 18 octobre 2026 : [FalkorDB, Graphiti MCP Server](htt
 
 ### 2.2 Décision
 
-**Option B, avec une méthode de l'option A.** CortexDB reste le moteur. Une couche mince `granular_cortex` porte ce que l'amont n'a pas. Chaque fonction de la couche qui a un sens général est proposée en amont comme petite PR. Quand la PR est acceptée, la couche s'amincit.
+**Option B, avec une méthode de l'option A.** CortexDB reste le moteur. Une couche mince Granular Cortex porte ce que l'amont n'a pas. Chaque fonction de la couche qui a un sens général est proposée en amont comme petite PR. Quand la PR est acceptée, la couche s'amincit.
 
 Pourquoi pas A seul : un fork du plugin qui porte la fédération et les droits diverge vite d'un amont qui publie plusieurs versions par jour. Le coût de rebase dépasse le gain.
 
@@ -144,7 +144,7 @@ La PR 1, 2, 7 sont des bonnes premières contributions : petites, sans débat de
 
 ---
 
-## 3. Architecture proposée : `granular_cortex`
+## 3. Architecture proposée : Granular Cortex
 
 ### 3.1 Composants
 
@@ -353,7 +353,7 @@ Ce que les pages disent :
 3. Les interdictions visent deux cas : un tiers qui route les requêtes de ses utilisateurs par des identifiants Free, Pro ou Max, et un client qui revend ou intermédie l'usage pour les utilisateurs finaux de son produit. Un pipeline interne de l'entreprise sur son propre siège n'est ni l'un ni l'autre.
 4. `claude --bare -p` ne lit pas `CLAUDE_CODE_OAUTH_TOKEN` et exige une clé d'API. Le gateway n'utilise donc pas `--bare`. Il passe le contexte par `--mcp-config`, `--append-system-prompt` et `--json-schema`.
 
-Règles pour `granular_cortex` :
+Règles pour Granular Cortex :
 
 | Usage | Cadre | Décision |
 | :- | :- | :- |

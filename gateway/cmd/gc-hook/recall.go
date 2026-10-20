@@ -151,7 +151,7 @@ func render(out recallOut) string {
 	if len(out.Results) == 0 {
 		return ""
 	}
-	header := fmt.Sprintf("granular_cortex: %d extracts from the shared brains, with their provenance.", len(out.Results))
+	header := fmt.Sprintf("Granular Cortex: %d extracts from the shared brains, with their provenance.", len(out.Results))
 	var lines []string
 	for _, r := range out.Results {
 		p := r.Provenance

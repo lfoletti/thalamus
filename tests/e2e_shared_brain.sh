@@ -1,5 +1,5 @@
 #!/bin/sh
-# End-to-end trial of the cortexdb/ branch, as the shared brain of granular_cortex:
+# End-to-end trial of the cortexdb/ branch, as the shared brain of Granular Cortex:
 # one cortexdb-grpc server, a key file with confined keys, and the MCP stdio
 # client in remote mode driven over JSON-RPC. Prints PASS/FAIL per check.
 set -u

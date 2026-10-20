@@ -1,5 +1,5 @@
 #!/bin/sh
-# granular_cortex recall launcher for the UserPromptSubmit hook of Claude Code.
+# Granular Cortex recall launcher for the UserPromptSubmit hook of Claude Code.
 # It runs gc-hook recall with the hook payload on stdin. It never blocks the
 # prompt: when the binary or the settings are missing, it exits 0 silently.
 #

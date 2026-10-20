@@ -119,7 +119,7 @@ func (s *Server) serverFor(ctx context.Context, name string, brain rights.Brain,
 		_ = conn.Close()
 		return nil, fmt.Errorf("list tools: %w", err)
 	}
-	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "granular_cortex gateway: " + name, Version: "0"}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "gc-gateway", Title: "Granular Cortex gateway: " + name, Version: "0"}, nil)
 	for _, def := range list.GetTools() {
 		s.addTool(srv, client, def, Entry{User: user, Key: keyID, Brain: name})
 	}

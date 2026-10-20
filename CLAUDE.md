@@ -1,4 +1,4 @@
-# granular_cortex
+# Granular Cortex
 
 Couche mince au-dessus de CortexDB pour des graphes de connaissances d'entreprise utilisés par des agents de code. Contenu : les documents du projet, un clone de CortexDB avec sept PR ouvertes en amont, et depuis le 20 octobre 2026 la première tranche du gateway (`gateway/`). La racine est un dépôt git (initialisé le 20 octobre 2026, branche `main`), poussé le même jour sur `github.com/lfoletti/granular-cortex` (**privé**, MIT, remote `origin`) ; `cortexdb/` est un dépôt à part, ignoré par la racine. Passage en public prévu à la fusion des sept PR amont, avec le commentaire de clôture de #66. Aucun push sans demande explicite de Lauro, même vers ce dépôt.
 
@@ -69,7 +69,7 @@ En vigueur depuis le 19 octobre 2026, validé le soir même sur six PR (quatre �
 ## Documents
 
 - `docs/pipeline_pr.md` : pipeline interne avant toute PR (règles, outils, code couvrable, procédure, lecture de `gremlins`, pièges). À lire avant d'ouvrir une PR.
-- `docs/revision_graphes_entreprise.md` : révision d'architecture (18 octobre 2026). Décision : CortexDB comme moteur, couche mince `granular_cortex` (fédération, droits, audit, relecture). Évolution par forks successives et petites PR vers l'amont. Section 3.9 : granularité par collection et liens logiques entre cerveaux.
+- `docs/revision_graphes_entreprise.md` : révision d'architecture (18 octobre 2026). Décision : CortexDB comme moteur, couche mince Granular Cortex (fédération, droits, audit, relecture). Évolution par forks successives et petites PR vers l'amont. Section 3.9 : granularité par collection et liens logiques entre cerveaux.
 
 ## Mémoire CortexDB
 
