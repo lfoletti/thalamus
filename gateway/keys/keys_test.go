@@ -196,3 +196,46 @@ func TestAFileTheServerWouldRefuseIsNotWritten(t *testing.T) {
 		t.Fatal("the file changed")
 	}
 }
+
+// SecretOf finds the key the gateway issued to a user for a brain, so the
+// gateway can call that brain on the user's behalf; no key, no secret.
+func TestSecretOfFindsTheUsersKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "keys.json")
+	k, err := Issue(path, "lfoletti", "team/acme", "team-acme", rights.Write)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := SecretOf(path, "lfoletti", "team/acme")
+	if err != nil || got != k.Secret {
+		t.Fatalf("got %q, %v", got, err)
+	}
+	if _, err := SecretOf(path, "mdupont", "team/acme"); err == nil || !strings.Contains(err.Error(), "no key") {
+		t.Fatalf("got %v", err)
+	}
+	if _, err := SecretOf(filepath.Join(t.TempDir(), "absent", "keys.json"), "lfoletti", "team/acme"); err == nil || !strings.Contains(err.Error(), "no key") {
+		t.Fatalf("absent file: got %v", err)
+	}
+	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SecretOf(path, "lfoletti", "team/acme"); err == nil || !strings.Contains(err.Error(), "parse") {
+		t.Fatalf("broken file: got %v", err)
+	}
+}
+
+// A key for a brain that is the whole server (no collection) has no scope:
+// the engine then opens every tool its clearance allows, the graph included.
+func TestAKeyForAWholeServerIsNotConfined(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "keys.json")
+	k, err := Issue(path, "lfoletti", "team/acme", "", rights.Read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks := keysOf(t, path)
+	if len(ks) != 1 || !ks[0].Scope.IsZero() || ks[0].Clearance != authz.ReadOnly || k.Collection != "" {
+		t.Fatalf("file: %+v", ks)
+	}
+	if _, err := authz.Load(path); err != nil {
+		t.Fatal(err)
+	}
+}

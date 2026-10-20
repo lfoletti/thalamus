@@ -116,7 +116,6 @@ func TestServeListensAndStops(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 		if line := out.String(); strings.Contains(line, "listening on http://") {
 			addr = strings.Fields(strings.SplitN(line, "http://", 2)[1])[0]
-			addr = strings.TrimSuffix(addr, "/mcp/<brain>,")
 		}
 	}
 	if addr == "" {
