@@ -63,7 +63,7 @@ func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	s := b.federated(t, k.Secret)
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 5 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_pending" || tools.Tools[3].Name != "th_recall" || tools.Tools[4].Name != "th_review" {
+	if err != nil || len(tools.Tools) != 6 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_get" || tools.Tools[3].Name != "th_pending" || tools.Tools[4].Name != "th_recall" || tools.Tools[5].Name != "th_review" {
 		t.Fatalf("tools: %+v %v", tools, err)
 	}
 	res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_brains"})
@@ -532,5 +532,54 @@ func TestGcPendingAndGcReviewAreForCurators(t *testing.T) {
 func TestSnippetCutsOnAWord(t *testing.T) {
 	if got := snippet(strings.Repeat("a", 250)); got != strings.Repeat("a", 200)+"…" {
 		t.Fatalf("no space: %q", got)
+	}
+}
+
+// th_get reads one document whole, in a brain the caller may read, with the
+// caller's key: knowledge_get without a collection (the brain's row guard
+// checks it). Refused on an unknown brain, without a read right, and when
+// the brain refuses; audited with the knowledge_id.
+func TestThGetReadsADocumentWhole(t *testing.T) {
+	b := start(t)
+	b.brain.pending = map[string][]fakeHit{"team-acme": {{"cutover-plan", "Cutover plan", "The code word is MARMOT."}}}
+	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
+	s := b.federated(t, k.Secret)
+	res := mustCall(t, s, "th_get", map[string]any{"brain": "team/acme", "knowledge_id": "cutover-plan"})
+	if res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "MARMOT") {
+		t.Fatalf("th_get: %+v", res)
+	}
+	var args map[string]any
+	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
+	if _, has := args["collection"]; b.brain.calls[0].Name != "knowledge_get" || args["knowledge_id"] != "cutover-plan" || has || b.brain.bearers[""] != "Bearer "+k.Secret {
+		t.Fatalf("call: %+v", b.brain.calls[0])
+	}
+	if l := b.auditLines(t)[0]; l["tool"] != "th_get" || l["brain"] != "team/acme" || l["ids"].(map[string]any)["knowledge_id"] != "cutover-plan" || l["ok"] != true {
+		t.Fatalf("audit: %+v", l)
+	}
+	for _, c := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"brain": "org/none", "knowledge_id": "x"}, "unknown brain"},
+		{map[string]any{"brain": "team/other", "knowledge_id": "x"}, "may not read"},
+		{map[string]any{"brain": "team/acme"}, "knowledge_id is required"},
+	} {
+		res := mustCall(t, s, "th_get", c.args)
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, c.want) {
+			t.Fatalf("%v: %+v", c.args, res)
+		}
+	}
+	b.brain.fail = true
+	if res := mustCall(t, s, "th_get", map[string]any{"brain": "team/acme", "knowledge_id": "cutover-plan"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "brain says no") {
+		t.Fatalf("failure: %+v", res)
+	}
+	if l := b.auditLines(t)[1]; l["tool"] != "th_get" || l["ok"] != false {
+		t.Fatalf("failed get not audited: %+v", l)
+	}
+	if res, _ := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_get", Arguments: json.RawMessage(`{"brain": 5}`)}); !res.IsError {
+		t.Fatal("bad arguments passed")
+	}
+	if len(b.brain.calls) != 2 {
+		t.Fatalf("calls: %d", len(b.brain.calls))
 	}
 }

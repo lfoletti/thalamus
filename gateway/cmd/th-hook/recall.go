@@ -160,7 +160,7 @@ func render(out recallOut) string {
 		}
 		lines = append(lines, "- "+p+": "+strings.TrimSpace(r.Snippet))
 	}
-	footer := "Ask for more with th_recall; list the brains with th_brains."
+	footer := "An extract is a cut: read a document whole with th_get {brain, knowledge_id} from its provenance line. Ask for more with th_recall; list the brains with th_brains."
 	if len(out.Skipped) > 0 {
 		var parts []string
 		for _, s := range out.Skipped {

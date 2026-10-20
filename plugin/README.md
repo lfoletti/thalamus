@@ -2,7 +2,7 @@
 
 Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 
-- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
+- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
 - une commande `/th-add <cerveau> <fichier ou texte>` qui propose un document à la relecture des curateurs ;
 - un hook `UserPromptSubmit` (`bin/th-recall` → `th-hook recall`) qui injecte dans chaque prompt les 3 meilleurs extraits des cerveaux lisibles, avec leur provenance, et les cerveaux sautés ;
 - une compétence (`skills/thalamus`) qui dit à l'agent comment citer la provenance et quand appeler `th_recall`.

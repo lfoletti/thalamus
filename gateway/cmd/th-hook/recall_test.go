@@ -110,7 +110,7 @@ func TestTheHookInjectsTheExtractsWithTheirProvenance(t *testing.T) {
 		"- [team/acme] Spec migration, spec-1, by mdupont (also in org/reference): The ledger moves on Sunday.",
 		"- [org/reference] Rollback, r-1: Rollback is two hours.",
 		"Skipped: team/other (no key issued to lfoletti for team/other).",
-		"Ask for more with th_recall; list the brains with th_brains.",
+		"An extract is a cut: read a document whole with th_get {brain, knowledge_id} from its provenance line. Ask for more with th_recall; list the brains with th_brains.",
 	} {
 		if !strings.Contains(ctx, want) {
 			t.Fatalf("context lacks %q:\n%s", want, ctx)

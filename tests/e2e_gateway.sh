@@ -142,6 +142,11 @@ ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' |
 if grep -q 'th/mdupont/team/acme' "$S/data/keys.json"; then ko "mdupont key still in the file" ""; else ok "mdupont key removed from the file"; fi
 check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme knowledge_search '{"query":"ledger","collection":"team-acme"}')"
 
+# th_get reads a document whole, under the caller's right on the brain.
+get=$(mcp "$LF" "" th_get '{"brain":"team/acme","knowledge_id":"spec-1"}')
+if printf '%s' "$get" | grep -q '"id\\":\\"spec-1' && ! printf '%s' "$get" | grep -q isError; then ok "th_get reads spec-1 whole"; else ko "th_get" "$get"; fi
+check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMA" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
+
 # The REST face, for a browser extension or a script: same keys, same
 # circuit. GET /v1/brains lists, POST /v1/add proposes, refusals by status.
 rest() { # rest <method> <path> <secret> <body>
@@ -179,7 +184,7 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 20 ] && ok "twenty tool calls audited (the twelve refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 21 ] && ok "twenty-one tool calls audited (the thirteen refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "th_recall audited with the brains and the ids read" || ko "th_recall audit line" "$(grep th_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"
