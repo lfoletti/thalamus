@@ -1,0 +1,13 @@
+#!/bin/sh
+# granular_cortex recall launcher for the UserPromptSubmit hook of Claude Code.
+# It runs gc-hook recall with the hook payload on stdin. It never blocks the
+# prompt: when the binary or the settings are missing, it exits 0 silently.
+#
+#   GC_GATEWAY   base URL of the gateway, for example http://gateway.internal:8787
+#   GC_KEY       the key the gateway issued to you
+#   GC_HOOK_BIN  the gc-hook binary (default: next to this launcher)
+set -u
+bin="${GC_HOOK_BIN:-$(cd "$(dirname "$0")" 2>/dev/null && pwd)/gc-hook}"
+[ -x "$bin" ] || exit 0
+[ -n "${GC_GATEWAY:-}" ] && [ -n "${GC_KEY:-}" ] || exit 0
+exec "$bin" recall

@@ -1,6 +1,6 @@
 # gc-gateway
 
-La couche mince de `granular_cortex` au-dessus d'un ou plusieurs serveurs CortexDB. Tranche 1 (20 octobre 2026) : droits, clés, relais MCP, audit. Tranche 2 (même jour) : point fédéré, cerveau dédié à clé non confinée. Le moteur reste seul à appliquer la portée d'une clé ; le gateway décide qui reçoit quelle clé et note qui a fait quoi.
+La couche mince de `granular_cortex` au-dessus d'un ou plusieurs serveurs CortexDB. Tranche 1 (20 octobre 2026) : droits, clés, relais MCP, audit. Tranche 2 (même jour) : point fédéré, cerveau dédié à clé non confinée. Tranche 3 (même jour) : le client, `cmd/gc-hook` et le plugin `../plugin/`. Le moteur reste seul à appliquer la portée d'une clé ; le gateway décide qui reçoit quelle clé et note qui a fait quoi.
 
 ## Paquets
 
@@ -9,16 +9,17 @@ La couche mince de `granular_cortex` au-dessus d'un ou plusieurs serveurs Cortex
 - `relay` : un serveur MCP (HTTP streamable, réponses JSON) par cerveau sur `/mcp/<brain>`. Le porteur présente sa clé (`Authorization: Bearer`). Le gateway refuse avant de joindre le cerveau : clé inconnue (401), clé d'un autre cerveau ou droit retiré de `rights.yaml` (403), cerveau non déclaré (404), cerveau injoignable (502). Chaque appel d'outil est relayé en gRPC avec la clé de l'appelant et écrit dans `audit.jsonl` : instant, utilisateur, clé, cerveau, outil, identifiants (`*_id`, `*_ids`, `supersedes`), succès ou erreur.
 - `relay`, point fédéré `/mcp` : l'employé présente n'importe laquelle de ses clés, qui le nomme. Deux outils : `gc_brains` (ses cerveaux, son droit, clé émise ou non) et `gc_recall` (`query`, `top_k`, `brains` optionnel) qui interroge en parallèle chaque cerveau lisible par `knowledge_search` avec la clé de l'employé pour ce cerveau, puis fusionne par rang réciproque pondéré (`weight / (60 + rang)`). Un même extrait dans deux cerveaux est un résultat, qui nomme les autres dans `also_in`. Chaque résultat porte une ligne de provenance fixe : `[cerveau] titre, id, source, by auteur`. Un cerveau sans clé, injoignable ou en erreur est dans `skipped` avec sa raison. Audit : une ligne par `gc_recall` avec les cerveaux interrogés et les identifiants lus.
 - `cmd/gc-gateway` : `rights check`, `rights of`, `key issue`, `key revoke`, `serve` (sert `/mcp` et `/mcp/<cerveau>`).
+- `cmd/gc-hook` : le hook `UserPromptSubmit` du plugin. `gc-hook recall` lit le prompt sur stdin, appelle `gc_recall` sur `$GC_GATEWAY/mcp` avec `$GC_KEY`, et rend à l'agent un bloc `additionalContext` : en-tête, une ligne par extrait (`- provenance (also in …): extrait`), cerveaux sautés, rappel des outils. Budget 9 000 caractères, coupé extrait par extrait depuis la fin avec le compte des omis. Jamais bloquant : tout problème est exit 0 sans sortie, raison sur stderr. Prompt vide, de moins de 3 mots ou commande `/…` : rien n'est demandé. Le plugin (`../plugin/README.md`) déclare le hook, le serveur MCP HTTP du gateway et une compétence.
 
 ## Essai
 
 ```sh
 cd gateway && go test -race ./...          # quatre paquets, environ 10 s
-python3 -I mutate.py                        # 48 mutations à la main, chacune doit tomber
-sh ../tests/e2e_gateway.sh                  # serveur gRPC depuis cortexdb/, gateway devant, 24 contrôles
+python3 -I mutate.py                        # 58 mutations à la main, chacune doit tomber
+sh ../tests/e2e_gateway.sh                  # serveur gRPC depuis cortexdb/, gateway devant, hook, 27 contrôles
 ```
 
-Couverture : 100 % des instructions hors `main` (quatre lignes).
+Couverture : 100 % des instructions hors les deux `main`.
 
 ## Limites de la tranche
 

@@ -7,7 +7,7 @@ set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 S=$(mktemp -d)
 (cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
-(cd "$ROOT/gateway" && go build -o "$S/gc-gateway" ./cmd/gc-gateway) || exit 1
+(cd "$ROOT/gateway" && go build -o "$S/gc-gateway" ./cmd/gc-gateway && go build -o "$S/gc-hook" ./cmd/gc-hook) || exit 1
 GRPC=$S/cortexdb-grpc
 GW=$S/gc-gateway
 ADDR=127.0.0.1:47998
@@ -108,6 +108,15 @@ rec=$(mcp "$LF" "" gc_recall '{"query":"secret retainer"}')
 if printf '%s' "$rec" | grep -q 'secret-doc' && printf '%s' "$rec" | grep -q '\[org/secrets\]'; then ok "gc_recall finds secret-doc in org/secrets with lfoletti's read key"; else ko "gc_recall retainer" "$rec"; fi
 check "operator key on /mcp (401)" denied "$(mcp op-secret "" gc_brains '{}')"
 
+# The client: the plugin's hook asks gc_recall with the employee's key and
+# hands the extracts to Claude Code; a prompt too short asks nothing.
+ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?","cwd":"/tmp"}' | GC_GATEWAY="http://$GWADDR" GC_KEY="$LF" GC_HOOK_BIN="$S/gc-hook" "$ROOT/plugin/bin/gc-recall")
+if printf '%s' "$ctx" | grep -q '"hookEventName":"UserPromptSubmit"' && printf '%s' "$ctx" | grep -q '\[team/acme\] Spec migration, spec-1'; then ok "the hook injects spec-1 with its provenance"; else ko "hook" "$ctx"; fi
+ctx=$(printf '%s' '{"prompt":"ok"}' | GC_GATEWAY="http://$GWADDR" GC_KEY="$LF" GC_HOOK_BIN="$S/gc-hook" "$ROOT/plugin/bin/gc-recall")
+[ -z "$ctx" ] && ok "a short prompt injects nothing" || ko "short prompt" "$ctx"
+ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' | GC_GATEWAY="http://$GWADDR" GC_KEY="nope" GC_HOOK_BIN="$S/gc-hook" "$ROOT/plugin/bin/gc-recall" 2>/dev/null; echo "exit=$?")
+[ "$ctx" = "exit=0" ] && ok "a refused key blocks nothing (exit 0, no output)" || ko "refused key" "$ctx"
+
 # Revocation: the file changes at once; the server reads it at start, so the
 # check here is on the file, not on the server.
 "$GW" key revoke "$S/data/rights.yaml" mdupont team/acme >/dev/null && ok "revoke mdupont" || ko "revoke mdupont" ""
@@ -117,7 +126,7 @@ check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme 
 echo
 echo "--- audit ---"
 n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 10 ] && ok "ten tool calls audited (the five refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
+[ "$n" -eq 11 ] && ok "eleven tool calls audited (the six refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"gc_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "gc_recall audited with the brains and the ids read" || ko "gc_recall audit line" "$(grep gc_recall "$S/data/audit.jsonl" | head -1)"
 grep -q '"user":"lfoletti","key":"gc/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
 grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"

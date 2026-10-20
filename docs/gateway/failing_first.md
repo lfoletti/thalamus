@@ -1,10 +1,10 @@
-# Failing first, gateway (tranches 1 et 2, 20 octobre 2026)
+# Failing first, gateway (tranches 1 à 3, 20 octobre 2026)
 
 Preuve : `gateway/mutate.py`. Le script applique une mutation à la main par règle, lance le test nommé, remet le fichier. Sortie attendue : `KILLED` sur chaque ligne, `alive: 0`.
 
 Commande : `cd gateway && python3 -I mutate.py`.
 
-Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées.
+Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 et 2 ensemble, 48 mutations, 48 tuées ; tranches 1 à 3, 58 mutations, 58 tuées (une mutation de la tranche 3 a survécu au premier passage, « prompt court demandé », jusqu'à ce que le test compte les appels au gateway).
 
 | Paquet | Règle mutée | Test qui tombe |
 | :- | :- | :- |
@@ -33,8 +33,11 @@ Résultat du 20 octobre 2026 : tranche 1, 29 mutations, 29 tuées ; tranches 1 e
 | relay (2) | cerveau non lisible interrogé ; audit sans identifiants ; cerveau sauté non signalé ; question vide envoyée | `TestGcRecallFusesTheBrains` |
 | relay (2) | restriction `brains` ignorée ; collection envoyée à un serveur entier | `TestGcRecallCanBeRestrictedToSomeBrains` |
 | relay (2) | `gc_brains` dit que chaque cerveau a une clé | `TestGcBrainsListsTheCallersBrains` |
+| gc-hook (3) | un problème bloque le prompt (exit 1) ; prompt court ou commande demandé ; `GC_RECALL_TOPK` invalide admis ; erreur d'outil lue comme résultat | `TestTheHookIsSilentOnEveryProblem` |
+| gc-hook (3) | `GC_RECALL_TOPK` ignoré ; `also_in` absent ; cerveaux sautés absents | `TestTheHookInjectsTheExtractsWithTheirProvenance` |
+| gc-hook (3) | la coupe vide tout ; budget ignoré ; en-tête sur rien envoyé | `TestTheContextFitsTheBudget` |
 | cmd | secret pas seul sur stdout | `TestKeyIssueAndRevoke` |
 | cmd | erreur d'usage en code 1 | `TestTheCommandLineIsChecked` |
 | cmd | arrêt propre rendu comme erreur | `TestServeListensAndStops` |
 
-Couverture mesurée (`go test -race -coverprofile`) : `keys`, `relay`, `rights` à 100 %, `cmd/gc-gateway` à 96,7 %, les quatre lignes non couvertes sont `main`.
+Couverture mesurée (`go test -race -coverprofile`) : `keys`, `relay`, `rights` à 100 %, `cmd/gc-gateway` et `cmd/gc-hook` à 100 % hors `main`.
