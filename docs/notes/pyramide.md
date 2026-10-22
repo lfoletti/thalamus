@@ -48,6 +48,33 @@ Source : `cache/pilote_cortexdb/mesure/ai-audio_bilan_2026-10-22T21-01.json` de 
 
 Conclusion : la pyramide garde sa valeur quand CortexDB la stocke et la cherche. Le moteur n'a pas besoin de la construire.
 
+### Mesure à travers le gateway (tranche 15, 22 octobre 2026, 21 h 30)
+
+Copie du cerveau `ai-audio-vecteurs.db` du pilote, avec son encodeur (384 dimensions) et son binaire `cortexdb-grpc` v2.136.0. Un gateway devant la copie, un cerveau `lab/ai-audio` avec `pyramid: {collection: pyramide, sources: preuves}`, une clé confinée aux 2 collections. Mêmes 41 questions, même règle de couverture (`mesure_pilote_cortexdb.couverture`), même budget par question (4 044 caractères en moyenne). Le pilote n'a pas changé.
+
+| Bras | Couverture |
+| :- | :- |
+| `th_recall`, 3 résultats, extraits (ce que le hook injecte) | 51,7 % |
+| `th_recall`, 10 résultats, extraits | 54,4 % |
+| `th_recall`, 10 résultats, documents entiers par `th_get` | 67,2 % |
+| idem, `syntheses: 0` | 37,8 % |
+| relais `/mcp/lab/ai-audio`, `search_graphrag_lexical` en mode graphe, synthèses en tête (le bras du pilote) | **81,2 %** |
+| idem, passages seuls | 62,0 % |
+
+Ce que la mesure établit :
+
+- Le chiffre du pilote se retrouve à travers le gateway, sous la clé confinée d'un employé : 81,2 %. La clé à 2 collections et la liste blanche ne coûtent rien.
+- Dans `th_recall`, la pyramide ajoute 29 points (37,8 % → 67,2 %).
+- Mais `th_recall` perd 14 points sur le bras du pilote. La cause est l'outil de recherche : `th_recall` appelle `knowledge_search`, qui classe des documents et rend un extrait coupé à environ 180 caractères. Un document entier remplit le budget avec son début, pas avec le passage utile. `search_graphrag_lexical` rend les morceaux utiles. Passages seuls : 37,8 % contre 62,0 %.
+- Le hook est le cas le plus faible (51,7 %), parce qu'il injecte 3 extraits.
+- Temps moyen de `th_recall` : 110 ms par question.
+
+Suite proposée : `th_recall` demande les morceaux par `search_graphrag_lexical` (mode graphe, `max_context_chars`), garde la fusion RRF et la provenance par document, et le hook injecte le texte des morceaux dans son budget.
+
+Défaut vu pendant la mesure : `th-gateway serve` s'arrête proprement sur SIGINT seulement (`cmd/th-gateway/main.go`). Sur SIGTERM, l'audit n'est pas fermé, et les lectures comptées du jour sont perdues (0 ligne après environ 200 lectures).
+
+Scripts et résultats : `scratchpad/m15/` de la session (`measure.py`, `probe2.py`, `score.json`), hors dépôt.
+
 ## 3. Les 4 parties et leur place
 
 | Partie | Place | Raison |
