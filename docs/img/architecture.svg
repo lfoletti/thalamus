@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" width="760" height="250" role="img" aria-labelledby="title desc">
+  <title id="title">Thalamus architecture</title>
+  <desc id="desc">The Claude Code plugin, the Chrome extension and th-gateway login call th-gateway. The gateway reads rights.yaml, writes audit.jsonl, and calls the CortexDB servers with one key per person and per brain.</desc>
+  <style>
+    .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
+    .core { fill: #312e81; stroke: #312e81; }
+    .file { fill: #ffffff; stroke: #a5b4fc; stroke-width: 1; }
+    .line { fill: none; stroke: #4338ca; stroke-width: 1.5; }
+    .head { fill: #4338ca; }
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1e1b4b; }
+    .label { font-size: 14px; }
+    .title { font-size: 16px; font-weight: 600; fill: #ffffff; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; fill: #312e81; }
+    .note { font-size: 12px; fill: #4338ca; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #1e1b4b; stroke: #a5b4fc; }
+      .core { fill: #4338ca; stroke: #a5b4fc; }
+      .file { fill: #312e81; stroke: #818cf8; }
+      .line { stroke: #a5b4fc; }
+      .head { fill: #a5b4fc; }
+      text { fill: #e0e7ff; }
+      .mono { fill: #e0e7ff; }
+      .note { fill: #c7d2fe; }
+    }
+  </style>
+
+  <!-- Clients -->
+  <rect class="box" x="16" y="40" width="200" height="44" rx="8"/>
+  <text class="label" x="116" y="67" text-anchor="middle">Claude Code plugin</text>
+  <rect class="box" x="16" y="103" width="200" height="44" rx="8"/>
+  <text class="label" x="116" y="130" text-anchor="middle">Chrome extension</text>
+  <rect class="box" x="16" y="166" width="200" height="44" rx="8"/>
+  <text class="mono" x="116" y="192" text-anchor="middle">th-gateway login</text>
+
+  <!-- Client arrows to the gateway -->
+  <path class="line" d="M216 62 C 250 62, 250 125, 282 125"/>
+  <path class="line" d="M216 125 L 282 125"/>
+  <path class="line" d="M216 188 C 250 188, 250 125, 282 125"/>
+  <path class="head" d="M292 125 L 281 119.5 L 281 130.5 Z"/>
+
+  <!-- Gateway -->
+  <rect class="box core" x="294" y="30" width="196" height="190" rx="10"/>
+  <text class="title mono" x="392" y="64" text-anchor="middle" style="font-size:16px;font-weight:600;fill:#ffffff">th-gateway</text>
+  <rect class="file" x="318" y="92" width="148" height="40" rx="6"/>
+  <text class="mono" x="392" y="116" text-anchor="middle">rights.yaml</text>
+  <rect class="file" x="318" y="148" width="148" height="40" rx="6"/>
+  <text class="mono" x="392" y="172" text-anchor="middle">audit.jsonl</text>
+
+  <!-- Gateway arrow to the servers -->
+  <path class="line" d="M490 125 L 566 125"/>
+  <path class="head" d="M576 125 L 565 119.5 L 565 130.5 Z"/>
+  <text class="note" x="533" y="114" text-anchor="middle">caller's key</text>
+
+  <!-- CortexDB servers, drawn as a stack -->
+  <rect class="box" x="598" y="64" width="146" height="96" rx="8"/>
+  <rect class="box" x="590" y="72" width="146" height="96" rx="8"/>
+  <rect class="box" x="582" y="80" width="146" height="96" rx="8"/>
+  <text class="label" x="655" y="124" text-anchor="middle">CortexDB</text>
+  <text class="label" x="655" y="143" text-anchor="middle">servers</text>
+  <text class="note" x="660" y="204" text-anchor="middle">one key per person</text>
+  <text class="note" x="660" y="221" text-anchor="middle">and per brain</text>
+</svg>

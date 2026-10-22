@@ -33,12 +33,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 ## How it works
 
-```
- Claude Code plugin ──┐
- Chrome extension ────┼──►  th-gateway  ──►  CortexDB servers
- th-gateway login ────┘     rights.yaml       (one key per person
-                            audit.jsonl        and per brain)
-```
+<p align="center"><img src="docs/img/architecture.svg" alt="The Claude Code plugin, the Chrome extension and th-gateway login call th-gateway. The gateway reads rights.yaml, writes audit.jsonl, and calls the CortexDB servers with the caller's key: one key per person and per brain." width="760"></p>
 
 - The gateway reads `rights.yaml` and issues the keys. It reads the file again when it changes, so a removed right applies at the next call.
 - Each call goes to CortexDB with the caller's key. CortexDB checks the key on every call, so the scope of a key does not depend on the gateway.
