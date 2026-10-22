@@ -26,6 +26,7 @@ type recallOut struct {
 		Score       float64  `json:"score"`
 		Provenance  string   `json:"provenance"`
 		AlsoIn      []string `json:"also_in,omitempty"`
+		Level       string   `json:"level,omitempty"`
 	} `json:"results"`
 	Skipped []struct {
 		Brain  string `json:"brain"`
@@ -64,7 +65,7 @@ func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	s := b.federated(t, k.Secret)
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 6 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_get" || tools.Tools[3].Name != "th_pending" || tools.Tools[4].Name != "th_recall" || tools.Tools[5].Name != "th_review" {
+	if err != nil || len(tools.Tools) != 7 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_descend" || tools.Tools[3].Name != "th_get" || tools.Tools[4].Name != "th_pending" || tools.Tools[5].Name != "th_recall" || tools.Tools[6].Name != "th_review" {
 		t.Fatalf("tools: %+v %v", tools, err)
 	}
 	res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_brains"})
@@ -268,7 +269,7 @@ func TestProvenanceNamesWhatIsKnown(t *testing.T) {
 		{hit{KnowledgeID: "d-1", Title: "Spec"}, "[b] Spec, d-1"},
 		{hit{KnowledgeID: "d-1", Title: "Spec", SourceURL: "smb://x/spec.docx", Author: "mdupont"}, "[b] Spec, d-1, smb://x/spec.docx, by mdupont"},
 	} {
-		if got := provenance("b", c.h); got != c.want {
+		if got := provenance("b", c.h, ""); got != c.want {
 			t.Fatalf("got %q, want %q", got, c.want)
 		}
 	}
@@ -326,7 +327,7 @@ func TestFuseByReciprocalRank(t *testing.T) {
 		{Brain: "a", Weight: 1, Hits: []hit{{KnowledgeID: "a-1", Title: "T", Snippet: "same"}, {KnowledgeID: "a-2", Title: "T", Snippet: "x"}}},
 		{Brain: "b", Weight: 0.5, Hits: []hit{{KnowledgeID: "b-1", Title: "T", Snippet: "same"}, {KnowledgeID: "b-2", Title: "T", Snippet: "y"}}},
 	}
-	out := fuse(lists, 10)
+	out := fuse(lists, 10, "")
 	if len(out) != 3 || out[0].KnowledgeID != "a-1" || strings.Join(out[0].AlsoIn, ",") != "b" {
 		t.Fatalf("%+v", out)
 	}
@@ -336,7 +337,7 @@ func TestFuseByReciprocalRank(t *testing.T) {
 	if out[1].KnowledgeID != "a-2" || out[2].KnowledgeID != "b-2" {
 		t.Fatalf("%+v", out)
 	}
-	if got := fuse(lists, 1); len(got) != 1 {
+	if got := fuse(lists, 1, ""); len(got) != 1 {
 		t.Fatalf("top_k: %+v", got)
 	}
 	// Rank 1 of the second brain comes before rank 2 of the first: the
@@ -346,7 +347,7 @@ func TestFuseByReciprocalRank(t *testing.T) {
 		{Brain: "b", Weight: 1, Hits: []hit{{KnowledgeID: "b-1", Snippet: "3"}, {KnowledgeID: "b-2", Snippet: "4"}}},
 	}
 	var ids []string
-	for _, f := range fuse(equal, 10) {
+	for _, f := range fuse(equal, 10, "") {
 		ids = append(ids, f.KnowledgeID)
 	}
 	if strings.Join(ids, ",") != "a-1,b-1,a-2,b-2" {
@@ -609,5 +610,171 @@ func TestThGetReadsADocumentWhole(t *testing.T) {
 	}
 	if len(b.brain.calls) != 2 {
 		t.Fatalf("calls: %d", len(b.brain.calls))
+	}
+}
+
+// pyramidBench is the bench with a pyramid on team/acme, its syntheses
+// listing their sources under "preuves", and a key for lfoletti on both
+// brains.
+func pyramidBench(t *testing.T) (*bench, string) {
+	t.Helper()
+	b := startWith(t, func(y string) string {
+		return strings.Replace(y, "    collection: team-acme\n", "    collection: team-acme\n    pyramid: {collection: acme-pyramid, sources: preuves}\n", 1)
+	})
+	k, err := keys.IssueScoped(b.keysFile, "lfoletti", "team/acme", []string{"team-acme", "acme-pyramid"}, rights.Write)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := keys.Issue(b.keysFile, "lfoletti", "team/other", "other", rights.Write); err != nil {
+		t.Fatal(err)
+	}
+	return b, k.Secret
+}
+
+// th_recall serves the syntheses of a brain's pyramid first, marked as
+// such, then the passages: the pyramid is searched in its own collection,
+// with the same key, for at most `syntheses` results (2 by default, 0 for
+// none). A brain without a pyramid is not searched twice. A pyramid that
+// fails is said in skipped, and the passages stay.
+func TestRecallServesTheSynthesesFirst(t *testing.T) {
+	b, secret := pyramidBench(t)
+	b.brain.hits = map[string][]fakeHit{
+		"team-acme":    {{"a-1", "Ledger plan", "The ledger moves on Sunday."}, {"a-2", "Rollback", "Two hours of rollback."}},
+		"acme-pyramid": {{"pyramide/ledger", "Ledger", "The ledger moves on Sunday, with two hours of rollback."}, {"pyramide/cutover", "Cutover", "The cutover."}, {"pyramide/third", "Third", "A third one."}},
+		"other":        {{"o-1", "Other", "Something else."}},
+	}
+	s := b.federated(t, secret)
+	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 2}))
+	if len(got.Results) != 4 || got.Results[0].KnowledgeID != "pyramide/ledger" || got.Results[1].KnowledgeID != "pyramide/cutover" || got.Results[2].KnowledgeID != "a-1" {
+		t.Fatalf("order: %+v", got.Results)
+	}
+	if got.Results[0].Level != "synthesis" || got.Results[2].Level != "" || got.Results[0].Provenance != "[team/acme] synthesis: Ledger, pyramide/ledger" {
+		t.Fatalf("level: %+v", got.Results[0])
+	}
+	asked := map[string]float64{}
+	for _, c := range b.brain.calls {
+		var args map[string]any
+		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+		asked[args["collection"].(string)] = args["top_k"].(float64)
+	}
+	if len(asked) != 3 || asked["acme-pyramid"] != 2 || asked["team-acme"] != 2 || b.brain.bearers["acme-pyramid"] != "Bearer "+secret {
+		t.Fatalf("calls: %+v", b.brain.calls)
+	}
+	ids := b.auditLines(t)[0]["ids"].(map[string]any)["knowledge_ids"].([]any)
+	if fmt.Sprint(ids) != "[team/acme:a-1 team/acme:a-2 team/acme:pyramide/cutover team/acme:pyramide/ledger team/other:o-1]" {
+		t.Fatalf("audit ids: %v", ids)
+	}
+
+	got = decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 1, "syntheses": 3}))
+	if len(got.Results) != 4 || got.Results[2].KnowledgeID != "pyramide/third" || got.Results[3].Level != "" {
+		t.Fatalf("three syntheses: %+v", got.Results)
+	}
+	calls := len(b.brain.calls)
+	got = decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 1, "syntheses": 0}))
+	if len(got.Results) != 1 || got.Results[0].Level != "" || len(b.brain.calls) != calls+2 {
+		t.Fatalf("no synthesis: %+v, %d calls", got.Results, len(b.brain.calls)-calls)
+	}
+
+	b.brain.failOn = "acme-pyramid"
+	got = decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 2}))
+	if len(got.Results) != 2 || got.Results[0].KnowledgeID != "a-1" || len(got.Skipped) != 1 || got.Skipped[0].Brain != "team/acme" || !strings.HasPrefix(got.Skipped[0].Reason, "pyramid: ") {
+		t.Fatalf("failed pyramid: %+v", got)
+	}
+}
+
+// th_descend opens the sources a synthesis cites: it reads the synthesis,
+// takes the ids listed under the pyramid's sources key (a JSON list, or one
+// id), and reads each, up to limit (5 by default). A source that cannot be
+// read is listed in missing. It needs a brain with a pyramid and a read
+// right, and is audited as a read of the brain.
+func TestThDescendOpensTheSourcesOfASynthesis(t *testing.T) {
+	b, secret := pyramidBench(t)
+	b.brain.docs = map[string]map[string]any{
+		"pyramide/ledger": {"id": "pyramide/ledger", "title": "Ledger", "content": "The ledger moves on Sunday.", "metadata": map[string]string{"preuves": `["plan.md","rollback.md","gone.md"]`}},
+		"pyramide/one":    {"id": "pyramide/one", "title": "One", "content": "One source.", "metadata": map[string]string{"preuves": "plan.md"}},
+		"pyramide/none":   {"id": "pyramide/none", "title": "None", "content": "No source."},
+		"plan.md":         {"id": "plan.md", "title": "Ledger plan", "author": "mdupont", "source_url": "https://wiki/plan", "content": "The code word is MARMOT."},
+		"rollback.md":     {"id": "rollback.md", "title": "Rollback", "content": "Two hours."},
+	}
+	b.brain.failID = "gone.md"
+	s := b.federated(t, secret)
+	type descent struct {
+		Synthesis struct {
+			KnowledgeID string `json:"knowledge_id"`
+			Title       string `json:"title"`
+		} `json:"synthesis"`
+		Sources []struct {
+			KnowledgeID string `json:"knowledge_id"`
+			Title       string `json:"title"`
+			Author      string `json:"author"`
+			SourceURL   string `json:"source_url"`
+			Content     string `json:"content"`
+		} `json:"sources"`
+		Missing []struct {
+			KnowledgeID string `json:"knowledge_id"`
+			Reason      string `json:"reason"`
+		} `json:"missing"`
+		More int `json:"more"`
+	}
+	got := decode[descent](t, mustCall(t, s, "th_descend", map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/ledger"}))
+	if got.Synthesis.KnowledgeID != "pyramide/ledger" || len(got.Sources) != 2 || got.Sources[0].KnowledgeID != "plan.md" || got.Sources[0].Content != "The code word is MARMOT." || got.Sources[0].Author != "mdupont" || got.Sources[0].SourceURL != "https://wiki/plan" || got.Sources[1].Title != "Rollback" {
+		t.Fatalf("descent: %+v", got)
+	}
+	if len(got.Missing) != 1 || got.Missing[0].KnowledgeID != "gone.md" || !strings.Contains(got.Missing[0].Reason, "no such document") || got.More != 0 {
+		t.Fatalf("missing: %+v", got)
+	}
+	for _, c := range b.brain.calls {
+		var args map[string]any
+		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+		if _, has := args["collection"]; c.Name != "knowledge_get" || has {
+			t.Fatalf("call: %+v", c)
+		}
+	}
+	if l := b.auditLines(t)[0]; l["tool"] != "th_descend" || l["brain"] != "team/acme" || l["ok"] != true || fmt.Sprint(l["ids"].(map[string]any)["sources"]) != "[plan.md rollback.md]" || l["ids"].(map[string]any)["knowledge_id"] != "pyramide/ledger" {
+		t.Fatalf("audit: %+v", l)
+	}
+	got = decode[descent](t, mustCall(t, s, "th_descend", map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/ledger", "limit": 1}))
+	if len(got.Sources) != 1 || got.More != 2 || len(got.Missing) != 0 {
+		t.Fatalf("limit: %+v", got)
+	}
+	got = decode[descent](t, mustCall(t, s, "th_descend", map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/one"}))
+	if len(got.Sources) != 1 || got.Sources[0].KnowledgeID != "plan.md" {
+		t.Fatalf("one id: %+v", got)
+	}
+	for _, c := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/none"}, "cites no source under preuves"},
+		{map[string]any{"brain": "team/other", "knowledge_id": "x"}, "team/other has no pyramid"},
+		{map[string]any{"brain": "team/acme"}, "knowledge_id is required"},
+		{map[string]any{"brain": "org/none", "knowledge_id": "x"}, "unknown brain"},
+		{map[string]any{"brain": "team/acme", "knowledge_id": "gone.md"}, "no such document"},
+	} {
+		res := mustCall(t, s, "th_descend", c.args)
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, c.want) {
+			t.Fatalf("%v: %+v", c.args, res)
+		}
+	}
+	reader, err := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := mustCall(t, b.federated(t, reader.Secret), "th_descend", map[string]any{"brain": "team/other", "knowledge_id": "x"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "may not read") {
+		t.Fatalf("no read right: %+v", res)
+	}
+	b.brain.docs["pyramide/bad"] = map[string]any{"id": "pyramide/bad", "metadata": map[string]string{"preuves": `["unclosed`}}
+	if res := mustCall(t, s, "th_descend", map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/bad"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "cites no source") {
+		t.Fatalf("bad list: %+v", res)
+	}
+	b.brain.badTool = "knowledge_get"
+	if res := mustCall(t, s, "th_descend", map[string]any{"brain": "team/acme", "knowledge_id": "pyramide/ledger"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "decode") {
+		t.Fatalf("bad answer: %+v", res)
+	}
+	if res, _ := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_descend", Arguments: json.RawMessage(`{"brain": 5}`)}); !res.IsError {
+		t.Fatal("bad arguments passed")
+	}
+	if l := b.auditLines(t); l[len(l)-1]["tool"] != "th_descend" || l[len(l)-1]["ok"] != false {
+		t.Fatalf("a failed descent is audited: %+v", l[len(l)-1])
 	}
 }

@@ -321,7 +321,7 @@ func TestDeniedKnowsTheRefusalsOfAKey(t *testing.T) {
 
 // Reads is the classification that decide uses, for the audit summary.
 func TestReadsClassesTheTools(t *testing.T) {
-	for tool, want := range map[string]bool{"th_get": true, "knowledge_search": true, "th_add": false, "ingest_document": false, "no_such_tool": false} {
+	for tool, want := range map[string]bool{"th_get": true, "th_descend": true, "knowledge_search": true, "th_add": false, "ingest_document": false, "no_such_tool": false} {
 		if Reads(tool) != want {
 			t.Errorf("%s: %v", tool, !want)
 		}

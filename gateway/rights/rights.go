@@ -72,6 +72,38 @@ type Brain struct {
 	// AuditReads asks for a named audit line per read of this brain. Without
 	// it the reads are counted per day, without a name.
 	AuditReads bool `yaml:"audit_reads"`
+	// Pyramid is the collection of the brain's syntheses on the same
+	// server, when a producer writes them; nil when there is none.
+	Pyramid *Pyramid `yaml:"pyramid"`
+}
+
+// Pyramid names the collection of a brain's syntheses and the metadata key
+// under which a synthesis lists the ids of the documents it cites.
+type Pyramid struct {
+	Collection string `yaml:"collection"`
+	Sources    string `yaml:"sources"`
+}
+
+// SourcesKey is the metadata key of the cited documents, "sources" when the
+// file says nothing.
+func (p *Pyramid) SourcesKey() string {
+	if p.Sources == "" {
+		return "sources"
+	}
+	return p.Sources
+}
+
+// Collections are the collections a key of the brain is confined to: the
+// brain's, then its pyramid's. A whole-server brain confines nothing.
+func (b Brain) Collections() []string {
+	if b.Collection == "" {
+		return nil
+	}
+	out := []string{b.Collection}
+	if b.Pyramid != nil {
+		out = append(out, b.Pyramid.Collection)
+	}
+	return out
 }
 
 // Weight is the rank weight of the brain, 1 when the file says nothing.
@@ -170,6 +202,12 @@ func Parse(data []byte) (*Rights, error) {
 		}
 		if b.Weight() <= 0 {
 			return nil, fmt.Errorf("parse rights file: brain %q: weight must be positive", name)
+		}
+		if p := b.Pyramid; p != nil && strings.TrimSpace(p.Collection) == "" {
+			return nil, fmt.Errorf("parse rights file: brain %q: the pyramid needs a collection", name)
+		}
+		if p := b.Pyramid; p != nil && p.Collection == b.Collection {
+			return nil, fmt.Errorf("parse rights file: brain %q: the pyramid's collection must differ from the brain's", name)
 		}
 	}
 	if r.Identity != nil && (strings.TrimSpace(r.Identity.Issuer) == "" || strings.TrimSpace(r.Identity.Audience) == "") {

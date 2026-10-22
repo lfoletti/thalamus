@@ -47,6 +47,7 @@ type hookOutput struct {
 type extract struct {
 	Snippet    string   `json:"snippet"`
 	Provenance string   `json:"provenance"`
+	Level      string   `json:"level"`
 	AlsoIn     []string `json:"also_in"`
 }
 
@@ -286,7 +287,9 @@ func render(out recallOut, budget int) string {
 	}
 	header := fmt.Sprintf("Thalamus: %d extracts from the shared brains, with their provenance.", len(out.Results))
 	var lines []string
+	synthesis := false
 	for _, r := range out.Results {
+		synthesis = synthesis || r.Level == "synthesis"
 		p := r.Provenance
 		if len(r.AlsoIn) > 0 {
 			p += " (also in " + strings.Join(r.AlsoIn, ", ") + ")"
@@ -294,6 +297,9 @@ func render(out recallOut, budget int) string {
 		lines = append(lines, "- "+p+": "+strings.TrimSpace(r.Snippet))
 	}
 	footer := "An extract is a cut: read a document whole with th_get {brain, knowledge_id} from its provenance line. Ask for more with th_recall; list the brains with th_brains."
+	if synthesis {
+		footer = "A synthesis cites its sources: open them with th_descend {brain, knowledge_id}.\n" + footer
+	}
 	if len(out.Skipped) > 0 {
 		var parts []string
 		for _, s := range out.Skipped {

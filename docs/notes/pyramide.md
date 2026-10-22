@@ -33,7 +33,16 @@ Pilote du 22 octobre 2026 (`CHANTIER_PILOTE_CORTEXDB.md`, ai-audio, 41 questions
 | contaixt, synthèses + passages | 76,4 % |
 | contaixt, passages seuls | 50,5 % |
 | CortexDB, mode graphe, sans pyramide | 74,8 % |
-| **CortexDB, mode graphe + pyramide servie d'abord** | **78,5 %** |
+| CortexDB, mode graphe + pyramide servie d'abord | 78,5 % |
+| **CortexDB, vecteurs, synthèses en tête puis morceaux** (remesure du soir) | **81,2 %** |
+| CortexDB, vecteurs, synthèses et fiches classées par CortexDB lui-même | 75,5 % |
+| CortexDB, sans vecteurs, synthèses en tête | 77,6 % |
+
+La remesure du soir vient de l'autre session (contaixt, 22 octobre 2026), avec 1 837 synthèses d'ai-audio versées et l'encodeur de contaixt servi à CortexDB. Ce qu'elle établit :
+
+- Les synthèses apportent l'essentiel : 19 points de plus que les fiches seules. Les vecteurs ajoutent 3 à 7 points.
+- **L'ordre compte** : les synthèses en tête, placées par le client, battent le classement que CortexDB fait lui-même (81,2 contre 75,5). C'est donc au client de composer le contexte. Dans Thalamus, `th_recall` le fait.
+- Le gain est surtout sur les questions récentes (16 points). Les questions de fond perdent 5,5 points.
 
 Source : `cache/pilote_cortexdb/mesure/ai-audio_bilan_2026-10-22T21-01.json` de contaixt. La pyramide est stockée dans CortexDB comme des documents d'une collection `pyramide`, avec leurs preuves en métadonnée (`puits_cortexdb.synthese_vers_cortexdb`). Le client les place avant les passages.
 
@@ -43,7 +52,7 @@ Conclusion : la pyramide garde sa valeur quand CortexDB la stocke et la cherche.
 
 | Partie | Place | Raison |
 | :- | :- | :- |
-| **Construction** : écriture par un modèle, choix des notions, thèmes, cartes, cascade | **En amont** : contaixt, ou un autre producteur de l'organisation | Elle appelle un modèle et coûte de l'argent. Le choix des notions et des sujets est éditorial. |
+| **Construction** : écriture par un modèle, choix des notions, thèmes, cartes, cascade | **Hors du moteur**, dans la couche de veille (contaixt, ou un autre producteur de l'organisation). Elle lit ses preuves dans CortexDB et écrit ses synthèses dans CortexDB. L'autre session dit « en aval de CortexDB » pour ce sens. | Elle appelle un modèle et coûte de l'argent. Le choix des notions et des sujets est éditorial. Elle ne garde pas un second graphe. |
 | **Stockage** : une synthèse = un document, son niveau, ses preuves, son empreinte | **CortexDB**, sans changement : `ingest_document` dans une collection de synthèses | Le pilote le fait déjà. Le hachage du contenu (#75) dit si une synthèse a changé. |
 | **Service** : les synthèses d'abord, puis les passages, puis la descente vers les preuves | **En aval** : Thalamus (`th_recall`, `th_descend`) | C'est un ordre de service. Le propriétaire de CortexDB laisse ce choix à l'appelant (voir la section 4). |
 | **Contrôle** : chaque nombre, date ou nom d'une phrase se lit dans les preuves citées | **CortexDB**, par la fiche amont 08 | C'est mécanique, sans modèle, et utile à chaque producteur. |
@@ -66,9 +75,22 @@ Le moteur a déjà des parties proches :
 4. **`th_descend`** : l'agent donne l'identifiant d'une synthèse. Le gateway lit ses preuves en métadonnée et rend les documents cités de la collection du cerveau.
 5. **Le hook** : rien de nouveau. Il reçoit l'ordre de `th_recall`.
 6. **Les droits** ne changent pas. Un lecteur du cerveau lit ses synthèses.
-7. **La mesure** : le banc ai-audio du pilote, passé par le gateway (`th_recall`), doit donner la même couverture que la mesure directe (78,5 %).
+7. **La mesure** : le banc ai-audio du pilote, passé par le gateway (`th_recall`), doit donner la même couverture que la mesure directe (81,2 %).
 
-## 6. Ce qui reste ouvert
+## 6. Les preuves : identifiants de documents ou de morceaux
+
+L'autre session propose que les preuves d'une synthèse deviennent des identifiants de morceaux (chunks). CortexDB peut alors suivre la provenance et contrôler les phrases (fiche 08).
+
+Une contrainte vient de la liste blanche de v2.136.0 : `get_chunks` est refusé à une clé confinée (« names chunks, whose document the guard does not load »). `th_descend` lit donc les preuves par `knowledge_get`, avec des identifiants de **documents**. Si les preuves deviennent des morceaux, la synthèse doit garder aussi les documents de ses preuves, sous une autre clé de métadonnée. Sinon, `th_descend` ne peut rien ouvrir pour une clé confinée.
+
+## 7. Deux défauts de CortexDB v2.136.0 (constat de l'autre session)
+
+- `ingest_document` écrit des vecteurs factices (mots hachés), même avec un encodeur branché. Il faut recalculer les vecteurs ensuite avec `vector_dimension_repair`.
+- `vector_dimension_repair` vide le document d'origine, les métadonnées et les droits de chaque ligne recalculée (12 218 lignes dans le pilote). La cause donnée : `pkg/core/dimension_report.go` relit la ligne sans ces colonnes, puis la réécrit entière. Le défaut est encore sur `main` (`0328e0a`).
+
+Ces deux défauts touchent tout cerveau avec un encodeur. Les 2 sont confirmés par un test sur `main` le 22 octobre 2026 (fiche amont 09).
+
+## 8. Ce qui reste ouvert
 
 - La langue des synthèses dans une organisation en plusieurs langues : une langue pivot, ou une synthèse par langue (voir `docs/notes/multilinguisme.md`).
 - La table des équivalents du contrôle (« RGPD », « GDPR », « DSGVO ») : dans contaixt, elle est écrite dans le code (`synthese.EQUIVALENTS`). Dans le moteur, elle devient une donnée que le producteur donne avec la phrase.

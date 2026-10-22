@@ -25,6 +25,7 @@ brains:
     addr: $ADDR
     keys_file: $S/data/keys.json
     collection: team-acme
+    pyramid: {collection: acme-pyramid, sources: preuves}
     readers: [group:acme]
     writers: [user:lfoletti]
     curators: [user:kmlead]
@@ -164,6 +165,17 @@ check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme 
 get=$(mcp "$LF" "" th_get '{"brain":"team/acme","knowledge_id":"spec-1"}')
 if printf '%s' "$get" | grep -q '"id\\":\\"spec-1' && ! printf '%s' "$get" | grep -q isError; then ok "th_get reads spec-1 whole"; else ko "th_get" "$get"; fi
 check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMA" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
+
+# The pyramid of team/acme: a synthesis in its own collection, citing spec-1.
+# The key of team/acme holds both collections; th_recall serves the synthesis
+# first, and th_descend opens what it cites.
+check "lfoletti: write a synthesis into the pyramid of team/acme" ok "$(mcp "$LF" team/acme ingest_document '{"document_id":"pyramide/ledger","title":"Ledger migration","content":"The ledger migration happens on Sunday night, with a rollback window of two hours.","collection":"acme-pyramid","metadata":{"preuves":"[\"spec-1\"]"}}')"
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"]}')
+first=$(printf '%s' "$rec" | sed -n 's/.*"results\\":\[{\\"brain\\":\\"team\/acme\\",\\"knowledge_id\\":\\"\([^\\]*\)\\".*/\1/p')
+if [ "$first" = "pyramide/ledger" ] && printf '%s' "$rec" | grep -q 'synthesis: Ledger migration, pyramide/ledger' && printf '%s' "$rec" | grep -q 'spec-1'; then ok "th_recall serves the synthesis first, then the passages"; else ko "th_recall with a pyramid (first: $first)" "$rec"; fi
+desc=$(mcp "$LF" "" th_descend '{"brain":"team/acme","knowledge_id":"pyramide/ledger"}')
+if printf '%s' "$desc" | grep -q 'knowledge_id\\":\\"spec-1' && printf '%s' "$desc" | grep -q 'rollback window is two hours' && ! printf '%s' "$desc" | grep -q isError; then ok "th_descend opens spec-1, the source of the synthesis"; else ko "th_descend" "$desc"; fi
+check "lfoletti: th_descend on org/secrets, which has no pyramid (refused)" denied "$(mcp "$LF" "" th_descend '{"brain":"org/secrets","knowledge_id":"secret-doc"}')"
 
 # The REST face, for a browser extension or a script: same keys, same
 # circuit. GET /v1/brains lists, POST /v1/add proposes, refusals by status.

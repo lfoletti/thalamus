@@ -360,3 +360,35 @@ func TestKeySyncStopsOnAFailedAction(t *testing.T) {
 		t.Fatalf("absent file: %d %q", code, stderr)
 	}
 }
+
+// A brain with a pyramid gives its keys both collections: key issue writes
+// them, a key with the brain's collection only is stale, and key sync
+// reissues it.
+func TestAKeyFollowsThePyramidOfItsBrain(t *testing.T) {
+	dir := t.TempDir()
+	rightsPath, keysPath := writeRights(t, dir)
+	data, _ := os.ReadFile(rightsPath)
+	if err := os.WriteFile(rightsPath, []byte(strings.Replace(string(data), "    collection: team-acme\n", "    collection: team-acme\n    pyramid: {collection: acme-pyramid}\n", 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := keys.Issue(keysPath, "mdupont", "team/acme", "team-acme", rights.Read); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, _ := call(t, "key", "list", rightsPath); code != 0 || out != "team/acme  mdupont  read-only  stale: collections are team-acme, acme-pyramid\n" {
+		t.Fatalf("list: %d %q", code, out)
+	}
+	if code, _, stderr := call(t, "key", "issue", rightsPath, "lfoletti", "team/acme"); code != 0 {
+		t.Fatalf("issue: %d %s", code, stderr)
+	}
+	if code, out, _ := call(t, "key", "sync", rightsPath); code != 0 || !strings.HasPrefix(out, "reissued th/mdupont/team/acme ") {
+		t.Fatalf("sync: %d %q", code, out)
+	}
+	for _, k := range keysOf(t, keysPath) {
+		if strings.Join(k.Scope.Collections, ",") != "team-acme,acme-pyramid" {
+			t.Fatalf("key %s: %v", k.ID, k.Scope.Collections)
+		}
+	}
+	if code, out, _ := call(t, "key", "list", rightsPath); code != 0 || strings.Count(out, "  ok\n") != 2 {
+		t.Fatalf("after sync: %d %q", code, out)
+	}
+}

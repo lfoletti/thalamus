@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/lfoletti/thalamus/gateway/keys"
@@ -110,7 +111,7 @@ func keyIssue(r *rights.Rights, user, brain string, out io.Writer) error {
 		return err
 	}
 	b := r.Brains[brain]
-	k, err := keys.Issue(b.KeysFile, user, brain, b.Collection, access)
+	k, err := keys.IssueScoped(b.KeysFile, user, brain, b.Collections(), access)
 	if err != nil {
 		return err
 	}
@@ -140,11 +141,15 @@ func stale(r *rights.Rights, b rights.Brain, h keys.Held) string {
 	if access.Clearance() != h.Clearance {
 		return "right is " + access.String()
 	}
-	if h.Collection != b.Collection {
-		if b.Collection == "" {
+	if !slices.Equal(h.Collections, b.Collections()) {
+		switch want := b.Collections(); len(want) {
+		case 0:
 			return "brain is the whole server"
+		case 1:
+			return "collection is " + want[0]
+		default:
+			return "collections are " + strings.Join(want, ", ")
 		}
-		return "collection is " + b.Collection
 	}
 	return ""
 }
@@ -269,7 +274,7 @@ func act(out io.Writer, dry bool, verb string, b rights.Brain, user, brain strin
 			return nil
 		}
 	}
-	k, err := keys.Issue(b.KeysFile, user, brain, b.Collection, access)
+	k, err := keys.IssueScoped(b.KeysFile, user, brain, b.Collections(), access)
 	if err != nil {
 		return err
 	}
