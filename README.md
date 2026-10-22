@@ -51,7 +51,9 @@ The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At 
 - It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
 - The agent can open the full document of an extract with `th_get`.
 
-Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant; Thalamus has one for Claude Code.
+Planned: the hook also searches the local brain of the machine, and merges its extracts with the extracts of the server brains. The local brain stays on the machine. It does not go through the gateway.
+
+Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant. Thalamus has one for Claude Code.
 
 ## Try it
 
@@ -127,6 +129,10 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - The Claude Code plugin: recall hook, tools and the `/th-add` command.
 - The Chrome extension: propose a page or a selection. It keeps the main content of the page.
 - A proportionate audit: named writes, reviews, logins and refusals, reads counted without a name, named reads only on the brains that ask for it, and a retention period.
+
+**Next in Thalamus**
+
+- The recall hook also searches the local brain of the machine, and merges its extracts with the extracts of the server brains.
 
 **With CortexDB**
 
