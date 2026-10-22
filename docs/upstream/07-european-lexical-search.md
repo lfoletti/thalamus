@@ -36,7 +36,12 @@ La règle équivalente se décide **selon le résultat**, terme par terme : un t
 
 ### PR 1 : un jeu d'évaluation suisse (environ 150 lignes, d'abord)
 
-Comme `eval_zh_test.go` pour le chinois : `pkg/eval/testdata/dataset_ch.json` et `pkg/eval/eval_ch_test.go`. Environ 40 questions sur des documents dans les 4 langues, dont des questions croisées (question en français, document en allemand). Le test mesure le rappel lexical et donne la base de chaque PR suivante. Sans ce jeu, les PR 3 et 4 n'ont pas de mesure. Il faut une personne qui parle romanche pour relire les questions en romanche.
+Comme `eval_zh_test.go` pour le chinois : `pkg/eval/testdata/dataset_ch.json` et `pkg/eval/eval_ch_test.go`. Environ 40 questions sur des documents dans les 4 langues, dont des questions croisées (question en français, document en allemand). Le test mesure le rappel lexical et donne la base de chaque PR suivante. Sans ce jeu, les PR 3 et 4 n'ont pas de mesure. Pour le romanche, sans personne qui parle cette langue (constat du 22 octobre 2026), le jeu utilise des textes officiels déjà traduits par des professionnels :
+
+- le droit du canton des Grisons, publié en allemand, en italien et en romanche ;
+- les textes fédéraux publiés aussi en romanche sur Fedlex (par exemple la Constitution fédérale).
+
+Les documents en romanche sont donc ces textes officiels, alignés avec leur version allemande ou italienne. Les questions sont en français, en allemand ou en italien, et la réponse attendue est le passage en romanche. Les questions en romanche restent hors du jeu, jusqu'à la relecture par une personne qui parle cette langue, par exemple par la Lia Rumantscha.
 
 ### PR 2 : les accents égaux sur les deux moteurs (environ 80 lignes)
 
@@ -77,4 +82,4 @@ Règle : si l'index des mots ne trouve aucune ligne pour un terme de 6 lettres o
 
 - Rejouer le tableau des constats sur la version de l'amont du jour.
 - Lire `pkg/core/advanced_search.go` et `pkg/agentmem/search.go` : `agentmem` a sa propre table avec `remove_diacritics 2` (`pkg/agentmem/schema.go:136`), donc il se comporte peut-être déjà autrement.
-- Faire relire les questions en romanche du jeu par une personne qui parle cette langue.
+- Vérifier la licence des textes officiels repris dans le jeu (droit des Grisons, Fedlex).
