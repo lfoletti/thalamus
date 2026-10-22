@@ -20,6 +20,7 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 | [`03-tool-audit-ids.md`](03-tool-audit-ids.md) | Identifiants touchés dans le journal des requêtes | La moitié de `audit.go` (l'extraction des identifiants par outil, `idsOf`) | 200 lignes | 3 |
 | [`04-session-text-permitted.md`](04-session-text-permitted.md) | `loadSessionText` passe par `memoryBucketPermitted` | Rien (sécurité du moteur, déjà couverte par la liste blanche côté clés) | 60 lignes | 4 |
 | [`05-ingest-author-from-key.md`](05-ingest-author-from-key.md) | `author` et `written_by` depuis la clé appelante | La pose de `author` par `th_add` | 80 lignes | 5 |
+| [`06-graph-tools-confined.md`](06-graph-tools-confined.md) | Les outils de graphe pour une clé confinée (deux PR) | Rien à retirer : la fiche débloque la fédération des entités pour les cerveaux avec `collection` | 250 + 150 lignes | 2, dès la fusion de #76 et #77 |
 
 L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `th-NN-<sujet>` du fork `lfoletti/cortexdb`, selon `docs/pipeline_pr.md`.
 
