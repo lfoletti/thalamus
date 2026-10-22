@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 364" width="760" height="364" role="img" aria-labelledby="title desc">
-  <title id="title">Automatic recall in Claude Code</title>
-  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brain on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
+  <title id="title">Combining local and global brains</title>
+  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brains on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
   <style>
     .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
     .core { fill: #312e81; stroke: #312e81; }
@@ -44,9 +44,11 @@
   <path class="line" d="M480 53 L 520 53"/><path class="head" d="M530 53 L 519 47.5 L 519 58.5 Z"/>
 
   <!-- Row 2: the brains -->
-  <path class="dash" d="M380 82 L 380 130"/><path class="phead" d="M380 140 L 374.5 129 L 385.5 129 Z"/>
+  <path class="dash" d="M380 82 L 380 118"/><path class="phead" d="M380 128 L 374.5 117 L 385.5 117 Z"/>
+  <rect class="box plan" x="292" y="128" width="200" height="58" rx="8"/>
+  <rect class="box plan" x="286" y="134" width="200" height="58" rx="8"/>
   <rect class="box plan" x="280" y="140" width="200" height="58" rx="8"/>
-  <text class="label" x="380" y="165" text-anchor="middle">Local brain</text>
+  <text class="label" x="380" y="165" text-anchor="middle">Local brains</text>
   <text class="ptext" x="380" y="184" text-anchor="middle">on the machine · planned</text>
 
   <path class="line" d="M630 82 L 630 118"/><path class="head" d="M630 128 L 624.5 117 L 635.5 117 Z"/>
