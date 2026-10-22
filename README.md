@@ -10,13 +10,13 @@ Thalamus brings the knowledge of an organisation to each employee and to their c
 
 A team keeps its knowledge in several CortexDB brains: one for the team, one for a client, one for the whole organisation. Each employee may read some of them and write to fewer. Thalamus is the gateway between the employees and these brains.
 
-When an employee types a prompt in Claude Code, the Thalamus plugin asks the gateway for the best extracts. The gateway searches each brain that this employee may read, with the employee's own key, and merges the results. Each extract comes with its source: the brain, the document and the author. The agent reads these extracts before it answers.
+The employee's assistant reaches the brains through the gateway, which is an MCP server. When the assistant asks a question with `th_recall`, the gateway searches each brain that this employee may read, with the employee's own key, and merges the results. Each extract comes with its source: the brain, the document and the author. With `th_get`, the assistant reads the full document behind an extract.
 
 An employee can also propose a document, from Claude Code or from a page in Chrome. The document waits for a curator of the brain, who accepts or rejects it.
 
 ## Why use it
 
-- **Knowledge at the moment of need.** At each prompt, the agent receives the best extracts from every brain that the employee may read. The employee does not search, and does not choose where to look. Each extract gives its source, so the employee can open the full document.
+- **Knowledge at the moment of need.** One question reaches every brain that the employee may read. The employee does not choose where to look. Each extract gives its source, so the employee can open the full document. In Claude Code, a hook brings the extracts at each prompt (see [Automatic recall in Claude Code](#automatic-recall-in-claude-code)).
 - **Access without requests.** An employee logs in with the account of the organisation, and the gateway issues the keys that the rights allow. To give a person access to a team's brains, add the login to the team's group in `rights.yaml`. The change applies at the next call, without a restart.
 - **Knowledge added in one step.** An employee proposes a document from Claude Code or from a page in Chrome. A curator of the brain accepts or rejects it, from the same tools.
 - **Brains of the correct size.** A brain is a whole CortexDB server or one collection of a shared server. Small teams can share one server. A sensitive brain can have its own server. Each brain can have a weight in the merged results.
@@ -39,6 +39,19 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 - Each call goes to CortexDB with the caller's key. CortexDB checks the key on every call, so the scope of a key does not depend on the gateway.
 - The gateway keeps an audit in `audit.jsonl`, for security and traceability. The writes, the reviews, the logins and the refused calls have a line with the name of the person. The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` in `rights.yaml` has named reads. `audit: retention_days` limits how long the lines stay.
 - An employee logs in with the organisation's identity provider (OpenID Connect). The gateway then issues the keys that the rights allow.
+
+## Automatic recall in Claude Code
+
+The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the gateway for the best extracts and gives them to the agent before it answers. The employee does not ask for them.
+
+<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The th-hook of the plugin sends it to th_recall on the Thalamus gateway, with the employee's key. The gateway searches the readable brains. The best extracts come back with their source, and the hook adds them to the prompt before the agent answers." width="760"></p>
+
+- The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the 3 best extracts to the prompt, with their source, in 9,000 characters or fewer.
+- It does not ask for a prompt of fewer than 3 words, or for a `/` command.
+- It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
+- The agent can open the full document of an extract with `th_get`.
+
+Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant; Thalamus has one for Claude Code.
 
 ## Try it
 
