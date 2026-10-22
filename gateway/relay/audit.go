@@ -54,6 +54,11 @@ type count struct {
 // login write. An engine tool reads when the engine says so.
 var readsOf = map[string]bool{"th_recall": true, "th_get": true, "th_pending": true, "th_brains": true}
 
+// Reads reports whether a tool reads: a gateway tool that reads, or an
+// engine tool that the engine classes as a read. The audit summary of
+// th-gateway uses it.
+func Reads(tool string) bool { return reads(tool) }
+
 func reads(tool string) bool {
 	if readsOf[tool] {
 		return true
