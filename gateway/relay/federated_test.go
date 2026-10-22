@@ -57,7 +57,8 @@ func decode[T any](t *testing.T, res *mcp.CallToolResult) T {
 }
 
 // th_brains lists the caller's brains with the access and whether a key
-// was issued; the caller is known from any one of their gateway keys.
+// was issued; the caller is known from any one of their gateway keys. It
+// reads no brain, so it leaves no audit line.
 func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	b := start(t)
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
@@ -78,9 +79,9 @@ func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	if len(got) != 2 || got[0].Brain != "team/acme" || got[0].Access != "write" || !got[0].Key || got[1].Brain != "team/other" || got[1].Access != "write" || got[1].Key {
 		t.Fatalf("got %+v", got)
 	}
-	l := b.auditLines(t)[0]
-	if l["tool"] != "th_brains" || l["user"] != "lfoletti" || l["brain"] != "" || l["ok"] != true {
-		t.Fatalf("audit: %+v", l)
+	// th_brains reads no brain: the audit keeps nothing of it.
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("audit: %+v", lines)
 	}
 }
 

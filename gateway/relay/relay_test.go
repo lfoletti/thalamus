@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,9 @@ import (
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/lfoletti/thalamus/gateway/keys"
 	"github.com/lfoletti/thalamus/gateway/rights"
@@ -37,6 +40,7 @@ type brain struct {
 	badJSON           bool                 // answer knowledge_search with text that is not JSON
 	pending           map[string][]fakeHit // what aggregate_metadata and knowledge_get serve, by collection
 	failTool, badTool string               // one tool that fails, one that answers text that is not JSON
+	denyTool          string               // one tool the brain refuses to the key (PermissionDenied)
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -84,6 +88,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	}
 	if b.failTool == req.GetName() {
 		return nil, errors.New("brain says no to " + req.GetName())
+	}
+	if b.denyTool == req.GetName() {
+		return nil, status.Error(codes.PermissionDenied, "not for this key")
 	}
 	if req.GetName() == "aggregate_metadata" {
 		var lim struct {
@@ -133,6 +140,7 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 }
 
 type bench struct {
+	a        *Audit
 	brain    *brain
 	rights   *rights.Rights
 	keysFile string
@@ -140,7 +148,10 @@ type bench struct {
 	url      string
 }
 
-func start(t *testing.T) *bench {
+func start(t *testing.T) *bench { t.Helper(); return startWith(t, func(y string) string { return y }) }
+
+// startWith starts the bench with rights the edit changes.
+func startWith(t *testing.T, edit func(string) string) *bench {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -154,7 +165,7 @@ func start(t *testing.T) *bench {
 
 	dir := t.TempDir()
 	keysFile := filepath.Join(dir, "keys.json")
-	r, err := rights.Parse([]byte(`
+	r, err := rights.Parse([]byte(edit(`
 brains:
   team/acme:
     addr: ` + lis.Addr().String() + `
@@ -162,14 +173,16 @@ brains:
     collection: team-acme
     readers: [user:mdupont]
     writers: [user:lfoletti]
+    audit_reads: true
   team/other:
     addr: ` + lis.Addr().String() + `
     keys_file: ` + keysFile + `
     collection: other
     writers: [user:lfoletti]
     weight: 0.5
+    audit_reads: true
 groups: {}
-`))
+`)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +194,7 @@ groups: {}
 	t.Cleanup(func() { _ = a.Close() })
 	srv := httptest.NewServer(New(rights.Static(r), a).Handler())
 	t.Cleanup(srv.Close)
-	return &bench{brain: b, rights: r, keysFile: keysFile, audit: audit, url: srv.URL}
+	return &bench{a: a, brain: b, rights: r, keysFile: keysFile, audit: audit, url: srv.URL}
 }
 
 type bearer struct{ token string }
@@ -392,7 +405,7 @@ func TestTheAuditFileAppendsAndNamesItselfOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Record(Entry{User: "u", Brain: "b", Tool: "t", OK: true}); err != nil {
+	if err := a.Note(Entry{User: "u", Brain: "b", Tool: "t", OK: true}, policy(t, "")); err != nil {
 		t.Fatal(err)
 	}
 	_ = a.Close()
@@ -400,7 +413,7 @@ func TestTheAuditFileAppendsAndNamesItselfOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Record(Entry{User: "u", Brain: "b", Tool: "t2", OK: false, Error: "x"}); err != nil {
+	if err := a.Note(Entry{User: "u", Brain: "b", Tool: "t2", OK: false, Error: "x"}, policy(t, "")); err != nil {
 		t.Fatal(err)
 	}
 	_ = a.Close()
@@ -411,7 +424,7 @@ func TestTheAuditFileAppendsAndNamesItselfOnFailure(t *testing.T) {
 	if _, err := OpenAudit(filepath.Join(dir, "missing", "audit.jsonl")); err == nil || !strings.Contains(err.Error(), "audit.jsonl") {
 		t.Fatalf("got %v", err)
 	}
-	if err := a.Record(Entry{}); err == nil {
+	if err := a.Note(Entry{}, policy(t, "")); err == nil {
 		t.Fatal("a closed audit accepted a record")
 	}
 	if err := a.Close(); err != nil {
@@ -475,5 +488,67 @@ func TestTheRelayFollowsTheRightsFile(t *testing.T) {
 	write(text, t0.Add(3*time.Second))
 	if got := status(); got != http.StatusOK {
 		t.Fatalf("restored: %d", got)
+	}
+}
+
+// Through the relay, a read of a brain without audit_reads leaves no named
+// line: the audit counts it, and writes the count of the day at close.
+func TestARelayedReadIsCountedWithoutAName(t *testing.T) {
+	b := startWith(t, func(y string) string { return strings.ReplaceAll(y, "    audit_reads: true\n", "") })
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	s, err := b.session(t, "team/acme", k.Secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if _, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "knowledge_get", Arguments: map[string]any{"knowledge_id": "doc-1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("named read: %+v", lines)
+	}
+	if err := b.a.Close(); err != nil {
+		t.Fatal(err)
+	}
+	lines := b.auditLines(t)
+	if len(lines) != 1 || lines[0]["tool"] != "reads" || lines[0]["brain"] != "team/acme" || lines[0]["calls"] != 1.0 || lines[0]["user"] != "" {
+		t.Fatalf("count: %+v", lines)
+	}
+}
+
+// A read the brain refuses to the key keeps a named line, even on a brain
+// whose reads are counted: a refusal is a matter of security, and says
+// nothing of the work of the person.
+func TestARefusedReadIsNamed(t *testing.T) {
+	b := startWith(t, func(y string) string { return strings.ReplaceAll(y, "    audit_reads: true\n", "") })
+	b.brain.denyTool = "knowledge_get"
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	s, err := b.session(t, "team/acme", k.Secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "knowledge_get", Arguments: map[string]any{"knowledge_id": "doc-1"}}); err != nil || !res.IsError {
+		t.Fatalf("refused call: %+v, %v", res, err)
+	}
+	// The same through th_get, and through th_pending for a curator.
+	withCurator(t, b)
+	if res := mustCall(t, b.federated(t, k.Secret), "th_get", map[string]any{"brain": "team/acme", "knowledge_id": "doc-1"}); !res.IsError {
+		t.Fatal("th_get was not refused")
+	}
+	b.brain.denyTool = "aggregate_metadata"
+	kc, _ := keys.Issue(b.keysFile, "kmlead", "team/acme", "team-acme", rights.Curate)
+	if res := mustCall(t, b.federated(t, kc.Secret), "th_pending", map[string]any{"brain": "team/acme"}); !res.IsError {
+		t.Fatal("th_pending was not refused")
+	}
+	lines := b.auditLines(t)
+	if len(lines) != 3 {
+		t.Fatalf("audit: %+v", lines)
+	}
+	for i, want := range []string{"lfoletti knowledge_get", "lfoletti th_get", "kmlead th_pending"} {
+		l := lines[i]
+		if fmt.Sprint(l["user"], " ", l["tool"]) != want || l["ok"] != false || !strings.Contains(l["error"].(string), "PermissionDenied") {
+			t.Fatalf("line %d: %+v", i, l)
+		}
 	}
 }

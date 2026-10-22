@@ -128,11 +128,12 @@ func (s *Server) audited(ctx context.Context, b rights.Brain, user, name, tool, 
 	result, err := s.callBrain(ctx, b, user, name, engineTool, req)
 	if err != nil {
 		entry.Error = err.Error()
-		_ = s.audit.Record(entry)
+		entry.Denied = denied(err)
+		s.note(entry)
 		return errResult(fmt.Errorf("%s: %w", tool, err))
 	}
 	entry.OK = true
-	_ = s.audit.Record(entry)
+	s.note(entry)
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}
 }
 
@@ -208,7 +209,8 @@ func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mc
 	entry := Entry{User: user, Brain: args.Brain, Tool: "th_pending"}
 	if err != nil {
 		entry.Error = err.Error()
-		_ = s.audit.Record(entry)
+		entry.Denied = denied(err)
+		s.note(entry)
 		return errResult(fmt.Errorf("th_pending: %w", err))
 	}
 	var ids []string
@@ -216,7 +218,7 @@ func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mc
 		ids = append(ids, h.KnowledgeID)
 	}
 	entry.OK, entry.IDs = true, map[string]any{"knowledge_ids": ids}
-	_ = s.audit.Record(entry)
+	s.note(entry)
 	return jsonResult(map[string]any{"brain": args.Brain, "results": hits})
 }
 

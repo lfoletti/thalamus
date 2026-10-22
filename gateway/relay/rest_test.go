@@ -33,7 +33,7 @@ func (b *bench) rest(t *testing.T, method, path, secret, body string) (int, stri
 }
 
 // GET /v1/brains lists the brains of the caller, the same list as
-// th_brains, under the same key, and is audited the same way.
+// th_brains, under the same key, and leaves no audit line either.
 func TestRestListsTheBrains(t *testing.T) {
 	b := start(t)
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
@@ -42,8 +42,8 @@ func TestRestListsTheBrains(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &got); status != http.StatusOK || err != nil || len(got) != 2 || got[0].Brain != "team/acme" || got[0].Access != "write" || !got[0].Key || got[1].Brain != "team/other" || got[1].Key {
 		t.Fatalf("%d %s", status, body)
 	}
-	if l := b.auditLines(t)[0]; l["tool"] != "th_brains" || l["user"] != "lfoletti" {
-		t.Fatalf("audit: %+v", l)
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("audit: %+v", lines)
 	}
 	for _, c := range []struct {
 		method, path, secret string

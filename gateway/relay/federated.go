@@ -80,7 +80,7 @@ func (s *Server) brainsOf(user string) []brainEntry {
 		_, err := keys.SecretOf(s.rights().Brains[g.Brain].KeysFile, user, g.Brain)
 		out = append(out, brainEntry{Brain: g.Brain, Access: g.Access.String(), Key: err == nil})
 	}
-	_ = s.audit.Record(Entry{User: user, Tool: "th_brains", OK: true})
+	s.note(Entry{User: user, Tool: "th_brains", OK: true})
 	return out
 }
 
@@ -227,7 +227,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	sort.Strings(brains)
 	sort.Strings(read)
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
-	_ = s.audit.Record(entry)
+	s.note(entry)
 	return recallResult{Results: fuse(lists, args.TopK), Skipped: skips}, nil
 }
 

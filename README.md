@@ -37,7 +37,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 - The gateway reads `rights.yaml` and issues the keys. It reads the file again when it changes, so a removed right applies at the next call.
 - Each call goes to CortexDB with the caller's key. CortexDB checks the key on every call, so the scope of a key does not depend on the gateway.
-- The gateway records each call in `audit.jsonl`, for security and traceability. Today this includes the reads. The roadmap limits the audit to what these two purposes need.
+- The gateway keeps an audit in `audit.jsonl`, for security and traceability. The writes, the reviews, the logins and the refused calls have a line with the name of the person. The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` in `rights.yaml` has named reads. `audit: retention_days` limits how long the lines stay.
 - An employee logs in with the organisation's identity provider (OpenID Connect). The gateway then issues the keys that the rights allow.
 
 ## Try it
@@ -113,10 +113,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - Login with OpenID Connect, from the command line and from the extension.
 - The Claude Code plugin: recall hook, tools and the `/th-add` command.
 - The Chrome extension: propose a page or a selection. It keeps the main content of the page.
-
-**Next in Thalamus**
-
-- A proportionate audit. The writes, the reviews, the keys and the logins stay in the audit. The automatic recall is counted per brain, without a name. Named reads are recorded only for the brains that `rights.yaml` marks as sensitive. `rights.yaml` sets how long the audit is kept.
+- A proportionate audit: named writes, reviews, logins and refusals, reads counted without a name, named reads only on the brains that ask for it, and a retention period.
 
 **With CortexDB**
 

@@ -349,3 +349,20 @@ func TestTheIdentityBlockIsReadAndChecked(t *testing.T) {
 		}
 	}
 }
+
+// The audit block sets how long the audit keeps its lines, and a brain may
+// ask for named reads. Without them the file keeps every line and counts
+// the reads; a negative retention is refused.
+func TestTheAuditBlockIsReadAndChecked(t *testing.T) {
+	r := parse(t, sample)
+	if r.RetentionDays() != 0 || r.Brains["team/acme"].AuditReads {
+		t.Fatalf("defaults: %d, %v", r.RetentionDays(), r.Brains["team/acme"].AuditReads)
+	}
+	r = parse(t, strings.Replace(sample, "    weight: 0.8\n", "    weight: 0.8\n    audit_reads: true\n", 1)+"audit:\n  retention_days: 365\n")
+	if r.RetentionDays() != 365 || !r.Brains["org/reference"].AuditReads || r.Brains["team/acme"].AuditReads {
+		t.Fatalf("read: %d, %+v", r.RetentionDays(), r.Brains)
+	}
+	if _, err := Parse([]byte(sample + "audit:\n  retention_days: -1\n")); err == nil || !strings.Contains(err.Error(), "retention_days") {
+		t.Fatalf("negative retention: %v", err)
+	}
+}
