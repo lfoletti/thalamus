@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -22,7 +23,13 @@ import (
 // block is cut whole extracts at a time under a margin below that.
 const contextBudget = 9000
 
-const usage = "usage: th-hook recall  (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK)"
+const usage = `usage: th-hook recall               (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK, TH_LOCAL_RECALL, TH_LOCAL_BRAINS)
+       th-hook brains               (the brains of the automatic recall, on or off)
+       th-hook on|off <brain>...    (local brains are local:<name>)
+       th-hook only <brain>... | --clear`
+
+// deadline bounds one recall, the gateway and the local brains together.
+var deadline = 8 * time.Second
 
 type hookInput struct {
 	Prompt string `json:"prompt"`
@@ -50,16 +57,28 @@ type recallOut struct {
 	} `json:"skipped"`
 }
 
-// run dispatches: 0 done or silent, 2 wrong command line.
+// run dispatches: 0 done or silent, 1 a command failed, 2 wrong command
+// line. The recall never fails: its problems go to stderr.
 func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr io.Writer) int {
-	if len(args) != 1 || args[0] != "recall" {
+	get := source(env)
+	switch {
+	case len(args) == 1 && args[0] == "recall":
+	case len(args) == 1 && args[0] == "brains":
+		return listBrains(get, stdout, stderr)
+	case len(args) > 1 && (args[0] == "on" || args[0] == "off" || args[0] == "only"):
+		path := recallFile(get)
+		if err := writeFilter(path, readFilter(path).with(args[0], args[1:])); err != nil {
+			fmt.Fprintf(stderr, "th-hook: %v\n", err)
+			return 1
+		}
+		return 0
+	default:
 		fmt.Fprintln(stderr, usage)
 		return 2
 	}
-	text, err := recall(stdin, env)
-	if err != nil {
+	text, problems := recall(stdin, get)
+	for _, err := range problems {
 		fmt.Fprintf(stderr, "th-hook: %v\n", err)
-		return 0
 	}
 	if text == "" {
 		return 0
@@ -71,40 +90,152 @@ func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr
 	return 0
 }
 
-// recall reads the prompt, asks the gateway, and renders the context. An
-// empty string with no error means there is nothing to inject.
-func recall(stdin io.Reader, env func(string) string) (string, error) {
+// recall reads the prompt, then asks the gateway and the local brains at
+// the same time, under the person's filter. The shared extracts come first,
+// then one section per local brain. Each side that fails is a problem and
+// leaves the other.
+func recall(stdin io.Reader, get func(string) string) (string, []error) {
+	payload, _ := io.ReadAll(stdin)
 	var in hookInput
-	if err := json.NewDecoder(stdin).Decode(&in); err != nil {
-		return "", fmt.Errorf("hook input: %w", err)
+	if err := json.Unmarshal(payload, &in); err != nil {
+		return "", []error{fmt.Errorf("hook input: %w", err)}
 	}
 	prompt := strings.TrimSpace(in.Prompt)
 	if prompt == "" || strings.HasPrefix(prompt, "/") || len(strings.Fields(prompt)) < 3 {
 		return "", nil
 	}
-	gateway, key, err := settings(env)
-	if err != nil {
-		return "", err
-	}
 	topK := 3
-	if v := strings.TrimSpace(env("TH_RECALL_TOPK")); v != "" {
+	if v := get("TH_RECALL_TOPK"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n <= 0 {
-			return "", fmt.Errorf("TH_RECALL_TOPK %q is not a positive integer", v)
+			return "", []error{fmt.Errorf("TH_RECALL_TOPK %q is not a positive integer", v)}
 		}
 		topK = n
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	out, err := ask(ctx, gateway, key, prompt, topK)
+	choice := readFilter(recallFile(get))
+	var problems []error
+	all, err := localBrains(get)
 	if err != nil {
-		return "", err
+		problems = append(problems, err)
 	}
-	text := render(out)
-	if text == "" && len(out.Results) > 0 {
-		return "", fmt.Errorf("%d extracts, not one fits the context budget", len(out.Results))
+	var locals []localBrain
+	for _, b := range all {
+		if choice.on(b.Name) {
+			locals = append(locals, b)
+		}
 	}
-	return text, nil
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	texts := make([]string, len(locals))
+	errs := make([]error, len(locals))
+	command := strings.Fields(get("TH_LOCAL_RECALL"))
+	for i, b := range locals {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			texts[i], errs[i] = askLocal(ctx, command, b, payload)
+		}()
+	}
+	var out recallOut
+	var sharedErr error
+	if only, skip, ask := choice.shared(); ask {
+		out, sharedErr = askShared(ctx, get, prompt, topK, only, skip)
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			problems = append(problems, fmt.Errorf("%s: %w", locals[i].Name, err))
+		}
+	}
+	if sharedErr != nil {
+		problems = append(problems, sharedErr)
+	}
+
+	local := renderLocal(locals, texts, localBudget)
+	budget := contextBudget
+	if local != "" {
+		budget -= utf8.RuneCountInString(local) + 2
+	}
+	shared := render(out, budget)
+	if shared == "" && len(out.Results) > 0 {
+		problems = append(problems, fmt.Errorf("%d extracts, not one fits the context budget", len(out.Results)))
+	}
+	var parts []string
+	for _, p := range []string{shared, local} {
+		if p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return strings.Join(parts, "\n\n"), problems
+}
+
+// askShared asks th_recall with the person's key, under the filter.
+func askShared(ctx context.Context, get func(string) string, prompt string, topK int, only, skip []string) (recallOut, error) {
+	gateway, key, err := settings(get)
+	if err != nil {
+		return recallOut{}, err
+	}
+	args := map[string]any{"query": prompt, "top_k": topK}
+	if len(only) > 0 {
+		args["brains"] = only
+	}
+	if len(skip) > 0 {
+		args["skip_brains"] = skip
+	}
+	text, err := callTool(ctx, gateway, key, "th_recall", args)
+	if err != nil {
+		return recallOut{}, err
+	}
+	var out recallOut
+	if err := json.Unmarshal([]byte(text), &out); err != nil {
+		return recallOut{}, fmt.Errorf("decode th_recall: %w", err)
+	}
+	return out, nil
+}
+
+// listBrains prints each brain of the automatic recall, on or off: the
+// server brains from th_brains, then the local brains.
+func listBrains(get func(string) string, stdout, stderr io.Writer) int {
+	choice := readFilter(recallFile(get))
+	code := 0
+	var server []struct {
+		Brain string `json:"brain"`
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+	gateway, key, err := settings(get)
+	if err == nil {
+		var text string
+		if text, err = callTool(ctx, gateway, key, "th_brains", map[string]any{}); err == nil {
+			err = json.Unmarshal([]byte(text), &server)
+		}
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "th-hook: th_brains: %v\n", err)
+		code = 1
+	}
+	var names []string
+	for _, b := range server {
+		names = append(names, b.Brain)
+	}
+	locals, err := localBrains(get)
+	if err != nil {
+		fmt.Fprintf(stderr, "th-hook: %v\n", err)
+		code = 1
+	}
+	for _, b := range locals {
+		names = append(names, b.Name)
+	}
+	for _, n := range names {
+		state := "off"
+		if choice.on(n) {
+			state = "on"
+		}
+		fmt.Fprintf(stdout, "%-4s %s\n", state, n)
+	}
+	return code
 }
 
 type bearer struct{ token string }
@@ -114,17 +245,18 @@ func (b bearer) RoundTrip(req *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(req)
 }
 
-// ask calls th_recall on the gateway's federated endpoint.
-func ask(ctx context.Context, gateway, key, prompt string, topK int) (recallOut, error) {
+// callTool calls one tool on the gateway's federated endpoint and returns
+// the text of its answer.
+func callTool(ctx context.Context, gateway, key, name string, args map[string]any) (string, error) {
 	tr := &mcp.StreamableClientTransport{Endpoint: gateway + "/mcp", HTTPClient: &http.Client{Transport: bearer{key}}, MaxRetries: -1}
 	session, err := mcp.NewClient(&mcp.Implementation{Name: "th-hook", Version: "0"}, nil).Connect(ctx, tr, nil)
 	if err != nil {
-		return recallOut{}, fmt.Errorf("connect to %s: %w", gateway, err)
+		return "", fmt.Errorf("connect to %s: %w", gateway, err)
 	}
 	defer func() { _ = session.Close() }()
-	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "th_recall", Arguments: map[string]any{"query": prompt, "top_k": topK}})
+	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
 	if err != nil {
-		return recallOut{}, fmt.Errorf("th_recall: %w", err)
+		return "", fmt.Errorf("%s: %w", name, err)
 	}
 	text := ""
 	if len(res.Content) > 0 {
@@ -133,19 +265,15 @@ func ask(ctx context.Context, gateway, key, prompt string, topK int) (recallOut,
 		}
 	}
 	if res.IsError {
-		return recallOut{}, errors.New(text)
+		return "", errors.New(text)
 	}
-	var out recallOut
-	if err := json.Unmarshal([]byte(text), &out); err != nil {
-		return recallOut{}, fmt.Errorf("decode th_recall: %w", err)
-	}
-	return out, nil
+	return text, nil
 }
 
 // render writes the context block: a header, one line per extract with its
 // provenance, the skipped brains, and how to ask for more. It drops
 // extracts from the end until the block fits the budget.
-func render(out recallOut) string {
+func render(out recallOut, budget int) string {
 	if len(out.Results) == 0 {
 		return ""
 	}
@@ -166,7 +294,7 @@ func render(out recallOut) string {
 		}
 		footer = "Skipped: " + strings.Join(parts, ", ") + ".\n" + footer
 	}
-	return fit(header, lines, footer, contextBudget)
+	return fit(header, lines, footer, budget)
 }
 
 // fit joins header, lines and footer, dropping lines from the end until
@@ -196,31 +324,31 @@ func fit(header string, lines []string, footer string, budget int) string {
 	return strings.Join(append(parts, footer), "\n")
 }
 
-// settings reads TH_GATEWAY and TH_KEY from the environment, or, when one
-// is missing, from the env file that th-gateway login writes (TH_ENV, or
+// source reads a setting from the environment or, when it is not there,
+// from the env file that th-gateway login writes (TH_ENV, or
 // ~/.thalamus/env).
-func settings(env func(string) string) (gateway, key string, err error) {
-	gateway, key = strings.TrimSpace(env("TH_GATEWAY")), strings.TrimSpace(env("TH_KEY"))
-	if gateway == "" || key == "" {
-		path := env("TH_ENV")
-		if path == "" {
-			path = filepath.Join(env("HOME"), ".thalamus", "env")
-		}
-		data, _ := os.ReadFile(path)
-		for _, line := range strings.Split(string(data), "\n") {
-			k, v, _ := strings.Cut(line, "=")
-			switch strings.TrimSpace(k) {
-			case "TH_GATEWAY":
-				if gateway == "" {
-					gateway = strings.TrimSpace(v)
-				}
-			case "TH_KEY":
-				if key == "" {
-					key = strings.TrimSpace(v)
-				}
-			}
-		}
+func source(env func(string) string) func(string) string {
+	path := env("TH_ENV")
+	if path == "" {
+		path = filepath.Join(env("HOME"), ".thalamus", "env")
 	}
+	data, _ := os.ReadFile(path)
+	file := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		k, v, _ := strings.Cut(line, "=")
+		file[strings.TrimSpace(k)] = strings.TrimSpace(v)
+	}
+	return func(k string) string {
+		if v := strings.TrimSpace(env(k)); v != "" {
+			return v
+		}
+		return file[k]
+	}
+}
+
+// settings gives TH_GATEWAY and TH_KEY.
+func settings(get func(string) string) (gateway, key string, err error) {
+	gateway, key = get("TH_GATEWAY"), get("TH_KEY")
 	if gateway == "" {
 		return "", "", errors.New("TH_GATEWAY is not set, and no env file from th-gateway login")
 	}

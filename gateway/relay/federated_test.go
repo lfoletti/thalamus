@@ -196,6 +196,31 @@ func TestGcRecallCanBeRestrictedToSomeBrains(t *testing.T) {
 	}
 }
 
+// th_recall with skip_brains leaves those brains out, after brains: a
+// brain left out is not asked. A name the caller may not read, or that does
+// not exist, is ignored: a filter left over from an old right is no error.
+func TestGcRecallLeavesOutTheSkippedBrains(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	_, _ = keys.Issue(b.keysFile, "lfoletti", "team/other", "team-other", rights.Write)
+	b.brain.hits = map[string][]fakeHit{"team-acme": {{"a-1", "A", "a"}}, "team-other": {{"o-1", "O", "o"}}}
+	s := b.federated(t, k.Secret)
+	for _, args := range []map[string]any{
+		{"query": "x", "skip_brains": []string{"team/other", "org/gone"}},
+		{"query": "x", "brains": []string{"team/acme", "team/other"}, "skip_brains": []string{"team/other"}},
+	} {
+		b.brain.calls = nil
+		res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_recall", Arguments: args})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := decode[recallOut](t, res)
+		if len(got.Results) != 1 || got.Results[0].Brain != "team/acme" || len(b.brain.calls) != 1 {
+			t.Fatalf("%v: got %+v, calls %+v", args, got, b.brain.calls)
+		}
+	}
+}
+
 // Every brain can be skipped: no brain reachable, a brain whose address is
 // wrong, a brain whose answer is not JSON. The skips are sorted by brain.
 func TestGcRecallReportsEverySkippedBrain(t *testing.T) {

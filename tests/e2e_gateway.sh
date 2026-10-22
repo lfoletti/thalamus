@@ -6,7 +6,7 @@
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 S=$(mktemp -d)
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
+(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway && go build -o "$S/th-hook" ./cmd/th-hook) || exit 1
 GRPC=$S/cortexdb-grpc
 GW=$S/th-gateway
@@ -138,6 +138,21 @@ ctx=$(printf '%s' '{"prompt":"ok"}' | TH_GATEWAY="http://$GWADDR" TH_KEY="$LF" T
 [ -z "$ctx" ] && ok "a short prompt injects nothing" || ko "short prompt" "$ctx"
 ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?"}' | TH_GATEWAY="http://$GWADDR" TH_KEY="nope" TH_HOOK_BIN="$S/th-hook" "$ROOT/plugin/bin/th-recall" 2>/dev/null; echo "exit=$?")
 [ "$ctx" = "exit=0" ] && ok "a refused key blocks nothing (exit 0, no output)" || ko "refused key" "$ctx"
+
+# A local brain: a memory saved through the CortexDB stdio server into a file
+# of this machine. The hook runs the native recall on it next to th_recall,
+# and the person's filter chooses the brains.
+{ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"bench","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_save","arguments":{"memory_id":"fact:bench:otter","content":"The ledger moves to the new cluster under the local code word OTTER."}}}'; sleep 2; } | env -i HOME="$S" PATH="$PATH" CORTEXDB_PATH="$S/local.db" "$S/cortexdb-mcp" >/dev/null 2>&1
+hookl() { printf '%s' '{"prompt":"when does the ledger move to the new cluster?","cwd":"/tmp"}' | env HOME="$S" TH_GATEWAY="http://$GWADDR" TH_KEY="$LF" TH_HOOK_BIN="$S/th-hook" TH_RECALL_FILE="$S/recall" TH_LOCAL_RECALL="$S/cortexdb-mcp --recall" TH_LOCAL_BRAINS="projet=$S/local.db" CORTEXDB_REMOTE="127.0.0.1:1" "$ROOT/plugin/bin/th-recall" "$@"; }
+ctx=$(hookl)
+if printf '%s' "$ctx" | grep -q '\[team/acme\] Spec migration, spec-1' && printf '%s' "$ctx" | grep -q '\[local:projet\]\\n.*OTTER'; then ok "the hook adds the local brain after the shared extracts"; else ko "local brain" "$ctx"; fi
+hookl off team/acme && ctx=$(hookl)
+if printf '%s' "$ctx" | grep -q 'spec-1' || ! printf '%s' "$ctx" | grep -q 'OTTER'; then ko "skip team/acme" "$ctx"; else ok "a skipped shared brain is left out of the recall"; fi
+hookl only local:projet && ctx=$(hookl)
+if printf '%s' "$ctx" | grep -q 'OTTER' && ! printf '%s' "$ctx" | grep -q 'shared brains'; then ok "only the local brain: the gateway is not asked"; else ko "only local" "$ctx"; fi
+got=$(hookl brains 2>/dev/null)
+if printf '%s' "$got" | grep -q '^off  team/acme$' && printf '%s' "$got" | grep -q '^on   local:projet$'; then ok "th-recall brains lists each brain on or off"; else ko "brains" "$got"; fi
+hookl only --clear && hookl on team/acme && [ ! -s "$S/recall" ] && ok "the filter comes back to every brain" || ko "clear" "$(cat "$S/recall")"
 
 # Revocation: the file changes at once; the server reads it at start, so the
 # check here is on the file, not on the server.

@@ -8,8 +8,19 @@
 #   TH_KEY       the key the gateway issued to you
 #                (both read from ~/.thalamus/env, written by th-gateway login,
 #                when they are not in the environment; TH_ENV names another file)
+#   TH_LOCAL_RECALL  the native recall of CortexDB, for example "cortexdb-mcp --recall";
+#                    without it, the hook asks the gateway only
+#   TH_LOCAL_BRAINS  the local brains, name=path pairs separated by commas
+#                    (default: the brain of the project, CORTEXDB_PATH)
 #   TH_HOOK_BIN  the th-hook binary (default: next to this launcher)
+#
+# With arguments, it runs that th-hook command instead, for example
+# "th-recall brains" or "th-recall off local:racine" (the /th-recall command).
 set -u
 bin="${TH_HOOK_BIN:-$(cd "$(dirname "$0")" 2>/dev/null && pwd)/th-hook}"
+if [ $# -gt 0 ]; then
+  [ -x "$bin" ] || { echo "th-hook is not installed: $bin" >&2; exit 1; }
+  exec "$bin" "$@"
+fi
 [ -x "$bin" ] || exit 0
 exec "$bin" recall
