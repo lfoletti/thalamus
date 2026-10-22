@@ -2,9 +2,9 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : 200 lignes hors tests. **Dépend de** : #72 (liste blanche) fusionnée.
 
-## Le manque
+## Le besoin de Thalamus
 
-Le journal des requêtes de `cortexdb-grpc` (lot A, PR #67) dit quelle clé a appelé quel outil et si l'appel a réussi. Il ne dit pas quels documents ou mémoires l'appel a touchés. Pour une organisation, « qui a lu quoi » est la question de l'audit, et le serveur a déjà l'information : la liste blanche de #72 connaît, outil par outil, les champs porteurs d'identifiant (`ids`, chemin complet).
+Le journal des requêtes de `cortexdb-grpc` (lot A, PR #67) dit quelle clé a appelé quel outil et si l'appel a réussi. Pour l'audit des cerveaux sensibles, Thalamus a besoin aussi des documents ou mémoires que l'appel a touchés. Le serveur a déjà cette information : la liste blanche de #72 connaît, outil par outil, les champs porteurs d'identifiant (`ids`, chemin complet).
 
 ## Ce que Thalamus fait aujourd'hui
 

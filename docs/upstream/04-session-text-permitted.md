@@ -2,9 +2,9 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : 60 lignes hors tests. **Dépend de** : #72, #73 fusionnées.
 
-## Le manque
+## Le besoin de Thalamus
 
-`extract_conversation` lit le texte d'une session (`loadSessionText`, `pkg/cortexdb/extract_conversation.go`) sans passer par `memoryBucketPermitted`. Pour une clé confinée, la liste blanche de #72 ferme la porte (`session_id` classé `memoryBucket`, refusé). Pour l'API typée embarquée, la porte reste ouverte : un appelant qui porte un `user_id` peut lire la session d'un autre. C'est le point 4 du plan de correction du 20 octobre 2026, laissé hors périmètre des PR en cours.
+`extract_conversation` lit le texte d'une session (`loadSessionText`, `pkg/cortexdb/extract_conversation.go`) sans passer par `memoryBucketPermitted`. Pour une clé confinée, la liste blanche de #72 ferme la porte (`session_id` classé `memoryBucket`, refusé). La proposition fait passer cette lecture par `memoryBucketPermitted` sur l'API typée embarquée aussi, comme les autres lectures de mémoire. C'est le point 4 du plan du 20 octobre 2026, hors du périmètre des PR en cours.
 
 ## Ce que Thalamus fait aujourd'hui
 
