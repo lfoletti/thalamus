@@ -1,0 +1,322 @@
+[
+{
+"id": "q01",
+"article": "art_10_a",
+"doc_lang": "rm",
+"q_lang": "de",
+"query": 0,
+"variants": 6
+},
+{
+"id": "q02",
+"article": "art_59",
+"doc_lang": "rm",
+"q_lang": "it",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q03",
+"article": "art_67_a",
+"doc_lang": "rm",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q04",
+"article": "art_77",
+"doc_lang": "rm",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q05",
+"article": "art_84",
+"doc_lang": "rm",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q06",
+"article": "art_93",
+"doc_lang": "rm",
+"q_lang": "it",
+"query": 4,
+"variants": 1
+},
+{
+"id": "q07",
+"article": "art_117",
+"doc_lang": "rm",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q08",
+"article": "art_124",
+"doc_lang": "rm",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q09",
+"article": "art_141",
+"doc_lang": "rm",
+"q_lang": "it",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q10",
+"article": "art_176",
+"doc_lang": "rm",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q11",
+"article": "art_188",
+"doc_lang": "rm",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q12",
+"article": "art_8",
+"doc_lang": "de",
+"q_lang": "fr",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q13",
+"article": "art_15",
+"doc_lang": "de",
+"q_lang": "it",
+"query": 0,
+"variants": 6
+},
+{
+"id": "q14",
+"article": "art_27",
+"doc_lang": "de",
+"q_lang": "fr",
+"query": 0,
+"variants": 6
+},
+{
+"id": "q15",
+"article": "art_68",
+"doc_lang": "de",
+"q_lang": "it",
+"query": 7,
+"variants": 1
+},
+{
+"id": "q16",
+"article": "art_90",
+"doc_lang": "de",
+"q_lang": "fr",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q17",
+"article": "art_105",
+"doc_lang": "de",
+"q_lang": "it",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q18",
+"article": "art_109",
+"doc_lang": "de",
+"q_lang": "fr",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q19",
+"article": "art_114",
+"doc_lang": "de",
+"q_lang": "it",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q20",
+"article": "art_149",
+"doc_lang": "de",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q21",
+"article": "art_165",
+"doc_lang": "de",
+"q_lang": "it",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q22",
+"article": "art_12",
+"doc_lang": "fr",
+"q_lang": "de",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q23",
+"article": "art_24",
+"doc_lang": "fr",
+"q_lang": "it",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q24",
+"article": "art_28",
+"doc_lang": "fr",
+"q_lang": "de",
+"query": 0,
+"variants": 5
+},
+{
+"id": "q25",
+"article": "art_63_a",
+"doc_lang": "fr",
+"q_lang": "it",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q26",
+"article": "art_99",
+"doc_lang": "fr",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q27",
+"article": "art_106",
+"doc_lang": "fr",
+"q_lang": "it",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q28",
+"article": "art_110",
+"doc_lang": "fr",
+"q_lang": "de",
+"query": 0,
+"variants": 1
+},
+{
+"id": "q29",
+"article": "art_150",
+"doc_lang": "fr",
+"q_lang": "it",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q30",
+"article": "art_162",
+"doc_lang": "fr",
+"q_lang": "de",
+"query": 0,
+"variants": 2
+},
+{
+"id": "q31",
+"article": "art_17",
+"doc_lang": "it",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q32",
+"article": "art_58",
+"doc_lang": "it",
+"q_lang": "fr",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q33",
+"article": "art_70",
+"doc_lang": "it",
+"q_lang": "de",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q34",
+"article": "art_76",
+"doc_lang": "it",
+"q_lang": "fr",
+"query": 0,
+"variants": 6
+},
+{
+"id": "q35",
+"article": "art_80",
+"doc_lang": "it",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q36",
+"article": "art_104",
+"doc_lang": "it",
+"q_lang": "fr",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q37",
+"article": "art_118",
+"doc_lang": "it",
+"q_lang": "de",
+"query": 0,
+"variants": 0
+},
+{
+"id": "q38",
+"article": "art_175",
+"doc_lang": "it",
+"q_lang": "fr",
+"query": 0,
+"variants": 3
+},
+{
+"id": "q39",
+"article": "art_191",
+"doc_lang": "it",
+"q_lang": "de",
+"query": 0,
+"variants": 9
+},
+{
+"id": "q40",
+"article": "art_10",
+"doc_lang": "it",
+"q_lang": "fr",
+"query": 4,
+"variants": 1
+}
+]
