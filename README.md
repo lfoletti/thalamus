@@ -1,3 +1,5 @@
+<img src="extension/icons/icon128.png" alt="Thalamus logo: two pale lobes on an indigo square" width="96" align="right">
+
 # Thalamus
 
 A small governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge of an organisation: which employee may read or write which part, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Thalamus adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
