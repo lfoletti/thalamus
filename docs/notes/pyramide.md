@@ -79,6 +79,23 @@ Suite (tranche 16, même soir) : `knowledge_search` rend déjà les morceaux (`c
 
 Le hook atteint le bras du pilote (81,2 %) et dépasse contaixt (76,4 %).
 
+### Second corpus : crooners (22 octobre 2026, 21 h 50)
+
+Même procédure sur une copie de `crooners-vecteurs.db` (593 morceaux, 47 synthèses), avec l'encodeur du graphe crooners. Le banc a **8 questions** seulement : un écart de quelques points n'y dit rien.
+
+| Bras | Couverture |
+| :- | :- |
+| contaixt (référence) | 52,0 % |
+| bras du pilote par le relais, synthèses en tête | 47,7 % |
+| idem, passages seuls | 15,5 % |
+| `th_recall` (défauts de la tranche 16), budget du pilote | 54,0 % |
+| `th_recall`, 9 000 caractères | 60,9 % |
+| hook, contexte injecté (8 622 caractères en moyenne) | **60,9 %** |
+
+- Sur ce corpus, `th_recall` et le hook dépassent les 2 références.
+- 20 morceaux de passages au lieu de 10 donnent 65,9 % sur crooners, mais seulement 1,4 point de plus sur ai-audio (80,3 contre 78,9 %). Les défauts restent à 10 morceaux. `TH_RECALL_TOPK=20` est le réglage à essayer sur un petit corpus.
+- Sur ai-audio, le même réglage (4 + 10) donne 78,9 % ou 81,3 % selon la liste des synthèses demandée (`top_k` 20 ou 10) : le classement du moteur change avec `top_k`. C'est l'ordre de grandeur du bruit de cette mesure.
+
 Défaut vu pendant la mesure : `th-gateway serve` s'arrête proprement sur SIGINT seulement (`cmd/th-gateway/main.go`). Sur SIGTERM, l'audit n'est pas fermé, et les lectures comptées du jour sont perdues (0 ligne après environ 200 lectures). Corrigé par la tranche 16 : sur la même copie, après SIGTERM, l'audit contient la ligne des 100 lectures comptées.
 
 Scripts et résultats : `scratchpad/m15/` de la session (`measure.py`, `probe2.py`, `score.json`), hors dépôt.
