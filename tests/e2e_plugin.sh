@@ -3,9 +3,10 @@
 # a cortexdb-grpc server built from cortexdb/, th-gateway in front, one
 # document in the brain, then `claude -p --plugin-dir plugin` twice from an
 # empty directory. The first prompt asks a question whose answer sits only
-# in the brain: the hook must inject it. The second asks for th_brains: the
-# MCP server of the plugin must answer. The audit file proves both.
-# Usage: sh tests/e2e_plugin.sh [model]   (default: haiku; two short calls)
+# in the shared brain and in a local brain of the machine: the hook must
+# inject both. The second asks for th_brains: the MCP server of the plugin
+# must answer. The audit file proves the reads (team/acme has audit_reads).
+# Usage: sh tests/e2e_plugin.sh [model]   (default: haiku; two short calls; 7 checks)
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 MODEL=${1:-haiku}
@@ -13,7 +14,7 @@ S=$(mktemp -d)
 pass=0; fail=0
 ok() { pass=$((pass+1)); echo "PASS  $1"; }
 ko() { fail=$((fail+1)); echo "FAIL  $1: $2" | cut -c1-600; }
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
+(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway && go build -o "$S/th-hook" ./cmd/th-hook) || exit 1
 mkdir -p "$S/data" "$S/work"
 ADDR=127.0.0.1:$((20000 + $$ % 10000)); GWADDR=127.0.0.1:$((30000 + $$ % 10000))
@@ -26,6 +27,7 @@ brains:
     addr: $ADDR
     keys_file: $S/data/keys.json
     collection: team-acme
+    audit_reads: true
     readers: [group:acme]
     writers: [user:lfoletti]
 groups:
@@ -46,22 +48,27 @@ ing=$(curl -s -H 'Content-Type: application/json' -H 'Accept: application/json, 
 printf '%s' "$ing" | grep -q 'cutover-plan' && ok "document ingested in team/acme" || ko "ingest" "$ing"
 : > "$S/data/audit.jsonl"
 
-export TH_GATEWAY="http://$GWADDR" TH_KEY="$LF" TH_HOOK_BIN="$S/th-hook"
+# One memory in a local brain of the machine, through the CortexDB stdio server.
+{ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"bench","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_save","arguments":{"memory_id":"fact:bench:cutover-room","content":"For the cutover rehearsal of the Acme ledger migration, my team meets in room Lavaux."}}}'; sleep 2; } | env -i HOME="$S" PATH="$PATH" CORTEXDB_PATH="$S/data/local.db" "$S/cortexdb-mcp" >/dev/null 2>&1
+[ -s "$S/data/local.db" ] && ok "memory saved in the local brain" || ko "local brain" ""
+
+export TH_GATEWAY="http://$GWADDR" TH_KEY="$LF" TH_HOOK_BIN="$S/th-hook" TH_RECALL_FILE="$S/data/recall"
+export TH_LOCAL_RECALL="$S/cortexdb-mcp --recall" TH_LOCAL_BRAINS="projet=$S/data/local.db"
 run_claude() { # run_claude <prompt> <out>
   (cd "$S/work" && claude -p "$1" --plugin-dir "$ROOT/plugin" --model "$MODEL" --max-turns 4 --output-format json \
      --allowedTools "mcp__plugin_thalamus_thalamus__th_brains" "mcp__plugin_thalamus_thalamus__th_recall" "mcp__plugin_thalamus_thalamus__th_get" "mcp__plugin_thalamus_thalamus__th_add" < /dev/null > "$2" 2> "$2.err")
 }
-# 1. The hook: the answer is only in the brain, no tool is named.
-run_claude "What is the code word for the cutover rehearsal of the Acme ledger migration, and on which day is it? Answer in one sentence." "$S/a1.json"
+# 1. The hook: the answer is only in the brains, no tool is named.
+run_claude "What is the code word for the cutover rehearsal of the Acme ledger migration, on which day is it, and in which room does my team meet? Answer in one sentence." "$S/a1.json"
 a1=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result",""))' "$S/a1.json" 2>/dev/null)
-printf '%s' "$a1" | grep -qi 'MARMOT' && printf '%s' "$a1" | grep -qi 'thursday' && ok "the session answered from the brain: $(printf '%s' "$a1" | tr '\n' ' ' | cut -c1-120)" || ko "answer 1" "$a1 $(cat "$S/a1.json.err" | tail -3)"
+printf '%s' "$a1" | grep -qi 'MARMOT' && printf '%s' "$a1" | grep -qi 'thursday' && printf '%s' "$a1" | grep -qi 'Lavaux' && ok "the session answered from the brain: $(printf '%s' "$a1" | tr '\n' ' ' | cut -c1-120)" || ko "answer 1" "$a1 $(cat "$S/a1.json.err" | tail -3)"
 grep -q '"user":"lfoletti".*"tool":"th_recall"' "$S/data/audit.jsonl" && ok "the hook's recall is audited under lfoletti" || ko "hook audit" "$(cat "$S/data/audit.jsonl")"
 grep -q '"tool":"th_get".*"knowledge_id":"cutover-plan"' "$S/data/audit.jsonl" && ok "the session read the document whole with th_get" || ko "th_get audit" "$(cat "$S/data/audit.jsonl")"
 # 2. The MCP server of the plugin: a tool call on demand.
 run_claude "Call the th_brains tool and reply with the exact list of brain names it returns, nothing else." "$S/a2.json"
 a2=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result",""))' "$S/a2.json" 2>/dev/null)
 printf '%s' "$a2" | grep -q 'team/acme' && ok "th_brains answered through the plugin's MCP server: $(printf '%s' "$a2" | tr '\n' ' ' | cut -c1-80)" || ko "answer 2" "$a2 $(cat "$S/a2.json.err" | tail -3)"
-grep -q '"tool":"th_brains"' "$S/data/audit.jsonl" && ok "th_brains audited" || ko "th_brains audit" "$(cat "$S/data/audit.jsonl")"
+grep -q '"tool":"th_brains"' "$S/data/audit.jsonl" && ko "th_brains audit" "$(cat "$S/data/audit.jsonl")" || ok "th_brains reads no brain and leaves no audit line"
 echo; echo "audit:"; cat "$S/data/audit.jsonl" | cut -c1-200
 echo; echo "pass=$pass fail=$fail (model $MODEL, work in $S)"
 [ "$fail" -eq 0 ]
