@@ -2,76 +2,9 @@
 
 # Thalamus
 
-A shared memory for an organisation and its coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). 
-CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. 
-Thalamus is a thin layer around it.
-
-*Version française plus bas.*
-
-## Why
-
-The engine reads its keys from a file of secrets written by hand. It does not know which person holds which key, so it cannot apply a clearance policy to a shared brain. Thalamus keeps the rights of each person in one file. It gives each person a key for each brain they may use, and it records every call under that person's name. It is for the team that runs the brains and for the people who use them.
-
-Principles:
-
-1. **Fixes to the engine go upstream.** When Thalamus needed a change in CortexDB, the change went to the engine as a small pull request. Thalamus imports CortexDB at a pinned version and keeps no fork.
-2. **The engine enforces the rights.** Each person calls a brain with their own key, confined to what they may read or write. The gateway decides who gets a key. The engine checks every call against that key.
-3. **One key per person and per brain.** To remove the access of one person, the gateway revokes their keys. Each audit line names the person who made the call.
-4. **Each extract shows its source.** A result names its brain, its document and its author.
-5. **One recall over the readable brains.** The employee asks once. The gateway asks each brain the employee may read and merges the answers.
-6. **Small and tested.** About 3,000 lines outside tests. Each test was written before its code and fails without it. Each rule has a recorded hand mutation that its test catches. A bench runs the gateway against a real server.
-
-## What it does
-
-- **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers, the writers and the curators. A writer reads too. The gateway reads the file again when it changes: a withdrawn right is refused at the next call, without a restart.
-- **Keys.** `th-gateway key issue` writes a key into the server's own key file, confined to the brain's collection, read-only or read-write from the right. The engine enforces the key; the gateway only decides who gets one. A brain that is its whole server gets an unconfined key, which opens the graph tools.
-- **Relay.** One MCP endpoint per brain, `/mcp/<brain>`, over streamable HTTP. The caller presents the key the gateway issued. The gateway refuses before it reaches the brain (unknown key, key of another brain, right withdrawn, unknown brain), forwards each tool call over gRPC with the caller's key, and appends one line to `audit.jsonl`: who, which key, which brain, which tool, which ids, success or error.
-- **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `th_brains` lists the caller's brains. `th_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
-- **REST.** `GET /v1/brains` and `POST /v1/add` for clients without MCP, a browser extension or a script: same key, same circuit, same audit.
-- **Login.** `POST /v1/login` with the id_token of the organisation's identity provider (OpenID Connect): the gateway derives the login, issues the keys the rights allow, and returns them. `th-gateway login` and the extension's "Sign in" button do this for the employee. No key is handed out by hand.
-- **Browser.** A Chrome extension (`extension/`): propose the page you read, or your selection, into a brain you may write to, for the curators. Same key, same circuit.
-- **Client.** A Claude Code plugin (`plugin/`): the gateway's tools over HTTP under the employee's key, and a `UserPromptSubmit` hook that injects the best extracts with their provenance into each prompt. The hook never blocks a prompt.
-
-## Layout
-
-| Path | Content |
-| :- | :- |
-| `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
-| `plugin/` | The Claude Code plugin. |
-| `extension/` | The Chrome extension. |
-| `tests/e2e_gateway.sh` | End-to-end bench: a CortexDB server, the gateway, keys, calls over HTTP, the hook, the audit file. |
-| `docs/` | Architecture revision, ADRs, the PR pipeline, the upstream PR folders (in French). |
-| `cortexdb/` | Not in this repository: a clone of CortexDB, expected next to `gateway/` for the bench. |
-
-## Upstream
-
-The engine fixes this layer needs went upstream as small pull requests (CortexDB discussion #66): confined keys enforced on the tool box, a content hash, `expires_at`, an opt-in review status, and `cortex_query` kept in its collection. Six are merged; seven are in review as of 20 October 2026. The gateway imports CortexDB as a library at a pinned version; the bench runs the server built from the branch that carries the open fixes.
-
-## Build and test
-
-```sh
-cd gateway
-go build ./...
-go test -race ./...          # about 10 s, coverage 100 % outside main
-python3 -I mutate.py         # one hand mutation per rule, each must fail its test
-cd .. && sh tests/e2e_gateway.sh   # needs cortexdb/ next to gateway/
-```
-
-Rules of the house: the test is written before the code and fails without it, every reachable line of a change is covered before it is pushed, and a pull request opens as a draft. The whole procedure is in `docs/pipeline_pr.md`.
-
-## Status
-
-Day one (20 October 2026). Three slices: rights, keys and relay; the federated endpoint; the client. Known limits: the CortexDB server reads its key file at start only, so it restarts after a key is issued or revoked; the federated recall fuses extracts, not graph nodes; no OIDC yet.
-
-## License
-
-MIT. CortexDB is MIT too.
-
----
-
-# Thalamus (français)
-
 Une mémoire partagée pour une organisation et ses agents de code, construite sur [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus est une couche mince autour de lui.
+
+*English version below.*
 
 ## Pourquoi
 
@@ -131,3 +64,70 @@ Jour un (20 octobre 2026). Trois tranches : droits, clés et relais ; le point f
 ## Licence
 
 MIT. CortexDB est sous MIT aussi.
+
+---
+
+# Thalamus (English)
+
+A shared memory for an organisation and its coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). 
+CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. 
+Thalamus is a thin layer around it.
+
+## Why
+
+The engine reads its keys from a file of secrets written by hand. It does not know which person holds which key, so it cannot apply a clearance policy to a shared brain. Thalamus keeps the rights of each person in one file. It gives each person a key for each brain they may use, and it records every call under that person's name. It is for the team that runs the brains and for the people who use them.
+
+Principles:
+
+1. **Fixes to the engine go upstream.** When Thalamus needed a change in CortexDB, the change went to the engine as a small pull request. Thalamus imports CortexDB at a pinned version and keeps no fork.
+2. **The engine enforces the rights.** Each person calls a brain with their own key, confined to what they may read or write. The gateway decides who gets a key. The engine checks every call against that key.
+3. **One key per person and per brain.** To remove the access of one person, the gateway revokes their keys. Each audit line names the person who made the call.
+4. **Each extract shows its source.** A result names its brain, its document and its author.
+5. **One recall over the readable brains.** The employee asks once. The gateway asks each brain the employee may read and merges the answers.
+6. **Small and tested.** About 3,000 lines outside tests. Each test was written before its code and fails without it. Each rule has a recorded hand mutation that its test catches. A bench runs the gateway against a real server.
+
+## What it does
+
+- **Rights.** `rights.yaml` declares the brains (one CortexDB server each, or a collection of a shared server), the groups, the readers, the writers and the curators. A writer reads too. The gateway reads the file again when it changes: a withdrawn right is refused at the next call, without a restart.
+- **Keys.** `th-gateway key issue` writes a key into the server's own key file, confined to the brain's collection, read-only or read-write from the right. The engine enforces the key; the gateway only decides who gets one. A brain that is its whole server gets an unconfined key, which opens the graph tools.
+- **Relay.** One MCP endpoint per brain, `/mcp/<brain>`, over streamable HTTP. The caller presents the key the gateway issued. The gateway refuses before it reaches the brain (unknown key, key of another brain, right withdrawn, unknown brain), forwards each tool call over gRPC with the caller's key, and appends one line to `audit.jsonl`: who, which key, which brain, which tool, which ids, success or error.
+- **Federated recall.** `/mcp` admits any key the gateway issued and names its holder. `th_brains` lists the caller's brains. `th_recall` asks every readable brain in parallel with the caller's own key for it, fuses the lists by weighted reciprocal rank, merges the same text across brains, and gives each result a fixed provenance line: `[brain] title, id, source, by author`.
+- **REST.** `GET /v1/brains` and `POST /v1/add` for clients without MCP, a browser extension or a script: same key, same circuit, same audit.
+- **Login.** `POST /v1/login` with the id_token of the organisation's identity provider (OpenID Connect): the gateway derives the login, issues the keys the rights allow, and returns them. `th-gateway login` and the extension's "Sign in" button do this for the employee. No key is handed out by hand.
+- **Browser.** A Chrome extension (`extension/`): propose the page you read, or your selection, into a brain you may write to, for the curators. Same key, same circuit.
+- **Client.** A Claude Code plugin (`plugin/`): the gateway's tools over HTTP under the employee's key, and a `UserPromptSubmit` hook that injects the best extracts with their provenance into each prompt. The hook never blocks a prompt.
+
+## Layout
+
+| Path | Content |
+| :- | :- |
+| `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
+| `plugin/` | The Claude Code plugin. |
+| `extension/` | The Chrome extension. |
+| `tests/e2e_gateway.sh` | End-to-end bench: a CortexDB server, the gateway, keys, calls over HTTP, the hook, the audit file. |
+| `docs/` | Architecture revision, ADRs, the PR pipeline, the upstream PR folders (in French). |
+| `cortexdb/` | Not in this repository: a clone of CortexDB, expected next to `gateway/` for the bench. |
+
+## Upstream
+
+The engine fixes this layer needs went upstream as small pull requests (CortexDB discussion #66): confined keys enforced on the tool box, a content hash, `expires_at`, an opt-in review status, and `cortex_query` kept in its collection. Six are merged; seven are in review as of 20 October 2026. The gateway imports CortexDB as a library at a pinned version; the bench runs the server built from the branch that carries the open fixes.
+
+## Build and test
+
+```sh
+cd gateway
+go build ./...
+go test -race ./...          # about 10 s, coverage 100 % outside main
+python3 -I mutate.py         # one hand mutation per rule, each must fail its test
+cd .. && sh tests/e2e_gateway.sh   # needs cortexdb/ next to gateway/
+```
+
+Rules of the house: the test is written before the code and fails without it, every reachable line of a change is covered before it is pushed, and a pull request opens as a draft. The whole procedure is in `docs/pipeline_pr.md`.
+
+## Status
+
+Day one (20 October 2026). Three slices: rights, keys and relay; the federated endpoint; the client. Known limits: the CortexDB server reads its key file at start only, so it restarts after a key is issued or revoked; the federated recall fuses extracts, not graph nodes; no OIDC yet.
+
+## License
+
+MIT. CortexDB is MIT too.
