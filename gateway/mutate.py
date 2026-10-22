@@ -201,6 +201,20 @@ M = [
  ("cmd/th-gateway/run.go", "fmt.Fprintln(out, k.Secret)", "fmt.Fprintln(out, \"issued\", k.Secret)", "cmd/th-gateway", "TestKeyIssueAndRevoke", "the secret is not alone on stdout"),
  ("cmd/th-gateway/run.go", "if errors.Is(err, errUsage) {\n\t\t\tfmt.Fprintln(stderr, usage)\n\t\t\treturn 2", "if errors.Is(err, errUsage) {\n\t\t\tfmt.Fprintln(stderr, usage)\n\t\t\treturn 1", "cmd/th-gateway", "TestTheCommandLineIsChecked", "a usage error is 1"),
  ("cmd/th-gateway/run.go", "err = srv.Serve(lis)\n\tif errors.Is(err, http.ErrServerClosed) {\n\t\terr = nil\n\t}", "err = srv.Serve(lis)", "cmd/th-gateway", "TestServeListensAndStops", "a clean stop is an error"),
+ # tranche 12 : extraction du contenu principal et icône de l'extension
+ ("../extension/lib.js", "l.kind === kind && collapse(l.text).length >= MAIN_MIN", "l.kind === kind", "extension", "mainText takes an article or main landmark with enough text", "a landmark too short to be the content is taken"),
+ ("../extension/lib.js", ".sort((a, b) => collapse(b.text).length - collapse(a.text).length)[0]", "[0]", "extension", "mainText takes an article or main landmark with enough text", "the first landmark, not the longest"),
+ ("../extension/lib.js", "for (const kind of [\"article\", \"main\"])", "for (const kind of [\"main\", \"article\"])", "extension", "mainText takes an article or main landmark with enough text", "main wins over article"),
+ ("../extension/lib.js", "(b.links || 0) < 0.5 * collapse(b.text).length", "true", "extension", "mainText keeps the groups of text blocks and leaves the chrome out", "a list of links counts as prose"),
+ ("../extension/lib.js", "    if (g.hint.some((w) => NEGATIVE.has(w))) continue;\n", "", "extension", "mainText keeps the groups of text blocks and leaves the chrome out", "the comments can be the content"),
+ ("../extension/lib.js", "? 1.5 : 1)", "? 1 : 1)", "extension", "mainText prefers the group whose class says content", "a content class or id counts for nothing"),
+ ("../extension/lib.js", "if (g.size >= MAIN_MIN && (!best", "if ((!best", "extension", "mainText falls back to the body text", "a tiny group wins over the body"),
+ ("../extension/lib.js", "b.group === best.id || (g.outer === best.outer && !g.hint.some((w) => NEGATIVE.has(w)))", "b.group === best.id", "extension", "mainText keeps the groups of text blocks and leaves the chrome out", "the other sections of the article are lost"),
+ ("../extension/lib.js", "(g.outer === best.outer && !g.hint.some((w) => NEGATIVE.has(w)))", "(g.outer === best.outer)", "extension", "mainText keeps the groups of text blocks and leaves the chrome out", "a sibling comments group comes in"),
+ ("../extension/lib.js", ".join(\"\\n\\n\"), how: \"blocks\"", ".join(\" \"), how: \"blocks\"", "extension", "mainText keeps the groups of text blocks and leaves the chrome out", "the blocks run together"),
+ ("../extension/lib.js", "metadata: sel || !extract ?", "metadata: sel ?", "extension", "buildAdd prefers the selection and bounds the fields", "an extract key without a value"),
+ ("../extension/manifest.json", "\"icons\": {\n    \"16\": \"icons/icon16.png\"", "\"icons\": {\n    \"16\": \"icons/icon32.png\"", "extension", "the manifest names an icon of each size, and each file is that size", "an icon of the wrong size"),
+ ("../extension/manifest.json", "\"default_icon\": {\n      \"16\": \"icons/icon16.png\",\n", "\"default_icon\": {\n", "extension", "the manifest names an icon of each size, and each file is that size", "the button lacks a size"),
 ]
 
 bad = 0
@@ -212,7 +226,7 @@ for f, old, new, pkg, test, label in M:
     try:
         if pkg == "extension":
             # The extension's rules live in JavaScript: node --test, by name.
-            r = subprocess.run(["node", "--test", "--test-name-pattern=^" + test + "$", "lib.test.js"], cwd="../extension", capture_output=True, text=True)
+            r = subprocess.run(["node", "--test", "--test-name-pattern=^" + test + "$", "lib.test.js", "manifest.test.js"], cwd="../extension", capture_output=True, text=True)
             r.stdout += "FAIL" if r.returncode != 0 else ""
         else:
             r = subprocess.run(["go", "test", "./" + pkg + "/", "-run", "^" + test + "$", "-count=1"], capture_output=True, text=True)

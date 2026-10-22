@@ -24,7 +24,7 @@ La couche mince de Thalamus au-dessus d'un ou plusieurs serveurs CortexDB. Tranc
 
 ```sh
 cd gateway && go test -race ./...          # quatre paquets, environ 10 s
-python3 -I mutate.py                        # 186 mutations à la main, chacune doit tomber
+python3 -I mutate.py                        # 199 mutations à la main, chacune doit tomber
 sh ../tests/e2e_gateway.sh                  # serveur gRPC depuis cortexdb/, gateway devant, hook, administration, écriture et relecture, rechargement des droits, face REST, th_get, /v1/login, th-gateway login devant un faux fournisseur (tests/fake_idp.mjs), 55 contrôles
 sh ../tests/e2e_plugin.sh [modèle]           # session Claude Code réelle avec le plugin (claude -p, haiku par défaut, 6 contrôles, deux appels au modèle)
 ```

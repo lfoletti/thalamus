@@ -1,4 +1,4 @@
-import { writableBrains, buildAdd, statusText, settingsOf } from "./lib.js";
+import { writableBrains, buildAdd, statusText, settingsOf, mainText } from "./lib.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, state) => {
@@ -29,12 +29,46 @@ if (!settings) {
   } else {
     $("title").value = tab.title || "";
     try {
+      // The page only collects; mainText (lib.js) decides what the content
+      // is. The function runs in the page, so it is self-contained.
       const [{ result }] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: () => ({ selection: String(getSelection()), text: document.body ? document.body.innerText : "" }),
+        func: () => {
+          const text = (el) => (el && el.innerText) || "";
+          const ids = new Map();
+          const idOf = (el) => {
+            if (!el) return -1;
+            if (!ids.has(el)) ids.set(el, ids.size);
+            return ids.get(el);
+          };
+          const hintOf = (el) => (el ? [el.tagName, el.getAttribute("class"), el.id].join(" ") : "");
+          const blockTags = "p, pre, blockquote, li, h1, h2, h3, h4, h5, h6";
+          const landmarks = [...document.querySelectorAll("article")].map((el) => ({ kind: "article", text: text(el) }))
+            .concat([...document.querySelectorAll("main, [role=main]")].map((el) => ({ kind: "main", text: text(el) })));
+          const blocks = [...document.querySelectorAll(blockTags)]
+            .filter((el) => !el.parentElement.closest(blockTags))
+            .map((el) => {
+              const parent = el.parentElement, grand = parent.parentElement;
+              return {
+                text: text(el),
+                group: idOf(parent),
+                outer: idOf(grand),
+                hint: hintOf(parent) + " " + hintOf(grand),
+                links: [...el.querySelectorAll("a")].reduce((n, a) => n + text(a).length, 0),
+              };
+            });
+          return { selection: String(getSelection()), page: { landmarks, blocks, body: text(document.body) } };
+        },
       });
-      $("content").value = (result.selection || "").trim() || result.text || "";
-      $("content").dataset.kind = (result.selection || "").trim() ? "selection" : "page";
+      if ((result.selection || "").trim()) {
+        $("content").value = result.selection.trim();
+        $("content").dataset.kind = "selection";
+      } else {
+        const main = mainText(result.page);
+        $("content").value = main.text;
+        $("content").dataset.kind = "page";
+        $("content").dataset.extract = main.how;
+      }
     } catch (e) {
       say(`Cannot read this page: ${e.message}`, "no-text");
     }
@@ -71,6 +105,7 @@ if (!settings) {
           content: $("content").value,
           url: tab.url,
           selection: $("content").dataset.kind === "selection" ? $("content").value : "",
+          extract: $("content").dataset.extract,
         });
       } catch (e) {
         say(e.message, "invalid");

@@ -25,7 +25,7 @@ const collapse = (s) => String(s || "").replace(/\s+/g, " ").trim();
 
 // buildAdd is the body of POST /v1/add: the selection when there is one,
 // the page text otherwise, bounded, with the address as source.
-export function buildAdd({ brain, title, content, url, selection }) {
+export function buildAdd({ brain, title, content, url, selection, extract }) {
   if (!brain) throw new Error("choose a brain");
   const sel = collapse(selection);
   const text = (sel || collapse(content)).slice(0, 100000);
@@ -36,8 +36,50 @@ export function buildAdd({ brain, title, content, url, selection }) {
     title: collapse(title).slice(0, 200),
     content: text,
     source_url: String(url),
-    metadata: { via: "chrome-extension", kind: sel ? "selection" : "page" },
+    metadata: sel || !extract ? { via: "chrome-extension", kind: sel ? "selection" : "page" } : { via: "chrome-extension", kind: "page", extract },
   };
+}
+
+// The least text a landmark or a group of blocks needs to be the page's
+// content: below it, a teaser or a share box would win over the body.
+const MAIN_MIN = 200;
+const NEGATIVE = new Set(["nav", "menu", "footer", "header", "comment", "comments", "sidebar", "aside", "share", "social", "related", "cookie", "cookies", "banner", "promo", "advert", "ad", "ads"]);
+const POSITIVE = new Set(["article", "content", "post", "entry", "main", "story", "body", "text"]);
+const words = (hint) => String(hint || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+// mainText picks the content of a page from what the collector of the popup
+// read: the longest article landmark with enough text, else the longest
+// main landmark; else the group of text blocks with the most text outside
+// links (a content class or id counts half again), with its sibling groups,
+// leaving out the groups whose class or id says navigation, footer,
+// comments and the like; else the whole body text. how says which.
+export function mainText(page) {
+  const { landmarks = [], blocks = [], body = "" } = page || {};
+  for (const kind of ["article", "main"]) {
+    const best = landmarks
+      .filter((l) => l.kind === kind && collapse(l.text).length >= MAIN_MIN)
+      .sort((a, b) => collapse(b.text).length - collapse(a.text).length)[0];
+    if (best) return { text: best.text, how: "landmark" };
+  }
+  const prose = blocks.filter((b) => collapse(b.text) && (b.links || 0) < 0.5 * collapse(b.text).length);
+  const groups = new Map();
+  for (const b of prose) {
+    const g = groups.get(b.group) || { outer: b.outer, hint: words(b.hint), size: 0 };
+    g.size += collapse(b.text).length;
+    groups.set(b.group, g);
+  }
+  let best = null;
+  for (const [id, g] of groups) {
+    if (g.hint.some((w) => NEGATIVE.has(w))) continue;
+    const score = g.size * (g.hint.some((w) => POSITIVE.has(w)) ? 1.5 : 1);
+    if (g.size >= MAIN_MIN && (!best || score > best.score)) best = { id, outer: g.outer, score };
+  }
+  if (!best) return { text: body, how: "body" };
+  const kept = prose.filter((b) => {
+    const g = groups.get(b.group);
+    return b.group === best.id || (g.outer === best.outer && !g.hint.some((w) => NEGATIVE.has(w)));
+  });
+  return { text: kept.map((b) => collapse(b.text)).join("\n\n"), how: "blocks" };
 }
 
 // statusText is the one sentence shown after a proposal, by HTTP status.

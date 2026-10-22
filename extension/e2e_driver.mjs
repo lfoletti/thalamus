@@ -56,7 +56,11 @@ try {
   const opts = await popup.$$eval("#brain option", (os) => os.map((o) => o.textContent));
   JSON.stringify(opts) === '["team/acme (write)"]' ? ok("the popup lists the one brain lfoletti may write to") : ko("brains", JSON.stringify(opts));
   (await popup.inputValue("#title")) === "Cutover plan" ? ok("the title comes from the page") : ko("title", await popup.inputValue("#title"));
-  (await popup.inputValue("#content")).includes("MARMOT") ? ok("the content is the page text") : ko("content", await popup.inputValue("#content"));
+  const content = await popup.inputValue("#content");
+  content.includes("MARMOT") && content.includes("opening balances") ? ok("the content is the page's text") : ko("content", content);
+  !/Pricing|Copyright|Share this/.test(content) && (await popup.getAttribute("#content", "data-extract")) === "blocks"
+    ? ok("the navigation, the share box and the footer stay out (extract: blocks)")
+    : ko("extraction", (await popup.getAttribute("#content", "data-extract")) + ": " + content);
   await popup.click("#propose");
   await popup.waitForSelector('#status[data-status="sent"]');
   const s1 = await popup.textContent("#status");

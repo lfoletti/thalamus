@@ -43,9 +43,14 @@ LF=$("$S/th-gateway" key issue "$S/data/rights.yaml" lfoletti team/acme) || { ec
 LFS=$("$S/th-gateway" key issue "$S/data/rights.yaml" lfoletti org/secrets) || exit 1
 cat > "$S/site/index.html" <<H
 <!doctype html><meta charset="utf-8"><title>Cutover plan</title>
+<nav class="site-nav"><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/contact">Contact</a></li></ul></nav>
+<div class="layout"><div class="post-content">
 <h1>Cutover plan</h1>
 <p>The cutover rehearsal of the Acme ledger migration takes place on Thursday 5 November 2026 at 18:00 in the Geneva office.</p>
 <p id="sel">The code word for the rehearsal is MARMOT.</p>
+<p>The finance team freezes the old ledger at 17:00 and checks the opening balances on the new one before the rehearsal starts.</p>
+</div><div class="share-box"><p>Share this page with your team.</p></div></div>
+<footer class="site-footer"><p>Copyright 2026 Acme. All rights reserved.</p></footer>
 H
 "$S/cortexdb-grpc" -db "$S/data/brain.db" -addr "$ADDR" -keys "$S/data/keys.json" > "$S/data/server.log" 2>&1 &
 SRV=$!
