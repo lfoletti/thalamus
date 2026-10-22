@@ -69,6 +69,9 @@ type Brain struct {
 	Curators []string `yaml:"curators"`
 	// RankWeight scales the brain's ranks in a federated recall; nil means 1.
 	RankWeight *float64 `yaml:"weight"`
+	// AuditReads asks for a named audit line per read of this brain. Without
+	// it the reads are counted per day, without a name.
+	AuditReads bool `yaml:"audit_reads"`
 }
 
 // Weight is the rank weight of the brain, 1 when the file says nothing.
@@ -109,6 +112,21 @@ type Rights struct {
 	Groups map[string][]string `yaml:"groups"`
 	// Identity is optional: without it, /v1/login answers 404.
 	Identity *Identity `yaml:"identity"`
+	// Audit is optional: without it, the audit keeps every line.
+	Audit *AuditPolicy `yaml:"audit"`
+}
+
+// AuditPolicy says how long the audit file keeps its lines.
+type AuditPolicy struct {
+	RetentionDays int `yaml:"retention_days"`
+}
+
+// RetentionDays is how many days the audit keeps a line; 0 keeps every line.
+func (r *Rights) RetentionDays() int {
+	if r.Audit == nil {
+		return 0
+	}
+	return r.Audit.RetentionDays
 }
 
 // Grant is one brain a user may reach, with the access level.
@@ -156,6 +174,9 @@ func Parse(data []byte) (*Rights, error) {
 	}
 	if r.Identity != nil && (strings.TrimSpace(r.Identity.Issuer) == "" || strings.TrimSpace(r.Identity.Audience) == "") {
 		return nil, errors.New("identity needs issuer and audience")
+	}
+	if r.RetentionDays() < 0 {
+		return nil, errors.New("parse rights file: audit retention_days must not be negative")
 	}
 	return &r, nil
 }

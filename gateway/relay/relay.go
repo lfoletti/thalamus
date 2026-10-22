@@ -46,6 +46,10 @@ func New(src *rights.Source, a *Audit) *Server {
 // changes.
 func (s *Server) rights() *rights.Rights { return s.src.Current() }
 
+// note is the one way to the audit: the policy of the current rights says
+// what the call leaves there.
+func (s *Server) note(e Entry) { _ = s.audit.Note(e, s.rights()) }
+
 type ctxKey struct{}
 
 // Handler serves /mcp/<brain> for every brain of the rights file, and /mcp,
@@ -157,11 +161,12 @@ func (s *Server) addTool(srv *mcp.Server, client rpcv1.ToolsServiceClient, def *
 		resp, err := client.CallTool(ctx, &rpcv1.CallToolRequest{Name: def.GetName(), ArgsJson: args})
 		if err != nil {
 			entry.Error = err.Error()
-			_ = s.audit.Record(entry)
+			entry.Denied = denied(err)
+			s.note(entry)
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("tool %s: %v", def.GetName(), err)}}}, nil
 		}
 		entry.OK = true
-		_ = s.audit.Record(entry)
+		s.note(entry)
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}, nil
 	})
 }

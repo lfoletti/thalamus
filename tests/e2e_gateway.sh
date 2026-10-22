@@ -35,8 +35,11 @@ brains:
     readers: [user:lfoletti]
     writers: [user:kmlead]
     weight: 0.8
+    audit_reads: true
 groups:
   acme: [lfoletti, mdupont]
+audit:
+  retention_days: 365
 EOR
 
 CORTEXDB_REVIEW_GATE=1 "$GRPC" -db "$S/data/brain.db" -addr "$ADDR" -keys "$S/data/keys.json" > "$S/data/server.log" 2>&1 &
@@ -211,13 +214,20 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 
 echo
 echo "--- audit ---"
-n=$(grep -c '"tool"' "$S/data/audit.jsonl"); echo "lines: $n"
-[ "$n" -eq 22 ] && ok "twenty-two tool calls audited, the login among them (the thirteen refusals at the gateway are not)" || ko "audit lines: $n" "$(cat "$S/data/audit.jsonl")"
-grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets","team/acme"\],"knowledge_ids":\[.*team/acme:spec-1' "$S/data/audit.jsonl" && ok "th_recall audited with the brains and the ids read" || ko "th_recall audit line" "$(grep th_recall "$S/data/audit.jsonl" | head -1)"
-grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$S/data/audit.jsonl" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$S/data/audit.jsonl" | head -1)"
-grep -q '"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$S/data/audit.jsonl" && ok "refusal by the brain audited as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$S/data/audit.jsonl")"
-grep -q '"user":"kmlead".*"brain":"org/secrets".*"knowledge_id":"secret-doc"' "$S/data/audit.jsonl" && ok "kmlead's save audited on org/secrets" || ko "kmlead audit line" "$(grep kmlead "$S/data/audit.jsonl")"
-grep -q '"user":"kmlead".*"brain":"team/acme","tool":"th_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$S/data/audit.jsonl" && ok "the review is audited with its decision" || ko "th_review audit line" "$(grep th_review "$S/data/audit.jsonl")"
+# The gateway stops: it writes the counted reads of the day. Reads of
+# org/secrets (audit_reads) are named; reads of team/acme are counted.
+kill -INT $GATEWAY; wait $GATEWAY 2>/dev/null
+A="$S/data/audit.jsonl"
+grep -q '"tool":"th_brains"' "$A" && ko "th_brains audited" "$(grep th_brains "$A")" || ok "th_brains, which reads no brain, leaves no line"
+grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets"\],"knowledge_ids":\[.*org/secrets:secret-doc' "$A" && ok "th_recall names the reads of org/secrets only" || ko "th_recall audit line" "$(grep th_recall "$A")"
+grep -q 'team/acme:spec' "$A" && ko "a read of team/acme named" "$(grep 'team/acme:spec' "$A")" || ok "the reads of team/acme are not named"
+grep -q '"brain":"team/acme","tool":"knowledge_search"' "$A" && ko "a search of team/acme named" "$(grep '"brain":"team/acme","tool":"knowledge_search"' "$A")" || ok "the searches of team/acme are not named"
+grep -q '"user":"","key":"","brain":"team/acme","tool":"reads","day":"[0-9-]*","calls":[0-9]' "$A" && ok "the reads of team/acme are counted for the day, without a name" || ko "team/acme count line" "$(grep '"reads"' "$A")"
+grep -q '"user":"lfoletti","key":"th/lfoletti/org/secrets","brain":"org/secrets","tool":"knowledge_search".*"ok":true' "$A" && ok "a search of org/secrets is named" || ko "org/secrets search line" "$(grep org/secrets "$A")"
+grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$A" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$A" | head -1)"
+grep -q '"user":"lfoletti".*"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$A" && ok "a read the brain refuses is named, as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$A")"
+grep -q '"user":"kmlead".*"brain":"org/secrets".*"knowledge_id":"secret-doc"' "$A" && ok "kmlead's save audited on org/secrets" || ko "kmlead audit line" "$(grep kmlead "$A")"
+grep -q '"user":"kmlead".*"brain":"team/acme","tool":"th_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$A" && ok "the review is audited with its decision" || ko "th_review audit line" "$(grep th_review "$A")"
 echo
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]
