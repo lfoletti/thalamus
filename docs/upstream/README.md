@@ -6,7 +6,7 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 
 ## Conditions de départ
 
-1. Les sept PR en cours (#72 à #78) sont fusionnées ou closes, et le commentaire de clôture de #66 est posté.
+1. Les PR en cours sont fusionnées ou closes (#72 à #74, #78, #82 et #83 fusionnées ; #75 à #77 en relecture au 22 octobre 2026), et le commentaire de clôture de #66 est posté. Décision de Lauro du 22 octobre 2026 : les fiches 01 et 06 partent quand ces PR sont validées et que le dépôt Thalamus est public, pas avant.
 2. Thalamus a tourné dans une vraie session Claude Code (`claude --plugin-dir ./plugin`), pas seulement sur le banc.
 3. Le dépôt Thalamus est public, pour que chaque PR renvoie au code qui la motive.
 4. Les règles de l'amont restent celles du 20 octobre 2026 : environ 400 lignes hors tests par PR, une règle par PR, tests « failing first », table outil par outil pour tout ce qu'une clé confinée atteint.
