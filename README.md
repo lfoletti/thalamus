@@ -34,16 +34,16 @@ Principes :
 
 | Chemin | Contenu |
 | :- | :- |
-| `gateway/` | Le module Go (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), ses tests et `mutate.py`, la preuve par mutations à la main. |
+| `gateway/` | Le module Go (`rights`, `identity`, `keys`, `relay`, `login`, `cmd/th-gateway`, `cmd/th-hook`), ses tests et `mutate.py`, la preuve par mutations à la main. |
 | `plugin/` | Le plugin Claude Code. |
 | `extension/` | L'extension Chrome. |
-| `tests/e2e_gateway.sh` | Banc de bout en bout : un serveur CortexDB, le gateway, les clés, des appels en HTTP, le hook, le fichier d'audit. |
+| `tests/` | Les bancs de bout en bout. `e2e_gateway.sh` lance un serveur CortexDB et le gateway, puis contrôle les clés, les appels, le hook, la connexion et l'audit. `e2e_extension.sh` pilote l'extension dans Chromium. `e2e_plugin.sh` ouvre une vraie session Claude Code avec le plugin. `fake_idp.mjs` est un faux fournisseur OpenID Connect pour les bancs. |
 | `docs/` | Révision d'architecture, ADR, pipeline de PR, dossiers des PR amont. |
 | `cortexdb/` | Hors de ce dépôt : un clone de CortexDB, attendu à côté de `gateway/` pour le banc. |
 
 ## Amont
 
-Les correctifs du moteur dont cette couche a besoin sont partis en amont en petites PR (discussion #66 de CortexDB) : clés confinées appliquées à la boîte à outils, hash de contenu, `expires_at`, statut de relecture opt-in, `cortex_query` tenu dans sa collection. Six sont fusionnés, sept en relecture au 20 octobre 2026. Le gateway importe CortexDB en bibliothèque à une version épinglée ; le banc lance le serveur construit depuis la branche qui porte les correctifs ouverts.
+Les correctifs du moteur dont cette couche a besoin sont partis en amont en petites PR (discussion #66 de CortexDB) : clés confinées appliquées à la boîte à outils, hash de contenu, `expires_at`, statut de relecture opt-in, `cortex_query` tenu dans sa collection. Au 22 octobre 2026, onze sont fusionnées et trois sont en relecture (#75, #76, #77). Le gateway importe CortexDB v2.136.0 en bibliothèque. Le banc lance le serveur construit depuis la branche qui porte les correctifs ouverts.
 
 ## Construire et tester
 
@@ -52,14 +52,21 @@ cd gateway
 go build ./...
 go test -race ./...          # environ 10 s, couverture 100 % hors main
 python3 -I mutate.py         # une mutation à la main par règle, chacune doit faire tomber son test
+cd ../extension && npm install && node --test   # règles et icônes de l'extension
 cd .. && sh tests/e2e_gateway.sh   # demande cortexdb/ à côté de gateway/
+sh tests/e2e_extension.sh          # demande Playwright, installé par npm install
 ```
 
 Règles de la maison : le test s'écrit avant le code et tombe sans lui, chaque ligne atteignable d'un changement est couverte avant la poussée, et une PR s'ouvre en brouillon. La procédure complète est dans `docs/pipeline_pr.md`.
 
 ## État
 
-Jour un (20 octobre 2026). Trois tranches : droits, clés et relais ; le point fédéré ; le client. Limites connues : le serveur CortexDB lit son fichier de clés au démarrage seulement, donc il redémarre après l'émission ou la révocation d'une clé ; le rappel fédéré fusionne des extraits, pas des nœuds du graphe ; pas d'OIDC.
+Au 22 octobre 2026, le gateway a douze tranches. Elles couvrent les droits, les clés, le relais, le rappel fédéré, le circuit d'écriture avec relecture, la face REST, la connexion OpenID Connect, le plugin et l'extension.
+
+Limites connues :
+
+- Le serveur CortexDB lit son fichier de clés au démarrage seulement. Il doit redémarrer après l'émission ou la révocation d'une clé.
+- Le rappel fédéré fusionne des extraits. La fusion des entités du graphe attend une PR amont (`docs/upstream/06-graph-tools-confined.md`).
 
 ## Licence
 
@@ -101,16 +108,16 @@ Principles:
 
 | Path | Content |
 | :- | :- |
-| `gateway/` | The Go module (`rights`, `keys`, `relay`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
+| `gateway/` | The Go module (`rights`, `identity`, `keys`, `relay`, `login`, `cmd/th-gateway`, `cmd/th-hook`), its tests and `mutate.py`, the hand-mutation proof. |
 | `plugin/` | The Claude Code plugin. |
 | `extension/` | The Chrome extension. |
-| `tests/e2e_gateway.sh` | End-to-end bench: a CortexDB server, the gateway, keys, calls over HTTP, the hook, the audit file. |
+| `tests/` | The end-to-end benches. `e2e_gateway.sh` starts a CortexDB server and the gateway, then checks the keys, the calls, the hook, the login and the audit. `e2e_extension.sh` drives the extension in Chromium. `e2e_plugin.sh` opens a real Claude Code session with the plugin. `fake_idp.mjs` is a fake OpenID Connect provider for the benches. |
 | `docs/` | Architecture revision, ADRs, the PR pipeline, the upstream PR folders (in French). |
 | `cortexdb/` | Not in this repository: a clone of CortexDB, expected next to `gateway/` for the bench. |
 
 ## Upstream
 
-The engine fixes this layer needs went upstream as small pull requests (CortexDB discussion #66): confined keys enforced on the tool box, a content hash, `expires_at`, an opt-in review status, and `cortex_query` kept in its collection. Six are merged; seven are in review as of 20 October 2026. The gateway imports CortexDB as a library at a pinned version; the bench runs the server built from the branch that carries the open fixes.
+The engine fixes this layer needs went upstream as small pull requests (CortexDB discussion #66): confined keys enforced on the tool box, a content hash, `expires_at`, an opt-in review status, and `cortex_query` kept in its collection. As of 22 October 2026, eleven are merged and three are in review (#75, #76, #77). The gateway imports CortexDB v2.136.0 as a library. The bench runs the server built from the branch that carries the open fixes.
 
 ## Build and test
 
@@ -119,14 +126,21 @@ cd gateway
 go build ./...
 go test -race ./...          # about 10 s, coverage 100 % outside main
 python3 -I mutate.py         # one hand mutation per rule, each must fail its test
+cd ../extension && npm install && node --test   # rules and icons of the extension
 cd .. && sh tests/e2e_gateway.sh   # needs cortexdb/ next to gateway/
+sh tests/e2e_extension.sh          # needs Playwright, installed by npm install
 ```
 
 Rules of the house: the test is written before the code and fails without it, every reachable line of a change is covered before it is pushed, and a pull request opens as a draft. The whole procedure is in `docs/pipeline_pr.md`.
 
 ## Status
 
-Day one (20 October 2026). Three slices: rights, keys and relay; the federated endpoint; the client. Known limits: the CortexDB server reads its key file at start only, so it restarts after a key is issued or revoked; the federated recall fuses extracts, not graph nodes; no OIDC yet.
+As of 22 October 2026, the gateway has twelve slices. They cover the rights, the keys, the relay, the federated recall, the write circuit with review, the REST face, the OpenID Connect login, the plugin and the extension.
+
+Known limits:
+
+- The CortexDB server reads its key file at start only. It must restart after a key is issued or revoked.
+- The federated recall fuses extracts. The fusion of graph entities waits for an upstream PR (`docs/upstream/06-graph-tools-confined.md`).
 
 ## License
 
