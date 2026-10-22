@@ -16,7 +16,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 ## Why use it
 
-- **Knowledge at the moment of need.** One question reaches every brain that the employee may read. The employee does not choose where to look. Each extract gives its source, so the employee can open the full document. In Claude Code, a hook brings the extracts at each prompt (see [Automatic recall in Claude Code](#automatic-recall-in-claude-code)).
+- **Knowledge at the moment of need.** One question reaches every brain that the employee may read. The employee does not choose where to look. Each extract gives its source, so the employee can open the full document. In Claude Code, a hook brings the extracts at each prompt (see [Combining local and global brains](#combining-local-and-global-brains)).
 - **Access without requests.** An employee logs in with the account of the organisation, and the gateway issues the keys that the rights allow. To give a person access to a team's brains, add the login to the team's group in `rights.yaml`. The change applies at the next call, without a restart.
 - **Knowledge added in one step.** An employee proposes a document from Claude Code or from a page in Chrome. A curator of the brain accepts or rejects it, from the same tools.
 - **Brains of the correct size.** A brain is a whole CortexDB server or one collection of a shared server. Small teams can share one server. A sensitive brain can have its own server. Each brain can have a weight in the merged results.
@@ -40,7 +40,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 - The gateway keeps an audit in `audit.jsonl`, for security and traceability. The writes, the reviews, the logins and the refused calls have a line with the name of the person. The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` in `rights.yaml` has named reads. `audit: retention_days` limits how long the lines stay.
 - An employee logs in with the organisation's identity provider (OpenID Connect). The gateway then issues the keys that the rights allow.
 
-## Automatic recall in Claude Code
+## Combining local and global brains
 
 The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the gateway for the best extracts and gives them to the agent before it answers. The employee does not ask for them.
 
@@ -51,7 +51,7 @@ The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At 
 - It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
 - The agent can open the full document of an extract with `th_get`.
 
-Planned: the hook also searches the local brain of the machine, and merges its extracts with the extracts of the server brains. The local brain stays on the machine. It does not go through the gateway.
+Planned: the hook also searches the local brains of the machine, and adds their extracts to the extracts of the server brains. By default, the only local brain is the brain of the project. A setting adds other local brains, for example the brain in the home directory or the brain of another project. The local brains stay on the machine. They do not go through the gateway.
 
 Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant. Thalamus has one for Claude Code.
 
@@ -132,7 +132,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 **Next in Thalamus**
 
-- The recall hook also searches the local brain of the machine, and merges its extracts with the extracts of the server brains.
+- The recall hook also searches the local brains of the machine: the brain of the project by default, and other brains on request.
 
 **With CortexDB**
 
