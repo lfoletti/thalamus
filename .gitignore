@@ -8,3 +8,7 @@ cortexdb/
 gateway/bin/
 plugin/bin/th-hook
 extension/node_modules/
+# Caches Python des outils
+__pycache__/
+# Verrou des tâches planifiées de Claude Code
+.claude/scheduled_tasks.lock
