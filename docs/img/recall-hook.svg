@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" width="760" height="270" role="img" aria-labelledby="title desc">
+  <title id="title">Automatic recall in Claude Code</title>
+  <desc id="desc">The employee types a prompt. The th-hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key. The gateway searches the brains that the employee may read. The best extracts come back with their source, and the hook adds them to the prompt before the agent answers.</desc>
+  <style>
+    .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
+    .core { fill: #312e81; stroke: #312e81; }
+    .line { fill: none; stroke: #4338ca; stroke-width: 1.5; }
+    .head { fill: #4338ca; }
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1e1b4b; }
+    .label { font-size: 14px; }
+    .small { font-size: 12px; fill: #4338ca; }
+    .light { fill: #ffffff; }
+    .lightsmall { font-size: 12px; fill: #c7d2fe; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    .step { font-size: 12px; font-weight: 600; fill: #ffffff; }
+    .dot { fill: #4338ca; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #1e1b4b; stroke: #a5b4fc; }
+      .core { fill: #4338ca; stroke: #a5b4fc; }
+      .line { stroke: #a5b4fc; }
+      .head { fill: #a5b4fc; }
+      text { fill: #e0e7ff; }
+      .small { fill: #c7d2fe; }
+      .dot { fill: #6366f1; }
+    }
+  </style>
+
+  <!-- Top row: the request, left to right -->
+  <rect class="box" x="16" y="30" width="150" height="58" rx="8"/>
+  <text class="label" x="91" y="55" text-anchor="middle">The employee</text>
+  <text class="small" x="91" y="74" text-anchor="middle">types a prompt</text>
+
+  <rect class="box" x="210" y="30" width="160" height="58" rx="8"/>
+  <text class="label mono" x="290" y="55" text-anchor="middle">th-hook</text>
+  <text class="small" x="290" y="74" text-anchor="middle">UserPromptSubmit</text>
+
+  <rect class="box core" x="414" y="30" width="160" height="58" rx="8"/>
+  <text class="label light" x="494" y="55" text-anchor="middle" style="fill:#ffffff">Thalamus gateway</text>
+  <text class="lightsmall mono" x="494" y="74" text-anchor="middle" style="font-size:12px">th_recall</text>
+
+  <rect class="box" x="626" y="22" width="118" height="58" rx="8"/>
+  <rect class="box" x="620" y="28" width="118" height="58" rx="8"/>
+  <rect class="box" x="614" y="34" width="118" height="58" rx="8"/>
+  <text class="label" x="673" y="59" text-anchor="middle">Readable</text>
+  <text class="label" x="673" y="77" text-anchor="middle">brains</text>
+
+  <path class="line" d="M166 59 L 200 59"/><path class="head" d="M210 59 L 199 53.5 L 199 64.5 Z"/>
+  <path class="line" d="M370 59 L 404 59"/><path class="head" d="M414 59 L 403 53.5 L 403 64.5 Z"/>
+  <path class="line" d="M574 59 L 604 59"/><path class="head" d="M614 63 L 603 57.5 L 603 68.5 Z"/>
+  <text class="small" x="392" y="108" text-anchor="middle">employee's key</text>
+
+  <!-- Turn down from the brains -->
+  <path class="line" d="M673 92 L 673 170"/><path class="head" d="M673 180 L 667.5 169 L 678.5 169 Z"/>
+
+  <!-- Bottom row: the answer, right to left -->
+  <rect class="box" x="540" y="182" width="204" height="58" rx="8"/>
+  <text class="label" x="642" y="207" text-anchor="middle">Best extracts, merged</text>
+  <text class="small" x="642" y="226" text-anchor="middle">each with brain, document, author</text>
+
+  <rect class="box" x="278" y="182" width="214" height="58" rx="8"/>
+  <text class="label" x="385" y="207" text-anchor="middle">Prompt + extracts</text>
+  <text class="small" x="385" y="226" text-anchor="middle">added as context by the hook</text>
+
+  <rect class="box" x="16" y="182" width="214" height="58" rx="8"/>
+  <text class="label" x="123" y="207" text-anchor="middle">The agent answers</text>
+  <text class="small" x="123" y="226" text-anchor="middle">and can open a source with th_get</text>
+
+  <path class="line" d="M540 211 L 502 211"/><path class="head" d="M492 211 L 503 205.5 L 503 216.5 Z"/>
+  <path class="line" d="M278 211 L 240 211"/><path class="head" d="M230 211 L 241 205.5 L 241 216.5 Z"/>
+</svg>
