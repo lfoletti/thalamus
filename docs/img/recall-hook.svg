@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" width="760" height="480" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 364" width="760" height="364" role="img" aria-labelledby="title desc">
   <title id="title">Automatic recall in Claude Code</title>
   <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brain on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
   <style>
@@ -63,13 +63,13 @@
   <text class="label" x="505" y="281" text-anchor="middle">Prompt + best extracts, merged</text>
   <text class="small" x="505" y="300" text-anchor="middle">each with brain, document and author, added as context by the hook</text>
 
-  <!-- Row 4: the answer -->
-  <path class="line" d="M505 314 L 505 362"/><path class="head" d="M505 372 L 499.5 361 L 510.5 361 Z"/>
-  <rect class="box" x="355" y="372" width="300" height="58" rx="8"/>
-  <text class="label" x="505" y="397" text-anchor="middle">The agent answers</text>
-  <text class="small" x="505" y="416" text-anchor="middle">and can open a source with th_get</text>
+  <!-- The answer, under the employee -->
+  <path class="line" d="M280 285 L 240 285"/><path class="head" d="M230 285 L 241 279.5 L 241 290.5 Z"/>
+  <rect class="box" x="30" y="256" width="200" height="58" rx="8"/>
+  <text class="label" x="130" y="281" text-anchor="middle">The agent answers</text>
+  <text class="small" x="130" y="300" text-anchor="middle">can open a source with th_get</text>
 
   <!-- Legend -->
-  <path class="dash" d="M30 462 L 66 462"/>
-  <text class="ptext" x="74" y="466">planned, not built yet</text>
+  <path class="dash" d="M30 346 L 66 346"/>
+  <text class="ptext" x="74" y="350">planned, not built yet</text>
 </svg>
