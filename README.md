@@ -63,10 +63,10 @@ Règles de la maison : le test s'écrit avant le code et tombe sans lui, chaque 
 
 Au 22 octobre 2026, le gateway a douze tranches. Elles couvrent les droits, les clés, le relais, le rappel fédéré, le circuit d'écriture avec relecture, la face REST, la connexion OpenID Connect, le plugin et l'extension.
 
-Limites connues :
+Limites connues. Les deux viennent de CortexDB, et leur correction est en cours. Chaque correctif est prêt sous forme de PR amont, dans `docs/upstream/`. Ces PR partiront quand les PR en relecture (#75 à #77) seront fusionnées et que ce dépôt sera public.
 
-- Le serveur CortexDB lit son fichier de clés au démarrage seulement. Il doit redémarrer après l'émission ou la révocation d'une clé.
-- Le rappel fédéré fusionne des extraits. La fusion des entités du graphe attend une PR amont (`docs/upstream/06-graph-tools-confined.md`).
+- **Redémarrage du serveur.** Le serveur CortexDB lit son fichier de clés au démarrage seulement. Il doit redémarrer après l'émission ou la révocation d'une clé. Le correctif fait relire le fichier par le serveur quand le fichier change (`docs/upstream/01-key-file-reload.md`).
+- **Outils de graphe fermés aux clés confinées.** Le graphe est partagé entre les collections. Le moteur refuse donc les outils de graphe à une clé confinée à une collection. Pour un tel cerveau, le rappel fédéré fusionne seulement des extraits. Le correctif cache dans les parcours du graphe ce qui est hors du périmètre de la clé, puis ouvre ces outils (`docs/upstream/06-graph-tools-confined.md`, deux PR). Un cerveau qui est tout son serveur n'a pas cette limite.
 
 ## Licence
 
@@ -137,10 +137,10 @@ Rules of the house: the test is written before the code and fails without it, ev
 
 As of 22 October 2026, the gateway has twelve slices. They cover the rights, the keys, the relay, the federated recall, the write circuit with review, the REST face, the OpenID Connect login, the plugin and the extension.
 
-Known limits:
+Known limits. Both come from CortexDB, and their fix is in progress. Each fix is ready as an upstream PR, in `docs/upstream/`. These PRs will go when the PRs in review (#75 to #77) are merged and this repository is public.
 
-- The CortexDB server reads its key file at start only. It must restart after a key is issued or revoked.
-- The federated recall fuses extracts. The fusion of graph entities waits for an upstream PR (`docs/upstream/06-graph-tools-confined.md`).
+- **Server restart.** The CortexDB server reads its key file at start only. It must restart after a key is issued or revoked. The fix makes the server read the file again when the file changes (`docs/upstream/01-key-file-reload.md`).
+- **Graph tools closed to confined keys.** The graph is shared between collections. So the engine refuses the graph tools to a key confined to one collection. For such a brain, the federated recall fuses extracts only. The fix hides from the graph walks what is outside the key's scope, then opens these tools (`docs/upstream/06-graph-tools-confined.md`, two PRs). A brain that is its whole server does not have this limit.
 
 ## License
 
