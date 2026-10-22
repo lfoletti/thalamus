@@ -13,6 +13,7 @@ Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 ```sh
 go build -o plugin/bin/th-hook ./gateway/cmd/th-hook     # depuis la racine du projet
 th-gateway login http://gateway.interne:8787             # connexion par le compte de l'organisation : écrit ~/.thalamus/env
+plugin/bin/th-hook install                               # cerveaux locaux : TH_LOCAL_RECALL dans ~/.thalamus/env
 set -a; . ~/.thalamus/env; set +a                        # TH_GATEWAY et TH_KEY dans le shell, pour le serveur MCP
 claude --plugin-dir ./plugin
 ```
@@ -32,7 +33,7 @@ Le hook ajoute les cerveaux CortexDB de la machine. Pour chaque cerveau local, i
 - Chaque cerveau local a sa section, `[local:<nom>]`, dans l'ordre de la liste. Les sections locales tiennent dans 3 000 caractères en tout, sur les 9 000 du bloc.
 - Un cerveau absent est sauté. Un cerveau en panne ou trop lent est sauté, avec son nom sur stderr. Les autres restent.
 
-Les deux réglages se lisent aussi dans `~/.thalamus/env`. Le hook de rappel du plugin CortexDB, s'il est installé, se coupe avec `cortexdb-recall --disable` : le hook de Thalamus appelle le même rappel, et un seul rappel par prompt suffit.
+Les deux réglages se lisent aussi dans `~/.thalamus/env`. `th-hook install` les prépare : il trouve le binaire de CortexDB de la machine (`CORTEXDB_MCP_BIN`, sinon la version la plus récente dans le dossier `data` du plugin CortexDB ou dans `~/.cache/cortexdb/bin`, sinon `cortexdb-mcp` dans le `PATH`), écrit `TH_LOCAL_RECALL` dans `~/.thalamus/env` sans toucher aux autres lignes, et coupe le rappel automatique de CortexDB, puisque le hook de Thalamus appelle le même rappel. Pour le rétablir : `cortexdb-recall --enable`.
 
 ## Choisir ses cerveaux
 

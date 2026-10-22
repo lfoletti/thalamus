@@ -26,7 +26,8 @@ const contextBudget = 9000
 const usage = `usage: th-hook recall               (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK, TH_LOCAL_RECALL, TH_LOCAL_BRAINS)
        th-hook brains               (the brains of the automatic recall, on or off)
        th-hook on|off <brain>...    (local brains are local:<name>)
-       th-hook only <brain>... | --clear`
+       th-hook only <brain>... | --clear
+       th-hook install              (TH_LOCAL_RECALL from the CortexDB binary of this machine)`
 
 // deadline bounds one recall, the gateway and the local brains together.
 var deadline = 8 * time.Second
@@ -63,6 +64,12 @@ func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr
 	get := source(env)
 	switch {
 	case len(args) == 1 && args[0] == "recall":
+	case len(args) == 1 && args[0] == "install":
+		if err := install(get, stdout); err != nil {
+			fmt.Fprintf(stderr, "th-hook: %v\n", err)
+			return 1
+		}
+		return 0
 	case len(args) == 1 && args[0] == "brains":
 		return listBrains(get, stdout, stderr)
 	case len(args) > 1 && (args[0] == "on" || args[0] == "off" || args[0] == "only"):

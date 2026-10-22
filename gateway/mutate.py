@@ -305,6 +305,27 @@ M = [
  ("cmd/th-gateway/audit.go", "if _, err := time.Parse(time.DateOnly, f.since); err != nil {", "if false {", "cmd/th-gateway", "TestTheAuditCommandLine", "a wrong --since is accepted"),
  ("cmd/th-gateway/audit.go", "if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 {", "if err := fs.Parse(args[1:]); err != nil {", "cmd/th-gateway", "TestTheAuditCommandLine", "extra arguments are accepted"),
  ("cmd/th-gateway/run.go", "err = auditCommand(args[1:], stdout)", "err = nil", "cmd/th-gateway", "TestTheAuditSummary", "audit does nothing"),
+ # th-hook install : le rappel local réglé sur ce poste
+ ("cmd/th-hook/install.go", "if bin == \"\" {", "if false {", "cmd/th-hook", "TestInstallReportsItsProblems", "no binary writes an empty command"),
+ ("cmd/th-hook/install.go", "envFile := get(\"TH_ENV\")", "envFile := \"\"", "cmd/th-hook", "TestInstallLooksInOrder", "TH_ENV is ignored"),
+ ("cmd/th-hook/install.go", "strings.TrimSpace(k) == key {", "false {", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "the old TH_LOCAL_RECALL stays"),
+ ("cmd/th-hook/install.go", "if text == \"\" {\n\t\tlines = nil", "if false {\n\t\tlines = nil", "cmd/th-hook", "TestInstallLooksInOrder", "a new env file starts with an empty line"),
+ ("cmd/th-hook/install.go", "\"off\\n\"", "\"on\\n\"", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "the native auto-recall stays on"),
+ ("cmd/th-hook/install.go", "if c := get(\"XDG_CACHE_HOME\"); c != \"\" {", "if c := get(\"XDG_CACHE_HOME\"); false {", "cmd/th-hook", "TestInstallLooksInOrder", "XDG_CACHE_HOME is ignored"),
+ ("cmd/th-hook/install.go", "if b := get(\"CORTEXDB_MCP_BIN\"); runnable(b) {", "if b := get(\"CORTEXDB_MCP_BIN\"); false {", "cmd/th-hook", "TestInstallLooksInOrder", "CORTEXDB_MCP_BIN is ignored"),
+ ("cmd/th-hook/install.go", "filepath.Join(get(\"HOME\"), \".claude\", \"plugins\", \"data\", \"cortexdb*\", \"bin\"), ", "", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "the data folder of the plugin is not searched"),
+ ("cmd/th-hook/install.go", "if runnable(f) && (best == \"\" || newer(v, bestVersion)) {", "if best == \"\" || newer(v, bestVersion) {", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "a file that cannot run is chosen"),
+ ("cmd/th-hook/install.go", "if runnable(f) && (best == \"\" || newer(v, bestVersion)) {", "if runnable(f) {", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "the last binary wins, not the newest"),
+ ("cmd/th-hook/install.go", "p, _ := exec.LookPath(\"cortexdb-mcp\")\n\treturn p", "_ = exec.LookPath\n\treturn \"\"", "cmd/th-hook", "TestInstallLooksInOrder", "the PATH is not searched"),
+ ("cmd/th-hook/install.go", " && info.Mode().Perm()&0o111 != 0", "", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "any file can run"),
+ ("cmd/th-hook/install.go", "return x > y", "return x < y", "cmd/th-hook", "TestNewerComparesVersions", "newer is older"),
+ ("cmd/th-hook/install.go", "if i >= len(parts) {\n\t\treturn 0", "if i >= len(parts) {\n\t\treturn 1", "cmd/th-hook", "TestNewerComparesVersions", "a missing part is 1"),
+ ("cmd/th-hook/install.go", "return os.WriteFile(path, []byte(text), 0o600)", "return os.WriteFile(path, []byte(text), 0o644)", "cmd/th-hook", "TestInstallLooksInOrder", "the env file is readable by others"),
+ ("cmd/th-hook/install.go", "if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {\n\t\treturn err\n", "if false {\n\t\treturn nil\n", "cmd/th-hook", "TestInstallLooksInOrder", "the folder of a new env file is not made"),
+ ("cmd/th-hook/install.go", "setLine(string(data), \"TH_LOCAL_RECALL\", bin+\" --recall\")); err != nil {", "setLine(string(data), \"TH_LOCAL_RECALL\", bin+\" --recall\")); false {", "cmd/th-hook", "TestInstallReportsItsProblems", "an env file that cannot be written is silent"),
+ ("cmd/th-hook/install.go", "if err := writeFile(sentinel, \"off\\n\"); err != nil {", "if err := writeFile(sentinel, \"off\\n\"); false {", "cmd/th-hook", "TestInstallReportsItsProblems", "an autorecall that cannot be written is silent"),
+ ("cmd/th-hook/install.go", "fmt.Fprintf(stdout, \"native recall", "fmt.Fprintf(io.Discard, \"native recall", "cmd/th-hook", "TestInstallSetsTheLocalRecall", "install says nothing"),
+ ("cmd/th-hook/recall.go", "if err := install(get, stdout); err != nil {", "if err := install(get, stdout); false {", "cmd/th-hook", "TestInstallReportsItsProblems", "a failed install succeeds"),
 ]
 
 bad = 0
