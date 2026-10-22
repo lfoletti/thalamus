@@ -47,7 +47,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 ## Try it
 
-The steps start one CortexDB server with two brains, then the gateway, then the plugin.
+The steps start one CortexDB server with two brains, then the gateway, then the plugin. Do all the steps in the root of this repository.
 
 1. Build the binaries. `cortexdb/` is a clone of CortexDB next to `gateway/`.
 
@@ -82,6 +82,8 @@ The steps start one CortexDB server with two brains, then the gateway, then the 
    ```sh
    echo '{"keys":[]}' > keys.json
    ```
+
+   The key file is at the path that `keys_file` gives. A relative path starts from the directory where `th-gateway` runs. The gateway writes the keys into this file, and the server reads it with `-keys`.
 
 3. Issue the keys, then start the server. The server reads its key file when it starts.
 
