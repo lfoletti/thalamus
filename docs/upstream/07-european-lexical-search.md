@@ -32,6 +32,14 @@ Oui, mais pas une copie. `fts_cjk.go` choisit l'index **selon l'écriture** de l
 
 La règle équivalente se décide **selon le résultat**, terme par terme : un terme long que l'index des mots ne trouve pas est cherché une 2e fois dans l'index par trigrammes. Cette règle ne dépend d'aucune langue. Elle aide l'allemand et le romanche (mots composés), et aussi le néerlandais, les langues nordiques et le finnois. L'index existe déjà des deux côtés. Le fichier : `pkg/core/fts_compound.go`, à côté de `fts_cjk.go`.
 
+### Constat du 22 octobre 2026, au soir : les variantes de la requête sont ignorées
+
+La description des outils de recherche demande à l'agent des variantes dans d'autres langues (`alternate_queries`, `keywords`). Mais `searchTextCandidates` (`pkg/cortexdb/graphrag_tool_search.go`) s'arrête après la question : `if idx == 0 && len(merged) >= searchOpts.TopK { break }`. Une question en langue naturelle remplit presque toujours `top_k`, donc les variantes ne tournent pas. La partie vectorielle encode aussi la seule question.
+
+Mesure sur le pilote ai-audio (50 questions en français, fiches surtout en anglais, `knowledge_search` en mode graphe avec encodeur) : avec ou sans une variante anglaise dans `alternate_queries`, les morceaux rendus sont identiques pour les 50 questions. La même variante, cherchée à part et fusionnée par RRF dans Thalamus (tranche 17), fait passer la couverture des faits de 81,3 % à 85,1 %.
+
+PR possible (petite, avant les autres) : chaque variante tourne, et les listes sont fusionnées par rang, comme dans Thalamus. Le test : une variante qui seule trouve un document le fait entrer dans le résultat.
+
 ## La proposition
 
 ### PR 1 : un jeu d'évaluation suisse (environ 150 lignes, d'abord)

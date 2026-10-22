@@ -35,6 +35,10 @@ const (
 	chunkChars  = 1000
 )
 
+// maxVariants bounds alternate_queries: each one is a search of its own on
+// every brain, in the passages and in the pyramid.
+const maxVariants = 4
+
 // holderOf finds the caller behind a bearer, looking through the key files
 // of every brain, and refuses a caller with no right left.
 func (s *Server) holderOf(r *http.Request) (string, int, error) {
@@ -114,6 +118,9 @@ type recallArgs struct {
 	TopK   int      `json:"top_k,omitempty"`
 	Brains []string `json:"brains,omitempty"`
 	Skip   []string `json:"skip_brains,omitempty"`
+	// Variants are the query in other words or languages, each searched
+	// apart and fused with it.
+	Variants []string `json:"alternate_queries,omitempty"`
 	// Syntheses is how many syntheses of the pyramids to serve first; nil
 	// means defaultSyntheses, 0 none.
 	Syntheses *int `json:"syntheses,omitempty"`
@@ -166,13 +173,15 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			return jsonResult(s.brainsOf(user)), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains, less those in skip_brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
+	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains, less those in skip_brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Each result is a passage of a document. Returns the results with their provenance and the brains that were skipped.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"query":       map[string]any{"type": "string", "description": "the question"},
-			"top_k":       map[string]any{"type": "integer", "description": "results to return, default 5"},
+			"top_k":       map[string]any{"type": "integer", "description": fmt.Sprintf("passages to return, default %d", defaultTopK)},
 			"brains":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "restrict to these brains"},
 			"skip_brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "leave out these brains"},
-			"syntheses":   map[string]any{"type": "integer", "description": "syntheses of the brains' pyramids to serve first, default 2, 0 for none"},
+			"syntheses":   map[string]any{"type": "integer", "description": fmt.Sprintf("passages of the brains' pyramids of syntheses to serve first, default %d, 0 for none", defaultSyntheses)},
+			"alternate_queries": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": maxVariants,
+				"description": fmt.Sprintf("the question in other words or other languages of the documents, at most %d; each is searched apart and fused with the query", maxVariants)},
 		}, "required": []string{"query"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args recallArgs
@@ -198,6 +207,10 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if args.TopK <= 0 {
 		args.TopK = defaultTopK
 	}
+	if len(args.Variants) > maxVariants {
+		return recallResult{}, fmt.Errorf("th_recall: at most %d alternate_queries", maxVariants)
+	}
+	queries := append([]string{args.Query}, args.Variants...)
 	syntheses := defaultSyntheses
 	if args.Syntheses != nil {
 		syntheses = *args.Syntheses
@@ -222,8 +235,8 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	var (
 		mu     sync.Mutex
 		wg     sync.WaitGroup
-		lists  = make([]brainHits, len(grants))
-		synths = make([]brainHits, len(grants))
+		lists  = make([][]brainHits, len(grants))
+		synths = make([][]brainHits, len(grants))
 		skips  []skipped
 		read   []string
 		brains []string
@@ -233,26 +246,46 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		go func(i int, name string) {
 			defer wg.Done()
 			b := s.rights().Brains[name]
-			hits, err := s.askBrain(ctx, b, user, name, args.Query, args.TopK, b.Collection)
-			var syn []hit
-			var synErr error
-			if err == nil && b.Pyramid != nil && syntheses > 0 {
-				syn, synErr = s.askBrain(ctx, b, user, name, args.Query, syntheses, b.Pyramid.Collection)
+			var mine, theirs []brainHits
+			var reasons []string
+			for q, query := range queries {
+				hits, err := s.askBrain(ctx, b, user, name, query, args.TopK, b.Collection)
+				var syn []hit
+				var synErr error
+				if err == nil && b.Pyramid != nil && syntheses > 0 {
+					syn, synErr = s.askBrain(ctx, b, user, name, query, syntheses, b.Pyramid.Collection)
+				}
+				prefix := ""
+				if q > 0 {
+					prefix = fmt.Sprintf("alternate query %d: ", q)
+				}
+				if err != nil {
+					if q == 0 {
+						mu.Lock()
+						skips = append(skips, skipped{Brain: name, Reason: err.Error()})
+						mu.Unlock()
+						return
+					}
+					reasons = append(reasons, prefix+err.Error())
+					continue
+				}
+				if synErr != nil {
+					reasons = append(reasons, prefix+"pyramid: "+synErr.Error())
+				}
+				mine = append(mine, brainHits{Brain: name, Weight: b.Weight(), Hits: hits})
+				theirs = append(theirs, brainHits{Brain: name, Weight: b.Weight(), Hits: syn})
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if err != nil {
-				skips = append(skips, skipped{Brain: name, Reason: err.Error()})
-				return
+			for _, r := range reasons {
+				skips = append(skips, skipped{Brain: name, Reason: r})
 			}
-			if synErr != nil {
-				skips = append(skips, skipped{Brain: name, Reason: "pyramid: " + synErr.Error()})
-			}
-			lists[i] = brainHits{Brain: name, Weight: b.Weight(), Hits: hits}
-			synths[i] = brainHits{Brain: name, Weight: b.Weight(), Hits: syn}
+			lists[i], synths[i] = mine, theirs
 			brains = append(brains, name)
-			for _, h := range append(hits, syn...) {
-				read = append(read, name+":"+h.KnowledgeID)
+			for _, l := range append(mine, theirs...) {
+				for _, h := range l.Hits {
+					read = append(read, name+":"+h.KnowledgeID)
+				}
 			}
 		}(i, g.Brain)
 	}
@@ -263,7 +296,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	read = slices.Compact(read)
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
 	s.note(entry)
-	results := append(fuse(synths, syntheses, "synthesis"), fuse(lists, args.TopK, "")...)
+	results := append(fuse(slices.Concat(synths...), syntheses, "synthesis"), fuse(slices.Concat(lists...), args.TopK, "")...)
 	return recallResult{Results: results, Skipped: skips}, nil
 }
 
