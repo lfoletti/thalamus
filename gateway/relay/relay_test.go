@@ -36,6 +36,7 @@ type brain struct {
 	calls             []call
 	fail              bool
 	failOn            string                    // a collection whose calls fail
+	failQuery         string                    // a query whose calls fail
 	hits              map[string][]fakeHit      // knowledge_search answers by collection
 	chunks            map[string][]fakeChunk    // the chunks knowledge_search adds, by collection
 	badJSON           bool                      // answer knowledge_search with text that is not JSON
@@ -79,13 +80,14 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	var args struct {
 		Collection string `json:"collection"`
 		TopK       int    `json:"top_k"`
+		Query      string `json:"query"`
 	}
 	_ = json.Unmarshal([]byte(req.GetArgsJson()), &args)
 	if b.bearers == nil {
 		b.bearers = map[string]string{}
 	}
 	b.bearers[args.Collection] = bearer
-	if b.fail || (b.failOn != "" && b.failOn == args.Collection) {
+	if b.fail || (b.failOn != "" && b.failOn == args.Collection) || (b.failQuery != "" && b.failQuery == args.Query) {
 		return nil, errors.New("brain says no")
 	}
 	if b.badJSON || b.badTool == req.GetName() {
@@ -157,7 +159,11 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &max)
 		var cs []map[string]any
-		for i, c := range b.chunks[args.Collection] {
+		chunks, byQuery := b.chunks[args.Collection+"|"+args.Query]
+		if !byQuery {
+			chunks = b.chunks[args.Collection]
+		}
+		for i, c := range chunks {
 			if max.Chunks > 0 && i >= max.Chunks {
 				break
 			}

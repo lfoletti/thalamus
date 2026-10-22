@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -741,6 +742,89 @@ func TestRecallServesTheChunksOfTheDocuments(t *testing.T) {
 			t.Fatalf("defaults: %v", args)
 		}
 	}
+}
+
+// th_recall searches the query and each of its alternate_queries apart,
+// in the passages and in the pyramid, and fuses every list by reciprocal
+// rank: the engine stops at the query when it fills top_k, so a variant in
+// another language reaches the brain only as its own search. At most 4
+// variants. A variant that fails is said in skipped; the query's results
+// stay.
+func TestRecallSearchesEachAlternateQuery(t *testing.T) {
+	b, secret := pyramidBench(t)
+	b.brain.hits = map[string][]fakeHit{"team-acme": {{"a-1", "Ledger plan", "..."}, {"b-1", "Grand livre", "..."}}, "acme-pyramid": {}}
+	b.brain.chunks = map[string][]fakeChunk{
+		"team-acme|grand livre":    {{"b-1", "Le grand livre migre dimanche."}, {"a-1", "The ledger moves on Sunday."}},
+		"team-acme|ledger":         {{"a-1", "The ledger moves on Sunday."}, {"c-1", "The cutover is on Thursday."}},
+		"acme-pyramid|grand livre": {{"pyramide/fr", "Synthèse."}},
+		"acme-pyramid|ledger":      {{"pyramide/en", "Synthesis."}},
+	}
+	s := b.federated(t, secret)
+	order := func(args map[string]any) string {
+		got := decode[recallOut](t, mustCall(t, s, "th_recall", args))
+		var ids []string
+		for _, r := range got.Results {
+			ids = append(ids, r.KnowledgeID)
+		}
+		return strings.Join(ids, " ")
+	}
+	if got := order(map[string]any{"query": "grand livre", "brains": []string{"team/acme"}}); got != "pyramide/fr b-1 a-1" {
+		t.Fatalf("without a variant: %s", got)
+	}
+	b.brain.calls = nil
+	if got := order(map[string]any{"query": "grand livre", "alternate_queries": []string{"ledger"}, "brains": []string{"team/acme"}}); got != "pyramide/fr pyramide/en a-1 b-1 c-1" {
+		t.Fatalf("with a variant: %s", got)
+	}
+	var asked []string
+	for _, c := range b.brain.calls {
+		var args map[string]any
+		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+		if _, sent := args["alternate_queries"]; sent {
+			t.Fatalf("the variants went to the engine: %v", args)
+		}
+		asked = append(asked, args["collection"].(string)+"|"+args["query"].(string))
+	}
+	sort.Strings(asked)
+	if strings.Join(asked, " ") != "acme-pyramid|grand livre acme-pyramid|ledger team-acme|grand livre team-acme|ledger" {
+		t.Fatalf("searches: %v", asked)
+	}
+	ids := b.auditLines(t)[1]["ids"].(map[string]any)["knowledge_ids"].([]any)
+	if fmt.Sprint(ids) != "[team/acme:a-1 team/acme:b-1 team/acme:c-1 team/acme:pyramide/en team/acme:pyramide/fr]" {
+		t.Fatalf("audit ids: %v", ids)
+	}
+
+	b.brain.failQuery = "ledger"
+	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "grand livre", "alternate_queries": []string{"ledger"}, "brains": []string{"team/acme"}, "syntheses": 0}))
+	if len(got.Results) != 2 || got.Results[0].KnowledgeID != "b-1" || len(got.Skipped) != 1 || !strings.HasPrefix(got.Skipped[0].Reason, "alternate query 1: ") || !strings.Contains(got.Skipped[0].Reason, "brain says no") {
+		t.Fatalf("a failed variant: %+v", got)
+	}
+	r, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_recall", Arguments: map[string]any{"query": "q", "alternate_queries": []string{"a", "b", "c", "d", "e"}}})
+	if err != nil || !r.IsError || !strings.Contains(r.Content[0].(*mcp.TextContent).Text, "at most 4 alternate_queries") {
+		t.Fatalf("five variants: %v %+v", err, r)
+	}
+}
+
+// The schema of th_recall says the defaults the code applies, and offers
+// alternate_queries with its bound.
+func TestRecallSchemaSaysItsDefaults(t *testing.T) {
+	b, secret := pyramidBench(t)
+	tools, err := b.federated(t, secret).ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name != "th_recall" {
+			continue
+		}
+		raw, _ := json.Marshal(tool.InputSchema)
+		for _, want := range []string{`"passages to return, default 10"`, `default 4, 0 for none`, `"maxItems":4`, `at most 4; each is searched apart`} {
+			if !strings.Contains(string(raw), want) {
+				t.Fatalf("schema without %s: %s", want, raw)
+			}
+		}
+		return
+	}
+	t.Fatal("no th_recall")
 }
 
 // th_descend opens the sources a synthesis cites: it reads the synthesis,
