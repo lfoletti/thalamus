@@ -21,8 +21,11 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 | [`04-session-text-permitted.md`](04-session-text-permitted.md) | `loadSessionText` passe par `memoryBucketPermitted` | Rien (sécurité du moteur, déjà couverte par la liste blanche côté clés) | 60 lignes | 4 |
 | [`05-ingest-author-from-key.md`](05-ingest-author-from-key.md) | `author` et `written_by` depuis la clé appelante | La pose de `author` par `th_add` | 80 lignes | 5 |
 | [`06-graph-tools-confined.md`](06-graph-tools-confined.md) | Les outils de graphe pour une clé confinée (deux PR) | Rien à retirer : la fiche débloque la fédération des entités pour les cerveaux avec `collection` | 250 + 150 lignes | 2, dès la fusion de #76 et #77 |
+| [`07-european-lexical-search.md`](07-european-lexical-search.md) | La recherche lexicale pour les langues européennes (quatre PR : jeu d'évaluation suisse, accents égaux sur PostgreSQL, repli sur les trigrammes pour un terme non trouvé, mots vides) | Rien à retirer : la fiche rend les cerveaux en français, en allemand, en italien et en romanche utilisables sans embedder | 150 + 80 + 200 + 150 lignes | 6, le jeu d'évaluation d'abord |
 
 L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `th-NN-<sujet>` du fork `lfoletti/cortexdb`, selon `docs/pipeline_pr.md`.
+
+Décision de Lauro du 22 octobre 2026 : le produit se conçoit aussi pour des utilisateurs européens (français, allemand, italien, romanche). Chaque fiche dit ce qu'elle change pour ces langues.
 
 ## Ce qui ne remonte pas
 
