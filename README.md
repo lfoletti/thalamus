@@ -44,7 +44,7 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the gateway for the best extracts and gives them to the agent before it answers. The employee does not ask for them.
 
-<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The th-hook of the plugin sends it to th_recall on the Thalamus gateway, with the employee's key. The gateway searches the readable brains. The best extracts come back with their source, and the hook adds them to the prompt before the agent answers." width="760"></p>
+<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The Thalamus hook of the plugin sends it to th_recall on the Thalamus gateway, with the employee's key. The gateway searches the readable brains. The best extracts come back with their source, and the hook adds them to the prompt before the agent answers." width="760"></p>
 
 - The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the 3 best extracts to the prompt, with their source, in 9,000 characters or fewer.
 - It does not ask for a prompt of fewer than 3 words, or for a `/` command.
