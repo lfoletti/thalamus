@@ -339,7 +339,7 @@ M = [
  ("cmd/th-gateway/run.go", "\tk, err := keys.IssueScoped(b.KeysFile, user, brain, b.Collections(), access)\n\tif err != nil {\n\t\treturn err\n\t}\n\tfmt.Fprintln(out, k.Secret)", "\tk, err := keys.Issue(b.KeysFile, user, brain, b.Collection, access)\n\tif err != nil {\n\t\treturn err\n\t}\n\tfmt.Fprintln(out, k.Secret)", "cmd/th-gateway", "TestAKeyFollowsThePyramidOfItsBrain", "key issue forgets the pyramid"),
  ("cmd/th-gateway/run.go", "\tk, err := keys.IssueScoped(b.KeysFile, user, brain, b.Collections(), access)\n\tif err != nil {\n\t\treturn err\n\t}\n\tfmt.Fprintf(out,", "\tk, err := keys.Issue(b.KeysFile, user, brain, b.Collection, access)\n\tif err != nil {\n\t\treturn err\n\t}\n\tfmt.Fprintf(out,", "cmd/th-gateway", "TestAKeyFollowsThePyramidOfItsBrain", "key sync forgets the pyramid"),
  ("relay/login.go", "keys.IssueScoped(b.KeysFile, login, g.Brain, b.Collections(), g.Access)", "keys.Issue(b.KeysFile, login, g.Brain, b.Collection, g.Access)", "relay", "TestLoginIssuesTheKeysTheRightsAllow", "login forgets the pyramid"),
- ("relay/pyramid.go", "\tdefaultSyntheses = 2", "\tdefaultSyntheses = 3", "relay", "TestRecallServesTheSynthesesFirst", "the default number of syntheses changes"),
+ ("relay/pyramid.go", "\tdefaultSyntheses = 4", "\tdefaultSyntheses = 3", "relay", "TestRecallServesTheSynthesesFirst", "the default number of syntheses changes"),
  ("relay/federated.go", "\tif args.Syntheses != nil {", "\tif false {", "relay", "TestRecallServesTheSynthesesFirst", "the syntheses argument is ignored"),
  ("relay/federated.go", "b.Pyramid != nil && syntheses > 0 {", "b.Pyramid != nil {", "relay", "TestRecallServesTheSynthesesFirst", "syntheses 0 still asks the pyramid"),
  ("relay/federated.go", "syn, synErr = s.askBrain(ctx, b, user, name, args.Query, syntheses, b.Pyramid.Collection)", "syn, synErr = s.askBrain(ctx, b, user, name, args.Query, syntheses, b.Collection)", "relay", "TestRecallServesTheSynthesesFirst", "the pyramid is searched in the brain's collection"),
@@ -365,6 +365,21 @@ M = [
  ("relay/audit.go", "\"th_descend\": true, ", "", "relay", "TestReadsClassesTheTools", "th_descend is not a read"),
  ("cmd/th-hook/recall.go", "\t\tsynthesis = synthesis || r.Level == \"synthesis\"", "\t\tsynthesis = synthesis || false", "cmd/th-hook", "TestTheHookTellsHowToOpenASynthesis", "the hook does not see a synthesis"),
  ("cmd/th-hook/recall.go", "\tif synthesis {\n\t\tfooter =", "\tif false {\n\t\tfooter =", "cmd/th-hook", "TestTheHookTellsHowToOpenASynthesis", "the hook does not name th_descend"),
+ # tranche 16 : th_recall sert les morceaux (mode graphe), défauts mesurés
+ ("relay/federated.go", "\"retrieval_mode\": \"graph\", ", "", "relay", "TestRecallServesTheChunksOfTheDocuments", "the brain is not asked in graph mode"),
+ ("relay/federated.go", "\"max_context_chunks\": topK, ", "", "relay", "TestRecallServesTheChunksOfTheDocuments", "the number of chunks is not asked"),
+ ("relay/federated.go", "\"max_context_chars\": chunkChars * topK}", "\"max_context_chars\": topK}", "relay", "TestRecallServesTheChunksOfTheDocuments", "the room of the chunks is not asked"),
+ ("relay/federated.go", "\tchunkChars  = 1000", "\tchunkChars  = 500", "relay", "TestRecallServesTheChunksOfTheDocuments", "the room of a chunk changes"),
+ ("relay/federated.go", "\tdefaultTopK = 10", "\tdefaultTopK = 5", "relay", "TestRecallServesTheChunksOfTheDocuments", "the default number of chunks changes"),
+ ("relay/federated.go", "\tif len(out.Chunks) == 0 {\n\t\treturn out.Results, nil", "\tif true {\n\t\treturn out.Results, nil", "relay", "TestRecallServesTheChunksOfTheDocuments", "the chunks are ignored"),
+ ("relay/federated.go", "\tif len(out.Chunks) == 0 {\n\t\treturn out.Results, nil\n\t}", "\tif false {\n\t\treturn out.Results, nil\n\t}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a brain without chunks gives nothing"),
+ ("relay/federated.go", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "hit{KnowledgeID: c.DocumentID, Title: \"\", SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a chunk has no title"),
+ ("relay/federated.go", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: \"\", Author: h.Author, Snippet: c.Content}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a chunk has no source"),
+ ("relay/federated.go", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: \"\", Snippet: c.Content}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a chunk has no author"),
+ ("relay/federated.go", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: h.Snippet}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a chunk is served its document's snippet"),
+ ("relay/federated.go", "hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "hit{KnowledgeID: h.KnowledgeID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content}", "relay", "TestRecallServesTheChunksOfTheDocuments", "a chunk without its document loses its id"),
+ ("relay/federated.go", "\tread = slices.Compact(read)\n", "", "relay", "TestRecallServesTheChunksOfTheDocuments", "a document read twice is audited twice"),
+ ("cmd/th-hook/recall.go", "\ttopK := 10\n", "\ttopK := 3\n", "cmd/th-hook", "TestTheHookInjectsTheExtractsWithTheirProvenance", "the hook asks 3 results"),
 ]
 
 bad = 0

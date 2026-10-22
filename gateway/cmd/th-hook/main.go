@@ -4,7 +4,7 @@
 // agent as additional context.
 //
 //	th-hook recall    reads the hook payload on stdin; TH_GATEWAY, TH_KEY,
-//	                  TH_RECALL_TOPK (default 3)
+//	                  TH_RECALL_TOPK (default 10)
 //
 // It never blocks a prompt: every problem is exit 0 with no output and the
 // reason on stderr.

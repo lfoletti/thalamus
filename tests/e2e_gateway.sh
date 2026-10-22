@@ -241,9 +241,9 @@ printf '%s' "$done_" | grep -q '^issued th/mdupont/team/acme ' && ok "key sync r
 
 echo
 echo "--- audit ---"
-# The gateway stops: it writes the counted reads of the day. Reads of
+# The gateway stops on SIGTERM, as a service manager stops it: it writes the counted reads of the day. Reads of
 # org/secrets (audit_reads) are named; reads of team/acme are counted.
-kill -INT $GATEWAY; wait $GATEWAY 2>/dev/null
+kill -TERM $GATEWAY; wait $GATEWAY 2>/dev/null
 A="$S/data/audit.jsonl"
 grep -q '"tool":"th_brains"' "$A" && ko "th_brains audited" "$(grep th_brains "$A")" || ok "th_brains, which reads no brain, leaves no line"
 grep -q '"tool":"th_recall","ids":{"brains":\["org/secrets"\],"knowledge_ids":\[.*org/secrets:secret-doc' "$A" && ok "th_recall names the reads of org/secrets only" || ko "th_recall audit line" "$(grep th_recall "$A")"

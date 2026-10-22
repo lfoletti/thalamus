@@ -14,10 +14,13 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	// SIGTERM is how a service manager stops the gateway: serve must close
+	// the audit, which writes the counted reads of the day.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr))
 }

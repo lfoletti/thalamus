@@ -112,7 +112,7 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 	if prompt == "" || strings.HasPrefix(prompt, "/") || len(strings.Fields(prompt)) < 3 {
 		return "", nil
 	}
-	topK := 3
+	topK := 10
 	if v := get("TH_RECALL_TOPK"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n <= 0 {
