@@ -1,14 +1,14 @@
-<img src="extension/icons/icon128.png" alt="Thalamus logo: two pale lobes on an indigo square" width="96" align="right">
+<p align="center"><img src="extension/icons/icon128.png" alt="Thalamus logo: two pale lobes on an indigo square" width="96"></p>
 
 # Thalamus
 
-A small governance layer over [CortexDB](https://github.com/liliang-cn/cortexdb) for the shared knowledge of an organisation: which employee may read or write which part, with their own key, and a trace of every call they make. CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Thalamus adds what an organisation needs around it and nothing more: who may read or write which brain, keys issued from those rights, one endpoint that asks every brain a person may read, and an audit line for every call.
+A shared memory for an organisation, its people and their coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Thalamus is the thin layer around it: a gateway, a Claude Code plugin and a browser extension.
 
 *Version française plus bas.*
 
 ## Why
 
-The base engine has no way to define or manage a clearance policy on a shared brain, for a company or across projects. Its key file is a list of secrets written by hand. Thalamus is a governance layer over CortexDB: it decides which employee gets which key on which brain. It brings a rights file (brains, groups, readers, writers), keys issued and revoked from it, a gateway that applies it and logs every call under a person's name, and one recall across the brains a person may read. It serves the team that runs the brains, the curators and the employees.
+A shared brain needs a clearance policy, and the engine has none: its key file is a list of secrets written by hand. Nothing ties a key to a person, nothing says which employee may read which brain, and no line says who read what. Thalamus decides which employee gets which key on which brain, from one rights file, and records every call under a person's name. It serves the team that runs the brains, the curators and the employees. Its principles:
 
 1. **No fork of the engine.** The fixes this layer needed went upstream as small pull requests. The layer imports CortexDB at a pinned version. No maintenance debt.
 2. **The engine enforces, not a proxy.** Every employee reaches a brain with their own confined key. The gateway cannot err in the caller's favour: it decides who gets a key, the engine decides what the key may do.
@@ -67,11 +67,11 @@ MIT. CortexDB is MIT too.
 
 # Thalamus (français)
 
-Une petite couche de gouvernance au-dessus de [CortexDB](https://github.com/liliang-cn/cortexdb) pour les connaissances partagées d'une organisation : quel employé peut lire ou écrire quelle partie, avec sa propre clé, et une trace de chaque appel qu'il fait. CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus ajoute ce dont une organisation a besoin autour, et rien de plus : qui peut lire ou écrire quel cerveau, des clés émises à partir de ces droits, un point unique qui interroge tous les cerveaux qu'une personne peut lire, et une ligne d'audit par appel.
+Une mémoire partagée pour une organisation, ses employés et leurs agents de code, construite sur [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus est la couche mince autour : un gateway, un plugin Claude Code et une extension de navigateur.
 
 ## Pourquoi
 
-Le modèle de base ne permet pas de définir ni de gérer une politique de clearance sur un cerveau partagé, d'entreprise ou multi-projets. Son fichier de clés est une liste de secrets écrite à la main. Thalamus est une couche de gouvernance au-dessus de CortexDB : elle décide quel employé reçoit quelle clé sur quel cerveau. Elle apporte un fichier de droits (cerveaux, groupes, lecteurs, rédacteurs), des clés émises et révoquées à partir de ces droits, un gateway qui les applique et journalise chaque appel au nom d'une personne, et un rappel sur tous les cerveaux qu'une personne peut lire. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés.
+Un cerveau partagé demande une politique d'accès, et le moteur n'en a pas : son fichier de clés est une liste de secrets écrite à la main. Rien ne lie une clé à une personne, rien ne dit quel employé peut lire quel cerveau, et aucune ligne ne dit qui a lu quoi. Thalamus décide quel employé reçoit quelle clé sur quel cerveau, à partir d'un seul fichier de droits, et journalise chaque appel au nom d'une personne. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés. Ses principes :
 
 1. **Pas de fork du moteur.** Les correctifs dont cette couche a besoin sont partis en amont en petites PR. La couche importe CortexDB à une version épinglée. Pas de dette de maintenance.
 2. **C'est le moteur qui applique, pas un proxy.** Chaque employé joint un cerveau avec sa propre clé confinée. Le gateway ne peut pas se tromper en faveur de l'appelant : il décide qui reçoit une clé, le moteur décide ce que la clé peut faire.
