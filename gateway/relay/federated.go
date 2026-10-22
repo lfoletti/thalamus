@@ -105,6 +105,9 @@ type recallArgs struct {
 	TopK   int      `json:"top_k,omitempty"`
 	Brains []string `json:"brains,omitempty"`
 	Skip   []string `json:"skip_brains,omitempty"`
+	// Syntheses is how many syntheses of the pyramids to serve first; nil
+	// means defaultSyntheses, 0 none.
+	Syntheses *int `json:"syntheses,omitempty"`
 }
 
 type fused struct {
@@ -117,6 +120,8 @@ type fused struct {
 	Score       float64  `json:"score"`
 	Provenance  string   `json:"provenance"`
 	AlsoIn      []string `json:"also_in,omitempty"`
+	// Level is "synthesis" for a synthesis of a brain's pyramid.
+	Level string `json:"level,omitempty"`
 }
 
 type skipped struct {
@@ -158,6 +163,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			"top_k":       map[string]any{"type": "integer", "description": "results to return, default 5"},
 			"brains":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "restrict to these brains"},
 			"skip_brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "leave out these brains"},
+			"syntheses":   map[string]any{"type": "integer", "description": "syntheses of the brains' pyramids to serve first, default 2, 0 for none"},
 		}, "required": []string{"query"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args recallArgs
@@ -171,6 +177,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			return jsonResult(res), nil
 		})
 	s.addWriteTools(srv, user)
+	s.addPyramidTools(srv, user)
 	return srv
 }
 
@@ -181,6 +188,10 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	}
 	if args.TopK <= 0 {
 		args.TopK = 5
+	}
+	syntheses := defaultSyntheses
+	if args.Syntheses != nil {
+		syntheses = *args.Syntheses
 	}
 	grants := s.rights().BrainsOf(user)
 	if len(args.Brains) > 0 {
@@ -203,6 +214,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		mu     sync.Mutex
 		wg     sync.WaitGroup
 		lists  = make([]brainHits, len(grants))
+		synths = make([]brainHits, len(grants))
 		skips  []skipped
 		read   []string
 		brains []string
@@ -212,16 +224,25 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		go func(i int, name string) {
 			defer wg.Done()
 			b := s.rights().Brains[name]
-			hits, err := s.askBrain(ctx, b, user, name, args)
+			hits, err := s.askBrain(ctx, b, user, name, args.Query, args.TopK, b.Collection)
+			var syn []hit
+			var synErr error
+			if err == nil && b.Pyramid != nil && syntheses > 0 {
+				syn, synErr = s.askBrain(ctx, b, user, name, args.Query, syntheses, b.Pyramid.Collection)
+			}
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				skips = append(skips, skipped{Brain: name, Reason: err.Error()})
 				return
 			}
+			if synErr != nil {
+				skips = append(skips, skipped{Brain: name, Reason: "pyramid: " + synErr.Error()})
+			}
 			lists[i] = brainHits{Brain: name, Weight: b.Weight(), Hits: hits}
+			synths[i] = brainHits{Brain: name, Weight: b.Weight(), Hits: syn}
 			brains = append(brains, name)
-			for _, h := range hits {
+			for _, h := range append(hits, syn...) {
 				read = append(read, name+":"+h.KnowledgeID)
 			}
 		}(i, g.Brain)
@@ -232,7 +253,8 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	sort.Strings(read)
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
 	s.note(entry)
-	return recallResult{Results: fuse(lists, args.TopK), Skipped: skips}, nil
+	results := append(fuse(synths, syntheses, "synthesis"), fuse(lists, args.TopK, "")...)
+	return recallResult{Results: results, Skipped: skips}, nil
 }
 
 // without leaves out of grants the brains named in skip.
@@ -261,7 +283,7 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 	defer func() { _ = conn.Close() }()
 	if v, set := req["collection"]; set && v == nil {
 		delete(req, "collection")
-	} else if b.Collection != "" {
+	} else if !set && b.Collection != "" {
 		req["collection"] = b.Collection
 	}
 	raw, _ := json.Marshal(req)
@@ -272,9 +294,14 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 	return resp.GetResultJson(), nil
 }
 
-// askBrain calls knowledge_search on one brain with the user's key for it.
-func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name string, args recallArgs) ([]hit, error) {
-	result, err := s.callBrain(ctx, b, user, name, "knowledge_search", map[string]any{"query": args.Query, "top_k": args.TopK})
+// askBrain calls knowledge_search on one collection of a brain (none: the
+// whole server) with the user's key for it.
+func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name, query string, topK int, collection string) ([]hit, error) {
+	req := map[string]any{"query": query, "top_k": topK}
+	if collection != "" {
+		req["collection"] = collection
+	}
+	result, err := s.callBrain(ctx, b, user, name, "knowledge_search", req)
 	if err != nil {
 		return nil, err
 	}
@@ -289,8 +316,9 @@ func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name string
 
 // fuse merges the brains' lists by weighted reciprocal rank. The same
 // snippet in two brains is one result, scored by both, that names the other
-// brains in also_in. Ties keep the order of the lists.
-func fuse(lists []brainHits, topK int) []fused {
+// brains in also_in. Ties keep the order of the lists. Every result gets
+// the level, "" for a passage.
+func fuse(lists []brainHits, topK int, level string) []fused {
 	var out []fused
 	bySnippet := map[string]int{}
 	for _, l := range lists {
@@ -302,8 +330,8 @@ func fuse(lists []brainHits, topK int) []fused {
 				out[i].AlsoIn = append(out[i].AlsoIn, l.Brain)
 				continue
 			}
-			f := fused{Brain: l.Brain, KnowledgeID: h.KnowledgeID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: h.Snippet, Score: score}
-			f.Provenance = provenance(l.Brain, h)
+			f := fused{Brain: l.Brain, KnowledgeID: h.KnowledgeID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: h.Snippet, Score: score, Level: level}
+			f.Provenance = provenance(l.Brain, h, level)
 			if key != "" {
 				bySnippet[key] = len(out)
 			}
@@ -318,8 +346,9 @@ func fuse(lists []brainHits, topK int) []fused {
 }
 
 // provenance is the fixed line an agent and a person both read:
-// [brain] title, id, source, by author.
-func provenance(brain string, h hit) string {
+// [brain] title, id, source, by author; "[brain] synthesis: …" for a
+// synthesis.
+func provenance(brain string, h hit, level string) string {
 	parts := []string{h.Title, h.KnowledgeID}
 	if h.Title == "" {
 		parts = parts[1:]
@@ -329,6 +358,9 @@ func provenance(brain string, h hit) string {
 	}
 	if h.Author != "" {
 		parts = append(parts, "by "+h.Author)
+	}
+	if level != "" {
+		return "[" + brain + "] " + level + ": " + strings.Join(parts, ", ")
 	}
 	return "[" + brain + "] " + strings.Join(parts, ", ")
 }

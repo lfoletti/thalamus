@@ -52,7 +52,7 @@ type count struct {
 
 // readsOf are the gateway's own tools that read; th_add, th_review and
 // login write. An engine tool reads when the engine says so.
-var readsOf = map[string]bool{"th_recall": true, "th_get": true, "th_pending": true, "th_brains": true}
+var readsOf = map[string]bool{"th_recall": true, "th_get": true, "th_descend": true, "th_pending": true, "th_brains": true}
 
 // Reads reports whether a tool reads: a gateway tool that reads, or an
 // engine tool that the engine classes as a read. The audit summary of

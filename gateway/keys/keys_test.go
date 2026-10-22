@@ -283,3 +283,28 @@ func TestListReadsTheIssuedKeys(t *testing.T) {
 		t.Fatal("a broken file was listed")
 	}
 }
+
+// A key may be confined to several collections: the brain's and its
+// pyramid's. The engine still takes one collection per request. List gives
+// every collection, the first in Collection.
+func TestAKeyMayHoldSeveralCollections(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "keys.json")
+	k, err := IssueScoped(path, "lfoletti", "team/acme", []string{"team-acme", "acme-pyramid"}, rights.Read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks := keysOf(t, path)
+	if len(ks) != 1 || strings.Join(ks[0].Scope.Collections, ",") != "team-acme,acme-pyramid" || k.Collection != "team-acme" {
+		t.Fatalf("file: %+v, issued %+v", ks, k)
+	}
+	if _, err := authz.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	held, _, err := List(path)
+	if err != nil || len(held) != 1 || held[0].Collection != "team-acme" || strings.Join(held[0].Collections, ",") != "team-acme,acme-pyramid" {
+		t.Fatalf("held %+v %v", held, err)
+	}
+	if _, err := IssueScoped(filepath.Join(t.TempDir(), "k.json"), "lfoletti", "org/ref", nil, rights.Read); err != nil {
+		t.Fatal(err)
+	}
+}

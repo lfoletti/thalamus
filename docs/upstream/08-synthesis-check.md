@@ -37,7 +37,7 @@ Les règles, chacune avec son test :
 1. **Les faits d'une phrase** : les nombres, les dates, et les mots avec une majuscule après la 1re lettre, un chiffre, ou une majuscule initiale et 4 lettres ou plus. Le 1er mot d'une phrase n'est pas un fait.
 2. **Le pliage** : la comparaison se fait sans casse et sans accents, sur les deux côtés.
 3. **Les équivalents** viennent de la requête, pas du code. Le moteur ne contient aucune liste de langue. Cette règle suit le principe du propriétaire : une liste de mots sert seulement les langues que quelqu'un a énumérées.
-4. **Les sources** sont des identifiants de documents. Le moteur lit leur texte. Une source absente est dite, et la phrase ne tient pas.
+4. **Les sources** sont des identifiants de documents ou de morceaux (chunks). L'autre session de contaixt propose des morceaux, pour une provenance plus fine. Le moteur lit leur texte. Une source absente est dite, et la phrase ne tient pas.
 5. **Le périmètre** : sous une clé confinée, une source hors de la collection de la clé est une source absente. L'outil entre dans la liste blanche avec `scope: collectionScope`.
 6. **Le calcul est pur** : `(phrase, textes, équivalents) → faits absents`, testé sans base. Une seule fonction lit les textes.
 

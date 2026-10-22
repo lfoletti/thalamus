@@ -366,3 +366,35 @@ func TestTheAuditBlockIsReadAndChecked(t *testing.T) {
 		t.Fatalf("negative retention: %v", err)
 	}
 }
+
+// A brain may declare the collection of its pyramid of syntheses, on the
+// same server. The key of a confined brain then holds both collections; a
+// whole-server key stays unconfined. The metadata key that lists the cited
+// sources is "sources" unless the file names another.
+func TestABrainMayDeclareItsPyramid(t *testing.T) {
+	r := parse(t, strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n    pyramid:\n      collection: acme-pyramid\n      sources: preuves\n", 1))
+	b := r.Brains["team/acme"]
+	if b.Pyramid == nil || b.Pyramid.Collection != "acme-pyramid" || b.Pyramid.SourcesKey() != "preuves" || strings.Join(b.Collections(), ",") != "team-acme,acme-pyramid" {
+		t.Fatalf("pyramid: %+v %v", b.Pyramid, b.Collections())
+	}
+	if ref := r.Brains["org/reference"]; ref.Pyramid != nil || strings.Join(ref.Collections(), ",") != "reference" {
+		t.Fatalf("no pyramid: %+v %v", ref.Pyramid, ref.Collections())
+	}
+	plain := parse(t, strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n    pyramid: {collection: acme-pyramid}\n", 1))
+	if p := plain.Brains["team/acme"].Pyramid; p.SourcesKey() != "sources" {
+		t.Fatalf("default sources key: %q", p.SourcesKey())
+	}
+	whole := parse(t, strings.Replace(sample, "    collection: team-acme\n", "    pyramid: {collection: acme-pyramid}\n", 1))
+	if c := whole.Brains["team/acme"].Collections(); c != nil {
+		t.Fatalf("a whole-server key is not confined: %v", c)
+	}
+	for _, c := range []struct{ block, want string }{
+		{"    pyramid: {collection: team-acme}\n", "must differ"},
+		{"    pyramid: {sources: preuves}\n", "pyramid needs a collection"},
+	} {
+		_, err := Parse([]byte(strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n"+c.block, 1)))
+		if err == nil || !strings.Contains(err.Error(), c.want) || !strings.Contains(err.Error(), "team/acme") {
+			t.Fatalf("%q: %v", c.block, err)
+		}
+	}
+}

@@ -70,6 +70,9 @@ func TestLoginIssuesTheKeysTheRightsAllow(t *testing.T) {
 	b := start(t)
 	p := newIDP(t)
 	b.rights.Identity = &rights.Identity{Issuer: p.srv.URL, Audience: "thalamus", Claim: "email", StripDomain: true}
+	acme := b.rights.Brains["team/acme"]
+	acme.Pyramid = &rights.Pyramid{Collection: "acme-pyramid"}
+	b.rights.Brains["team/acme"] = acme
 	status, body := b.rest(t, http.MethodPost, "/v1/login", "", "")
 	if status != http.StatusUnauthorized || !strings.Contains(body, "id_token") {
 		t.Fatalf("no token: %d %s", status, body)
@@ -93,6 +96,10 @@ func TestLoginIssuesTheKeysTheRightsAllow(t *testing.T) {
 		if err != nil || secret != g.Key {
 			t.Fatalf("%s: key file has %q, %v; answer has %q", g.Brain, secret, err, g.Key)
 		}
+	}
+	// The key of a brain with a pyramid holds both collections.
+	if held, _, _ := keys.List(b.keysFile); len(held) != 2 || strings.Join(held[0].Collections, ",") != "team-acme,acme-pyramid" || strings.Join(held[1].Collections, ",") != "other" {
+		t.Fatalf("collections: %+v", held)
 	}
 	// The key works on the federated endpoint at once.
 	if st, body := b.rest(t, http.MethodGet, "/v1/brains", got.Key, ""); st != http.StatusOK || !strings.Contains(body, "team/acme") {

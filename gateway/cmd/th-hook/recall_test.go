@@ -242,3 +242,25 @@ func TestTheHookReadsTheEnvFile(t *testing.T) {
 		t.Fatalf("missing key: %s", errOut)
 	}
 }
+
+// A synthesis of a pyramid comes first, as the gateway orders it, and the
+// footer then says how to open its sources. Without a synthesis, the footer
+// does not mention th_descend.
+func TestTheHookTellsHowToOpenASynthesis(t *testing.T) {
+	g := &fakeGateway{secret: "s3", results: []map[string]any{
+		{"brain": "team/acme", "knowledge_id": "pyramide/ledger", "level": "synthesis", "snippet": "The ledger moves on Sunday.", "provenance": "[team/acme] synthesis: Ledger, pyramide/ledger"},
+		{"brain": "team/acme", "knowledge_id": "spec-1", "snippet": "Rollback is two hours.", "provenance": "[team/acme] Spec, spec-1"},
+	}}
+	url := g.start(t)
+	_, out, _ := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?"}`)
+	ctx := contextOf(t, out)
+	want := "A synthesis cites its sources: open them with th_descend {brain, knowledge_id}."
+	if !strings.Contains(ctx, want) || strings.Index(ctx, "pyramide/ledger") > strings.Index(ctx, "spec-1") {
+		t.Fatalf("context:\n%s", ctx)
+	}
+	g.results = g.results[1:]
+	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?"}`)
+	if strings.Contains(contextOf(t, out), "th_descend") {
+		t.Fatalf("no synthesis, no th_descend:\n%s", out)
+	}
+}

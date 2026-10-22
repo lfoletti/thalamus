@@ -96,6 +96,17 @@ func write(path string, f *keyFile) error {
 // included. A user with no access gets no key. A key already issued to the
 // user for the brain is not issued twice: revoke it first.
 func Issue(keysFile, user, brain, collection string, access rights.Access) (Issued, error) {
+	var collections []string
+	if collection != "" {
+		collections = []string{collection}
+	}
+	return IssueScoped(keysFile, user, brain, collections, access)
+}
+
+// IssueScoped is Issue for a key confined to several collections (the
+// brain's and its pyramid's); none means the whole server. Issued.Collection
+// is the first.
+func IssueScoped(keysFile, user, brain string, collections []string, access rights.Access) (Issued, error) {
 	if !access.AllowsRead() {
 		return Issued{}, fmt.Errorf("%s has no access to %s: no key issued", user, brain)
 	}
@@ -110,10 +121,11 @@ func Issue(keysFile, user, brain, collection string, access rights.Access) (Issu
 		}
 	}
 	secret := rand.Text() + rand.Text()
-	issued := Issued{ID: id, Secret: secret, Clearance: access.Clearance(), Collection: collection}
+	issued := Issued{ID: id, Secret: secret, Clearance: access.Clearance()}
 	var scope authz.Scope
-	if collection != "" {
-		scope.Collections = []string{collection}
+	if len(collections) > 0 {
+		issued.Collection = collections[0]
+		scope.Collections = collections
 	}
 	f.Keys = append(f.Keys, authz.Key{ID: id, Secret: secret, Clearance: issued.Clearance, Scope: scope})
 	if err := write(keysFile, f); err != nil {
@@ -166,6 +178,8 @@ type Held struct {
 	Brain      string
 	Clearance  authz.Clearance
 	Collection string // empty for a whole-server key
+	// Collections are every collection of the key, Collection first.
+	Collections []string
 }
 
 // List reads the keys the gateway issued in a file, sorted by brain then
@@ -185,6 +199,7 @@ func List(keysFile string) (held []Held, others int, err error) {
 		h := Held{ID: k.ID, User: user, Brain: brain, Clearance: k.Clearance}
 		if len(k.Scope.Collections) > 0 {
 			h.Collection = k.Scope.Collections[0]
+			h.Collections = k.Scope.Collections
 		}
 		held = append(held, h)
 	}

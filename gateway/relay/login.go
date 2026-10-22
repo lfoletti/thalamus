@@ -94,7 +94,7 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 		b := s.rights().Brains[g.Brain]
 		secret, err := keys.SecretOf(b.KeysFile, login, g.Brain)
 		if err != nil {
-			k, err := keys.Issue(b.KeysFile, login, g.Brain, b.Collection, g.Access)
+			k, err := keys.IssueScoped(b.KeysFile, login, g.Brain, b.Collections(), g.Access)
 			if err != nil {
 				s.note(Entry{User: login, Tool: "login", Error: err.Error()})
 				restError(w, http.StatusInternalServerError, fmt.Errorf("key file of %s: %w", g.Brain, err))

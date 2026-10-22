@@ -35,12 +35,14 @@ type brain struct {
 	bearers           map[string]string // by collection
 	calls             []call
 	fail              bool
-	failOn            string               // a collection whose calls fail
-	hits              map[string][]fakeHit // knowledge_search answers by collection
-	badJSON           bool                 // answer knowledge_search with text that is not JSON
-	pending           map[string][]fakeHit // what aggregate_metadata and knowledge_get serve, by collection
-	failTool, badTool string               // one tool that fails, one that answers text that is not JSON
-	denyTool          string               // one tool the brain refuses to the key (PermissionDenied)
+	failOn            string                    // a collection whose calls fail
+	hits              map[string][]fakeHit      // knowledge_search answers by collection
+	badJSON           bool                      // answer knowledge_search with text that is not JSON
+	pending           map[string][]fakeHit      // what aggregate_metadata and knowledge_get serve, by collection
+	failTool, badTool string                    // one tool that fails, one that answers text that is not JSON
+	denyTool          string                    // one tool the brain refuses to the key (PermissionDenied)
+	docs              map[string]map[string]any // what knowledge_get serves by id, in any collection
+	failID            string                    // a knowledge_get id whose call fails
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -112,6 +114,13 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			KnowledgeID string `json:"knowledge_id"`
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &get)
+		if get.KnowledgeID == b.failID && b.failID != "" {
+			return nil, errors.New("no such document " + get.KnowledgeID)
+		}
+		if d, ok := b.docs[get.KnowledgeID]; ok {
+			out, _ := json.Marshal(map[string]any{"knowledge": d})
+			return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
+		}
 		for _, x := range b.pending["team-acme"] {
 			if x.ID == get.KnowledgeID {
 				out, _ := json.Marshal(map[string]any{"knowledge": map[string]any{"id": x.ID, "title": x.Title, "author": "mdupont", "content": x.Snippet}})
