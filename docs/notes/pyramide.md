@@ -83,6 +83,8 @@ Le hook atteint le bras du pilote (81,2 %) et dépasse contaixt (76,4 %).
 
 Même procédure sur une copie de `crooners-vecteurs.db` (593 morceaux, 47 synthèses), avec l'encodeur du graphe crooners. Le banc a **8 questions** seulement : un écart de quelques points n'y dit rien.
 
+**Mesure périmée.** L'autre session a refait le cerveau crooners après ma copie (commit 65f841fe de science-extractor : 21 questions, 43 lots, 42 synthèses). Les chiffres ci-dessous valent pour l'ancienne version du banc (8 questions), pas pour le jeu actuel. Mesure de l'autre session sur le jeu actuel, sans Thalamus : contaixt 37,4 %, synthèses en tête 37,2 %, mélange classé par CortexDB 35,2 % ; question par question, 5 pour contaixt, 6 pour CortexDB, 10 à égalité. Aucune nouvelle mesure par Thalamus n'est faite.
+
 | Bras | Couverture |
 | :- | :- |
 | contaixt (référence) | 52,0 % |
