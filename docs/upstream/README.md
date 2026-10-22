@@ -27,6 +27,6 @@ L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit 
 ## Ce qui ne remonte pas
 
 - `rights.yaml`, les groupes, les lecteurs, rédacteurs et curateurs : une politique, pas un mécanisme.
-- Le point fédéré `/mcp` et la fusion RRF entre serveurs : un serveur CortexDB ne connaît pas ses voisins.
+- Le point fédéré `/mcp` et la fusion RRF entre serveurs : la fédération entre serveurs est le rôle du gateway.
 - Le hook et le plugin Claude Code : un client, pas le moteur.
-- `key list` et `key sync` : ils comparent le fichier de clés à des droits que le moteur ne connaît pas.
+- `key list` et `key sync` : ils comparent le fichier de clés aux droits de `rights.yaml`, qui sont une politique de Thalamus.

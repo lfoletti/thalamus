@@ -2,9 +2,9 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : 120 lignes hors tests. **Dépend de** : #77 (`review_status`) fusionnée.
 
-## Le manque
+## Le besoin de Thalamus
 
-Sous la porte de relecture (`CORTEXDB_REVIEW_GATE=1`), un document proposé n'est servi par aucune recherche. Un curateur n'a donc aucun outil pour voir ce qui attend. `knowledge_search` avec le filtre `review_status: proposed` exige un texte de requête (« empty text provided ») et ne liste pas. Le contournement passe par `aggregate_metadata` (groupé par `document_id`) puis un `knowledge_get` par document : N + 1 appels, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (constat du banc, 20 octobre 2026).
+Sous la porte de relecture (`CORTEXDB_REVIEW_GATE=1`), un document proposé n'est servi par aucune recherche. Thalamus a besoin d'un outil qui liste ce qui attend la décision d'un curateur. `knowledge_search` avec le filtre `review_status: proposed` exige un texte de requête (« empty text provided ») et ne liste pas. Thalamus passe aujourd'hui par `aggregate_metadata` (groupé par `document_id`) puis un `knowledge_get` par document : N + 1 appels, et `knowledge_get` refuse l'argument `collection` d'une clé confinée (constat du banc, 20 octobre 2026).
 
 ## Ce que Thalamus fait aujourd'hui
 

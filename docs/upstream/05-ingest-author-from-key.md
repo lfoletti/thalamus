@@ -2,9 +2,9 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : 80 lignes hors tests. **Dépend de** : #77 fusionnée (même règle que `reviewed_by`).
 
-## Le manque
+## Le besoin de Thalamus
 
-`ingest_document` et `knowledge_save` prennent `author` du client. Sous une clé, le client peut écrire n'importe quel nom. #77 a établi la règle pour `reviewed_by` : la clé appelante l'emporte sur ce que le client envoie. `written_by` (lot A) porte déjà l'identifiant de la clé, mais `author`, le champ que les recherches et la provenance affichent, reste libre.
+`ingest_document` et `knowledge_save` prennent `author` du client. Thalamus pose aujourd'hui `author` lui-même dans `th_add`. #77 a établi une règle pour `reviewed_by` : la clé appelante l'emporte sur ce que le client envoie. `written_by` (lot A) porte déjà l'identifiant de la clé. La proposition étend la règle de #77 à `author`, le champ que les recherches et la provenance affichent.
 
 ## Ce que Thalamus fait aujourd'hui
 

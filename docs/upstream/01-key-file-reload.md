@@ -2,9 +2,9 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : 150 lignes hors tests.
 
-## Le manque
+## Le besoin de Thalamus
 
-`cortexdb-grpc` (et `cortexdb-rest`) lisent le fichier de clés (`--keys-file`, `authz.Load`) une fois au démarrage. Une clé ajoutée ou retirée du fichier ne compte qu'après un redémarrage. Thalamus écrit dans ce fichier à chaque `key issue`, `key revoke`, `key sync` : chaque fois, le serveur redémarre, donc chaque session MCP ouverte tombe.
+`cortexdb-grpc` (et `cortexdb-rest`) lisent le fichier de clés (`--keys-file`, `authz.Load`) une fois au démarrage. Une clé ajoutée ou retirée du fichier ne compte qu'après un redémarrage. Thalamus écrit dans ce fichier à chaque `key issue`, `key revoke` et `key sync`. Il a besoin qu'une clé émise ou révoquée compte sans redémarrage, pour garder les sessions MCP ouvertes.
 
 ## Ce que Thalamus fait aujourd'hui
 

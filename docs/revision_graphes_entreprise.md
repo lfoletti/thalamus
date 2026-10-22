@@ -2,27 +2,29 @@
 
 Date : 18 octobre 2026. Version examinée : CortexDB 2.132.0 (dépôt local du plugin, `~/.claude/plugins/marketplaces/cortexdb`).
 
+Note du 22 octobre 2026 : ce document de travail est daté. Il compare les besoins de Thalamus aux fonctions de CortexDB 2.132.0. Les fonctions qu'il marque « à ajouter » côté moteur sont depuis proposées en amont, et la plupart sont fusionnées (v2.133.0 à v2.136.0). L'état à jour est dans le `README.md` du dépôt.
+
 Convention de ce document :
 
 - **[Vérifié : fichier]** : lu dans le code ou la documentation du dépôt, fichier cité.
 - **[Supposé]** : déduit, non lu dans le code.
 - **[À vérifier]** : point à confirmer avant de décider.
 
-Contrainte de méthode retenue : le projet évolue par **forks successives et merges modestes**. Chaque manque identifié devient une petite contribution remontable en amont (PR). Aucun fork divergent de longue durée.
+Contrainte de méthode retenue : le projet évolue par **forks successives et merges modestes**. Chaque fonction générale dont Thalamus a besoin devient une petite contribution en amont (PR). Aucun fork divergent de longue durée.
 
 ---
 
 ## 0. Réponse courte
 
-1. CortexDB est un bon **moteur** : stockage, graphe, faits bitemporels, outils MCP, backend PostgreSQL, mode lexical sans modèle. Il n'est pas une **plateforme de gestion des connaissances** : pas de multi-cerveaux, pas d'audit par identité, pas de classification, pas de conservation, pas de relecture humaine intégrée.
-2. Le point bloquant découvert dans le code : **une clé confinée ne peut appeler aucun outil du toolbox**. Le plugin MCP en mode distant passe par ce toolbox. Donc le modèle de droits actuel et le plugin MCP sont incompatibles. C'est corrigeable par une PR de taille moyenne.
+1. CortexDB est le **moteur** : stockage, graphe, faits bitemporels, outils MCP, backend PostgreSQL, mode lexical sans modèle. Thalamus ajoute autour ce qui relève de l'organisation : plusieurs cerveaux, audit par identité, classification, conservation, relecture humaine.
+2. Premier besoin de Thalamus côté moteur : qu'une clé confinée puisse appeler la boîte à outils, dont le plugin MCP distant se sert. Ce besoin est devenu les PR #72 à #74, fusionnées en v2.136.0.
 3. Décision recommandée : **CortexDB comme moteur, derrière une couche mince maison (« Thalamus ») qui porte la fédération, les droits, la classification, l'audit et la file de relecture.** La couche s'amincit à chaque PR acceptée en amont.
 4. Aucune alternative examinée (Graphiti, Mem0, Cognee, LightRAG) n'est meilleure sous la contrainte « Ollama seul + MCP + conformité ». Toutes exigent un modèle pour fonctionner. Aucune ne porte des droits par graphe et par document.
 5. Deux exigences sont mal posées. Voir la section 7 : « mémoire personnelle de l'employé » et « traitement exclusivement interne ».
 
 ---
 
-## 1. Diagnostic de CortexDB pour ce besoin
+## 1. Besoins de Thalamus et fonctions de CortexDB 2.132.0
 
 ### 1.1 Granularité des graphes
 
@@ -31,7 +33,7 @@ Contrainte de méthode retenue : le projet évolue par **forks successives et me
 | Un graphe par projet d'équipe | **Couvrable par configuration** | Un serveur `cortexdb-grpc` par cerveau, une base par serveur. [Vérifié : `cmd/cortexdb-grpc/main.go`, un seul `-db`] |
 | Un graphe par employé | Couvrable par configuration | Idem : un serveur ou un fichier SQLite par employé. |
 | Un graphe personnel par projet | Couvrable par configuration | Idem. Le nombre de processus croît vite : N employés × M projets. |
-| Plusieurs cerveaux dans un seul serveur | **Hors de portée aujourd'hui** | Le serveur ouvre une base. Il n'y a pas de notion de « brain » adressable par requête. [Vérifié : `cmd/cortexdb-grpc/main.go`] |
+| Plusieurs cerveaux dans un seul serveur | À ajouter | Le serveur ouvre une base. Il n'y a pas de notion de « brain » adressable par requête. [Vérifié : `cmd/cortexdb-grpc/main.go`] |
 | Isolation logique dans une seule base | Partielle | Les mémoires portent `user_id`, `scope`, `session_id`. Les connaissances portent `namespace`, `collection`. Le graphe GraphRAG porte `collection`. [Vérifié : `pkg/authz/authz.go` lignes 73-81] |
 
 Conclusion : la granularité se fait soit par **processus** (un serveur par cerveau, simple et étanche, lourd en exploitation), soit par **namespace** dans une base (léger, étanchéité qui dépend des clés, voir 1.2). Le code ne propose pas de troisième voie.
@@ -42,12 +44,12 @@ Conclusion : la granularité se fait soit par **processus** (un serveur par cerv
 
 | Besoin | État | Détail |
 | :- | :- | :- |
-| Interroger plusieurs cerveaux ensemble | **Hors de portée** | Le client MCP ouvre un fichier (`CORTEXDB_PATH`) ou un serveur (`CORTEXDB_REMOTE`). Pas de liste. [Vérifié : `cmd/cortexdb-mcp-stdio/remote.go`, `main.go`] |
-| Clé lisant plusieurs périmètres | **Impossible** | `Scope` a 4 champs (`user_id`, `scope`, `namespace`, `collection`), chaque champ reçoit **une seule valeur**. Pas de liste. [Vérifié : `pkg/authz/authz.go` lignes 73-98] |
-| Clé confinée + outils MCP | **Bloquant** | Une clé confinée est refusée sur **tous** les outils du toolbox, sur gRPC et sur HTTP. Motif dans le code : « a tool's arguments are opaque JSON no scope can be checked against ». [Vérifié : `pkg/httpapi/access.go` lignes 100-104, « which is also gRPC's rule »] |
+| Interroger plusieurs cerveaux ensemble | À ajouter | Le client MCP ouvre un fichier (`CORTEXDB_PATH`) ou un serveur (`CORTEXDB_REMOTE`). Pas de liste. [Vérifié : `cmd/cortexdb-mcp-stdio/remote.go`, `main.go`] |
+| Clé lisant plusieurs périmètres | À ajouter | `Scope` a 4 champs (`user_id`, `scope`, `namespace`, `collection`), chaque champ reçoit **une seule valeur**. Pas de liste. [Vérifié : `pkg/authz/authz.go` lignes 73-98] |
+| Clé confinée + outils MCP | À ajouter | Une clé confinée est refusée sur **tous** les outils du toolbox, sur gRPC et sur HTTP. Motif dans le code : « a tool's arguments are opaque JSON no scope can be checked against ». [Vérifié : `pkg/httpapi/access.go` lignes 100-104, « which is also gRPC's rule »] |
 | Clé confinée + RPC typés | Couvert | Les services typés (`MemoryService`, `KnowledgeService`) vérifient le périmètre par réflexion sur les champs de la requête, et l'appartenance de la ligne pour les RPC par id. [Vérifié : `pkg/rpcserver/auth.go`, `pkg/rpcserver/ownership.go`] |
 | Provenance dans les résultats | Partiel | Un résultat porte `document_id`, `chunk_index`, `title` dans les métadonnées du passage. Pas de date de source, pas d'URL, pas de cerveau d'origine. [Vérifié : `pkg/cortexdb/graphrag_tool_ingest.go` lignes 80-88] |
-| Fusion et classement multi-sources | Hors de portée | Rien dans le code. Le client doit le faire. |
+| Fusion et classement multi-sources | À ajouter | Thalamus le fait. |
 
 Conséquence pratique : aujourd'hui, un employé qui utilise le plugin MCP en mode distant a besoin d'une clé **non confinée** (lecture-écriture totale sur le cerveau) ou d'une clé en lecture seule non confinée. Le confinement par `namespace` ne protège rien pour les agents de code. Le seul confinement réel est **un serveur par cerveau**, avec une clé par serveur.
 
@@ -58,12 +60,12 @@ Conséquence pratique : aujourd'hui, un employé qui utilise le plugin MCP en mo
 | Besoin | État | Détail |
 | :- | :- | :- |
 | Contrôle d'accès par graphe | Couvert par configuration | Un serveur par cerveau, un fichier de clés par serveur. Clearances `read-only` et `read-write`. [Vérifié : `pkg/authz/authz.go`, `authz_test.go`] |
-| Contrôle d'accès par document | **Hors de portée** | Rien dans le code. Le grain le plus fin est `collection`. |
-| Classification des documents | Hors de portée, **couvrable par extension** | `ingest_document` accepte `metadata` et le copie sur chaque passage. Il ne le stocke pas sur l'enregistrement du document (`core.Document` garde ID, Title, Content, Version). [Vérifié : `graphrag_tool_ingest.go` lignes 44-50 et 85-87] |
+| Contrôle d'accès par document | À ajouter | Rien dans le code. Le grain le plus fin est `collection`. |
+| Classification des documents | À ajouter, par les métadonnées | `ingest_document` accepte `metadata` et le copie sur chaque passage. Il ne le stocke pas sur l'enregistrement du document (`core.Document` garde ID, Title, Content, Version). [Vérifié : `graphrag_tool_ingest.go` lignes 44-50 et 85-87] |
 | Durée de conservation, effacement | Partiel | `delete_document_graph`, `knowledge_delete`, `memory_delete` existent (outils MCP). Pas de date d'expiration, pas de balayage. [Vérifié : liste des outils ; absence de `expires_at` dans `pkg/core` hors `liveview`] |
-| Droit à l'effacement d'une personne | Hors de portée | Pas d'index par personne concernée. L'effacement d'un document ne retire pas les faits dérivés qui ont été fusionnés dans des entités partagées. [Supposé d'après le modèle : à vérifier sur `delete_document_graph`] |
-| Journal d'audit | **Non** | Il existe un journal de requêtes : méthode, durée, appels lents, `CORTEXDB_TRACE_FILE` en JSON lines. Il ne consigne **pas** l'identité de la clé. [Vérifié : `pkg/rpcserver/trace.go`, aucune référence à `key` ou `caller`] |
-| Départ d'un employé | Hors de portée | Rien. Avec un serveur par cerveau, c'est une opération d'exploitation : retirer la clé, archiver la base. |
+| Droit à l'effacement d'une personne | À ajouter | Pas d'index par personne concernée. L'effacement d'un document ne retire pas les faits dérivés qui ont été fusionnés dans des entités partagées. [Supposé d'après le modèle : à vérifier sur `delete_document_graph`] |
+| Journal d'audit | À ajouter | Il existe un journal de requêtes : méthode, durée, appels lents, `CORTEXDB_TRACE_FILE` en JSON lines. Il ne consigne **pas** l'identité de la clé. [Vérifié : `pkg/rpcserver/trace.go`, aucune référence à `key` ou `caller`] |
+| Départ d'un employé | À ajouter | Rien. Avec un serveur par cerveau, c'est une opération d'exploitation : retirer la clé, archiver la base. |
 | Traitement interne (Ollama) | **Couvert** | `CORTEXDB_LLM_BASE_URL`, `CORTEXDB_EMBED_BASE_URL`, `CORTEXDB_RERANK_BASE_URL`, points d'accès compatibles OpenAI. [Vérifié : `cmd/cortexdb-mcp-stdio/llm.go`, `embedder.go`, `reranker.go`] |
 | Masquage des données sensibles | Partiel | À la capture de session seulement : blocs `<private>…</private>` et motifs de secrets (clés, jetons, `password=`). Pas de masquage de données personnelles (noms, e-mails, AVS). [Vérifié : `cmd/cortexdb-mcp-stdio/scrub.go`] |
 | Relecture humaine avant entrée | Partiel | `--capture-session --dry-run` produit des propositions sans écrire. `side_graph_write/read/drop` offre un graphe de côté. Pas de file de relecture, pas de statut « proposé / accepté / refusé ». [Vérifié : `capture_session.go` ligne 27 ; outils `side_graph_*`. Usage de side_graph comme file : à vérifier] |
@@ -75,10 +77,10 @@ Conséquence pratique : aujourd'hui, un employé qui utilise le plugin MCP en mo
 | Besoin | État | Détail |
 | :- | :- | :- |
 | Skill « ajouter un fichier » | Partiel | `ingest_document` prend du texte. Pas d'extraction PDF ni Word dans le dépôt. [Vérifié : signature de `ToolIngestDocumentRequest` ; absence de dépendance PDF dans `go.mod`, à vérifier] |
-| Choix du graphe cible | Hors de portée | Un client, un cerveau. |
+| Choix du graphe cible | À ajouter | Un client, un cerveau. |
 | Détection de doublons | Partiel | Le `document_id` est fourni par l'appelant. Même id = réécriture. Pas de hachage de contenu. `dedup.go` concerne les mémoires. [Vérifié : `graphrag_tool_ingest.go` ; `cmd/cortexdb-mcp-stdio/dedup.go`] |
-| Mise à jour quand la source change | Hors de portée côté plugin | Le paquet `connector` a un `Watcher` CDC pour des bases SQL, avec un « privacy gate ». Rien pour des fichiers ou des pages web. [Vérifié : `SKILL.md` lignes 941-955] |
-| Plugin Chrome | Hors de portée | Rien. Un plugin Obsidian existe, c'est un précédent de client externe. [Vérifié : `plugins/obsidian-cortexdb`] |
+| Mise à jour quand la source change | À ajouter côté plugin | Le paquet `connector` a un `Watcher` CDC pour des bases SQL, avec un « privacy gate ». Rien pour des fichiers ou des pages web. [Vérifié : `SKILL.md` lignes 941-955] |
+| Plugin Chrome | À ajouter | Rien. Un plugin Obsidian existe, c'est un précédent de client externe. [Vérifié : `plugins/obsidian-cortexdb`] |
 | Serveur HTTP REST | Couvert | `/v1` REST à côté de gRPC, même politique de clés. Base possible pour un plugin Chrome. [Vérifié : `pkg/httpapi`, `startHTTP` dans `main.go`] |
 
 ### 1.5 Sans clé d'API
@@ -86,7 +88,7 @@ Conséquence pratique : aujourd'hui, un employé qui utilise le plugin MCP en mo
 | Besoin | État | Détail |
 | :- | :- | :- |
 | Extraction, embeddings, reclassement par Ollama | Couvert | Voir 1.3. Le code accepte une clé vide. |
-| Fonction sans aucun modèle | Couvert | Mode lexical, extraction heuristique. Qualité moyenne (entités « Le », « Voir »). [Observé en usage réel] |
+| Fonction sans aucun modèle | Couvert | Mode lexical, extraction heuristique. [Observé en usage réel] |
 | Modèle par l'abonnement Claude Code | Couvert, **à cadrer** | Le mod `cortexdb-live` appelle haiku par `$.model.complete({ model: 'haiku' })`, sur l'accès modèle de Claude Code. Aucune clé d'API. Les mods sont une fonction en accès anticipé. [Vérifié : `plugins/cortexdb-live/hooks/register.tsx` lignes 29, 198, 376 ; README ligne 65]. `claude -p` fonctionne aussi côté serveur sous abonnement, avec un siège « bot » Team ou Enterprise et un jeton `claude setup-token` (un an, prévu pour « CI pipelines, scripts »). Le quota est celui d'un siège. Voir 3.8. [Vérifié : pages « Legal and compliance » et « Authentication », code.claude.com, 18 octobre 2026] |
 | Mesure de la qualité du rappel | Couvert | `--recall-eval golden.jsonl` : requête, ids attendus, ids interdits, cas négatifs. [Vérifié : `cmd/cortexdb-mcp-stdio/recall_eval.go`] |
 
@@ -94,9 +96,8 @@ Conséquence pratique : aujourd'hui, un employé qui utilise le plugin MCP en mo
 
 - 725 commits, 453 étoiles, 24 forks, licence MIT, Go 1.25. [Vérifié : page GitHub du 18 octobre 2026, `go.mod`]
 - 178 versions du 7 août 2025 (0.1.0) au 17 octobre 2026 (2.132.0), soit 14 mois. Plusieurs versions par jour mi-octobre. [Vérifié : `CHANGELOG.md`]
-- Auteurs des 725 commits (clone complet, `git log --format='%an'`) : Liang Li 652, Rudy Mizrahi Celekli 52, « Claude » 20, Lauro Foletti 1. Un auteur principal, un second contributeur régulier. [Vérifié : clone du 18 octobre 2026, v2.132.1]
 - Le code lu est soigné : commentaires de conception, tests de couverture des routes, comparaison des secrets en temps constant. [Vérifié : `pkg/httpapi/access.go`, `pkg/authz`]
-- Risque : **dépendance à une personne** et **rythme de changement élevé**. Un fork doit rester petit pour suivre.
+- Rythme de changement élevé : Thalamus épingle une version et suit l'amont par de petites PR, sans fork divergent.
 
 ---
 
@@ -548,8 +549,8 @@ Effort total avant l'extension : environ 27 semaines-personne, sur 6 à 8 mois c
 
 | Risque | Gravité | Mitigation |
 | :- | :- | :- |
-| Dépendance à un auteur unique, rythme élevé | Haute | Couche mince, adaptateur moteur, version épinglée, PR en amont, plan B : geler une version et maintenir un fork minimal |
-| Clé confinée inutilisable avec le toolbox | Haute aujourd'hui | Un serveur par cerveau et une seule clé gateway. PR 3 et 4 à moyen terme |
+| Suivre un amont qui évolue vite | Moyenne | Couche mince, version épinglée, PR en amont |
+| Clé confinée et boîte à outils | Traité | PR #72 à #74, fusionnées en v2.136.0 |
 | Extraction fausse acceptée sans lecture | Haute | File de relecture obligatoire, vérification mécanique des termes, délai de relecture mesuré |
 | Fuite par le rappel vers le fournisseur de l'agent | Haute | Filtre de classification injectable, voir 7.2 |
 | Bruit du rappel (hors sujet) | Moyenne | Golden set, pondérations, cas négatifs, seuil d'arrêt |

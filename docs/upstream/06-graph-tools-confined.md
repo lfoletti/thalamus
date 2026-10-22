@@ -2,7 +2,7 @@
 
 **Statut** : en réserve, ne pas envoyer. **Taille estimée** : deux PR, environ 250 et 150 lignes hors tests. **Dépend de** : #76 (`expires_at`) et #77 (`review_status`) fusionnées, parce que la proposition étend leur filtre des parcours.
 
-## Le manque
+## Le besoin de Thalamus
 
 Depuis v2.136.0 (#72 à #74), une clé confinée à une collection appelle la toolbox, mais la liste blanche (`pkg/authz/allowlist.go`) lui refuse tout le graphe :
 
@@ -30,7 +30,7 @@ Contournement écarté : le gateway tient une clé non confinée par serveur, ap
   - `hiddenAmong` donne les documents cachés en une requête indexée, fermée sur panne sous la porte de relecture.
 - Les outils qui passent par ce filtre depuis #76 et #77 : `expand_graph`, `search_paths`, `knowledge_memory_shortest_path`, `knowledge_memory_neighbors`, `get_nodes`, `knowledge_memory_expand_entity_context`.
 
-La règle « un document caché n'apparaît dans aucun parcours » existe donc, avec sa classe d'outils et ses tests. Il manque une seule cause de plus : « un document hors du périmètre de l'appelant est caché ».
+La règle « un document caché n'apparaît dans aucun parcours » existe donc, avec sa classe d'outils et ses tests. La proposition y ajoute une seule cause : « un document hors du périmètre de l'appelant est caché ».
 
 ## La proposition
 
