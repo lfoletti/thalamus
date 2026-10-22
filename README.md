@@ -2,7 +2,9 @@
 
 # Thalamus
 
-A shared memory for an organisation, its people and their coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. Thalamus is the thin layer around it: a gateway, a Claude Code plugin and a browser extension.
+A shared memory for an organisation, its people and their coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). 
+CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. 
+Thalamus is the thin layer around it: a gateway, a Claude Code plugin and a browser extension.
 
 *Version française plus bas.*
 
