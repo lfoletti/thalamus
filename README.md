@@ -14,6 +14,14 @@ When an employee types a prompt in Claude Code, the Thalamus plugin asks the gat
 
 An employee can also propose a document, from Claude Code or from a page in Chrome. The document waits for a curator of the brain, who accepts or rejects it.
 
+## Why use it
+
+- **Access in one file.** The rights of each person on each brain are in `rights.yaml`. To give a person access to a team's brains, add the login to the team's group. To remove a right, delete the line. The gateway applies the change at the next call, without a restart.
+- **No keys to hand out.** An employee logs in with the account of the organisation. The gateway then issues the keys that the rights allow. `th-gateway key sync` issues, replaces and revokes keys until the key files match the rights.
+- **Brains of the correct size.** A brain is a whole CortexDB server or one collection of a shared server. Small teams can share one server. A sensitive brain can have its own server.
+- **One question for all readable brains.** The employee does not choose where to search. Each brain can have a weight in the merged results.
+- **Security and traceability.** Each person has a personal key, and CortexDB checks it on every call. To revoke one person, the gateway removes that person's keys only. The audit records who wrote, reviewed or changed what.
+
 ## Concepts
 
 | Term | Meaning |
