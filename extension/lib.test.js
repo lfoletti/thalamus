@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writableBrains, documentID, buildAdd, statusText, settingsOf, authorizeURL, tokenOf, signInText, randomString } from "./lib.js";
+import { writableBrains, documentID, buildAdd, statusText, settingsOf, authorizeURL, tokenOf, signInText, randomString, mainText } from "./lib.js";
 
 // Only the brains the employee may write to, with a key, sorted by name.
 test("writableBrains keeps the brains one may write to, with a key, sorted", () => {
@@ -42,6 +42,67 @@ test("buildAdd prefers the selection and bounds the fields", () => {
   assert.equal(buildAdd({ ...page, content: "c".repeat(200000) }).content.length, 100000);
   assert.throws(() => buildAdd({ ...page, content: "  ", selection: "" }), /nothing to propose/);
   assert.throws(() => buildAdd({ ...page, brain: "" }), /choose a brain/);
+  // How the page text was extracted is said in the metadata; a selection
+  // was not extracted.
+  assert.deepEqual(buildAdd({ ...page, extract: "landmark" }).metadata, { via: "chrome-extension", kind: "page", extract: "landmark" });
+  assert.deepEqual(buildAdd({ ...page, extract: "landmark", selection: "words" }).metadata, { via: "chrome-extension", kind: "selection" });
+});
+
+// The page as the collector in the popup reads it: the landmarks, the text
+// blocks with the index of their parent (group) and grandparent (outer), the
+// length of their link text and the class and id of the parent (hint), and
+// the whole body text.
+const long = (word, n) => Array.from({ length: n }, (_, i) => `${word} ${i}.`).join(" ");
+const block = (text, group, outer, hint = "", links = 0) => ({ text, group, outer, hint, links });
+
+// An article or a main landmark with enough text is the page's content.
+test("mainText takes an article or main landmark with enough text", () => {
+  const body = "Menu Home Products " + long("Article sentence", 30) + " Footer legal";
+  let got = mainText({ landmarks: [{ kind: "main", text: long("Main sentence", 40) }, { kind: "article", text: long("Article sentence", 30) }], blocks: [], body });
+  assert.deepEqual(got, { text: long("Article sentence", 30), how: "landmark" });
+  // Of two articles, the longer; a main when there is no article.
+  got = mainText({ landmarks: [{ kind: "article", text: long("Short", 25) }, { kind: "article", text: long("Longer one", 40) }], blocks: [], body });
+  assert.equal(got.text, long("Longer one", 40));
+  got = mainText({ landmarks: [{ kind: "main", text: long("Main sentence", 40) }], blocks: [], body });
+  assert.deepEqual(got, { text: long("Main sentence", 40), how: "landmark" });
+  // A landmark too short to be the content is passed over.
+  got = mainText({ landmarks: [{ kind: "article", text: "Share this" }], blocks: [], body });
+  assert.deepEqual(got, { text: body, how: "body" });
+});
+
+// Without a landmark, the group of blocks with the most text that is not
+// links wins; a sibling group (same grandparent) stays in, in page order,
+// as the sections of one article do; the navigation, the footer, the
+// comments and the link lists stay out.
+test("mainText keeps the groups of text blocks and leaves the chrome out", () => {
+  const blocks = [
+    block("Home Products Pricing Contact", 0, 0, "nav menu", 29),
+    block("Cutover plan", 1, 1, "post-content"),
+    block(long("The rehearsal", 20), 1, 1, "post-content"),
+    block(long("Second section", 8), 2, 1, "section"),
+    block(long("Great post, thanks", 30), 3, 1, "comments"),
+    block(long("Related link", 10), 4, 1, "", 300),
+    block("Copyright 2026 Acme", 5, 0, "site-footer"),
+  ];
+  const got = mainText({ landmarks: [], blocks, body: "whole body" });
+  assert.equal(got.how, "blocks");
+  assert.equal(got.text, ["Cutover plan", long("The rehearsal", 20), long("Second section", 8)].join("\n\n"));
+  // A group under another grandparent stays out, however close in size.
+  const small = mainText({ landmarks: [], blocks: [blocks[1], blocks[2], block(long("Teaser elsewhere", 18), 6, 7, "teaser")], body: "x" });
+  assert.equal(small.text, ["Cutover plan", long("The rehearsal", 20)].join("\n\n"));
+});
+
+// A content hint in the class or id wins between two groups of close size.
+test("mainText prefers the group whose class says content", () => {
+  const blocks = [block(long("Teaser text", 22), 0, 0, "teaser"), block(long("Story text", 18), 1, 1, "article-body")];
+  assert.equal(mainText({ landmarks: [], blocks, body: "x" }).text, long("Story text", 18));
+});
+
+// Too little text anywhere: the whole body, as before; nothing at all is
+// an empty text.
+test("mainText falls back to the body text", () => {
+  assert.deepEqual(mainText({ landmarks: [], blocks: [block("Hello", 0, 0)], body: "Hello there" }), { text: "Hello there", how: "body" });
+  assert.deepEqual(mainText({}), { text: "", how: "body" });
 });
 
 // One sentence per outcome, by status, with the brain and the access.
