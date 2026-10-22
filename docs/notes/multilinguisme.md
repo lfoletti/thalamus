@@ -39,11 +39,13 @@ Le moteur règle le reste (fiche 07) : les accents égaux sur les deux serveurs,
 
 Mesure de la couche 2 (22 octobre 2026, pilote ai-audio, questions en français et fiches surtout en anglais) : une variante anglaise de la question fait passer la couverture des faits de 81,3 % à 85,1 %. Mais le moteur v2.136.0 ignore les variantes quand la question remplit `top_k` (fiche 07). `th_recall` cherche donc chaque variante à part et fusionne les listes (tranche 17).
 
+Mesure du banc suisse (22 octobre 2026, `tests/eval_ch/`, 40 questions croisées sur la Constitution fédérale, un article par document dans une seule langue) : sans encodeur, 7 % des articles attendus dans les 10 premiers résultats, 62 % avec les variantes. Avec `multilingual-e5-large`, 82 % sans variante et 97 % avec les variantes (romanche : 82 % et 91 %). Détail dans `tests/eval_ch/README.md`.
+
 ## 4. Le cas du hook
 
 Le hook de rappel automatique envoie le prompt tel quel. Il n'a pas de modèle, donc il ne peut pas traduire la question. Sans embedder multilingue sur le serveur, le rappel automatique reste donc dans la langue du prompt. Le rappel à la demande (`th_recall` par l'agent) peut, lui, ajouter les variantes de la couche 2.
 
-Conséquence : pour une organisation en plusieurs langues, l'embedder multilingue est la condition du rappel automatique.
+Conséquence : pour une organisation en plusieurs langues, l'embedder multilingue est la condition du rappel automatique. Le banc suisse le confirme : sans encodeur, le hook trouve 7 % des articles d'une autre langue ; avec e5-large, 82 %.
 
 ## 5. Le romanche
 
@@ -70,4 +72,5 @@ Les chiffres disent quelles PR de la fiche 07 sont nécessaires, et ce que vaut 
 
 - L'interface de l'extension et les messages du gateway sont en anglais. La traduction de l'interface est un autre sujet.
 - La langue des synthèses, si une pyramide de synthèses entre dans le produit : une langue pivot, ou une synthèse par langue.
-- La licence des textes officiels repris dans le jeu d'évaluation.
+- La licence des textes officiels, seulement si le jeu d'évaluation part dans un dépôt public.
+- Le 1er rang après la fusion des variantes (banc suisse, constat 4) et les préfixes de e5 (constat 5).
