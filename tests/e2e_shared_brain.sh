@@ -71,13 +71,13 @@ check "hermes: memory_search own" ok "$(mcp hermes-secret memory_search '{"query
 check "hermes: memory_search zeus (denied)" denied "$(mcp hermes-secret memory_search '{"query":"deploys","user_id":"zeus"}')"
 check "hermes: knowledge_search (denied, no user_id arg)" denied "$(mcp hermes-secret knowledge_search '{"query":"ledger","collection":"team-acme"}')"
 check "wrong token (denied)" denied "$(mcp nope knowledge_search '{"query":"x","collection":"team-acme"}')"
-prop=$(mcp lf-secret knowledge_save '{"knowledge_id":"fact-1","content":"Acme signed the renewal on 2026-10-01.","collection":"team-acme","metadata":{"review_status":"proposed"}}')
+prop=$(mcp lf-secret knowledge_save '{"knowledge_id":"fact-1","content":"Acme signed the renewal on 2026-10-01.","collection":"team-acme","review_status":"proposed"}')
 check "lf: knowledge_save proposed" ok "$prop"
 hidden=$(mcp lf-secret knowledge_search '{"query":"renewal signed","collection":"team-acme","top_k":5}')
 if printf '%s' "$hidden" | grep -q 'fact-1'; then fail=$((fail+1)); echo "FAIL  proposed fact served: $(printf '%s' "$hidden" | cut -c1-300)"; else pass=$((pass+1)); echo "PASS  proposed fact hidden from search"; fi
 waiting=$(mcp lf-secret knowledge_search '{"query":"renewal signed","collection":"team-acme","top_k":5,"plan":{"filters":{"review_status":"proposed"}}}')
 if printf '%s' "$waiting" | grep -q 'fact-1'; then pass=$((pass+1)); echo "PASS  review_status=proposed lists fact-1"; else fail=$((fail+1)); echo "FAIL  proposed filter: $(printf '%s' "$waiting" | cut -c1-300)"; fi
-acc=$(mcp lf-secret knowledge_update '{"knowledge_id":"fact-1","collection":"team-acme","metadata":{"review_status":"accepted","reviewed_by":"mdupont"}}')
+acc=$(mcp lf-secret knowledge_update '{"knowledge_id":"fact-1","collection":"team-acme","review_status":"accepted"}')
 check "lf: accept fact-1" ok "$acc"
 served=$(mcp lf-secret knowledge_search '{"query":"renewal signed","collection":"team-acme","top_k":5}')
 if printf '%s' "$served" | grep -q 'fact-1'; then pass=$((pass+1)); echo "PASS  accepted fact served"; else fail=$((fail+1)); echo "FAIL  accepted fact missing: $(printf '%s' "$served" | cut -c1-300)"; fi
@@ -88,6 +88,7 @@ grep -c '"tool"' "$E/data/trace.jsonl" 2>/dev/null | sed 's/^/records with a too
 grep '"key":"lf"' "$E/data/trace.jsonl" | grep -c 'denied\|PermissionDenied' | sed 's/^/lf denials logged: /'
 echo
 echo "pass=$pass fail=$fail"
+[ "$fail" -eq 0 ]
 
 echo
 echo "--- rows outside the scope, named by id ---"
@@ -102,3 +103,4 @@ if printf '%s' "$back" | grep -q 'forty thousand' && printf '%s' "$back" | grep 
 back=$(mcp op-secret memory_get '{"memory_id":"zeus-1"}')
 if printf '%s' "$back" | grep -q 'Zeus private' && printf '%s' "$back" | grep -q '\\"user_id\\":\\"zeus\\"'; then pass=$((pass+1)); echo "PASS  zeus-1 untouched"; else fail=$((fail+1)); echo "FAIL  zeus-1 changed: $(printf '%s' "$back" | cut -c1-300)"; fi
 echo "pass=$pass fail=$fail"
+[ "$fail" -eq 0 ]

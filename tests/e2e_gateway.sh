@@ -125,7 +125,7 @@ if printf '%s' "$rev" | grep -q isError; then ko "th_review" "$rev"; else ok "th
 srv=$(mcp "$LF" team/acme knowledge_search '{"query":"cutover rehearsal","collection":"team-acme","top_k":5}')
 printf '%s' "$srv" | grep -q 'spec-3' && ok "accepted spec-3 is served" || ko "accepted spec-3 missing" "$srv"
 got=$(mcp "$KMA" team/acme knowledge_get '{"knowledge_id":"spec-3"}')
-printf '%s' "$got" | grep -q 'reviewed_by.*th/kmlead/team/acme' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
+printf '%s' "$got" | grep -q '_reviewed_by.*th/kmlead/team/acme' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
 
 # The client: the plugin's hook asks th_recall with the employee's key and
 # hands the extracts to Claude Code; a prompt too short asks nothing.

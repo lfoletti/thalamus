@@ -338,8 +338,9 @@ func withCurator(t *testing.T, b *bench) {
 
 // th_add proposes a document into a brain the caller may write: the
 // brain receives ingest_document with the caller's key, in its collection,
-// with the caller as author and review_status proposed. A curator's own
-// document is accepted at once. The audit line names the document.
+// with the caller as author and the explicit field review_status proposed,
+// never a metadata key. A curator's own document is accepted at once. The
+// audit line names the document.
 func TestGcAddProposesADocumentForReview(t *testing.T) {
 	b := start(t)
 	withCurator(t, b)
@@ -352,7 +353,7 @@ func TestGcAddProposesADocumentForReview(t *testing.T) {
 	var args map[string]any
 	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
 	md, _ := args["metadata"].(map[string]any)
-	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-2" || args["title"] != "Spec" || args["author"] != "mdupont" || args["source_url"] != "smb://x/spec.docx" || md["review_status"] != "proposed" || md["classification"] != "internal" || md["reviewed_by"] != nil {
+	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-2" || args["title"] != "Spec" || args["author"] != "mdupont" || args["source_url"] != "smb://x/spec.docx" || args["review_status"] != "proposed" || args["reviewed_by"] != nil || md["classification"] != "internal" || len(md) != 1 {
 		t.Fatalf("args: %s", b.brain.calls[0].ArgsJson)
 	}
 	if b.brain.bearers["team-acme"] != "Bearer "+k.Secret {
@@ -371,7 +372,7 @@ func TestGcAddProposesADocumentForReview(t *testing.T) {
 	}
 	_ = json.Unmarshal([]byte(b.brain.calls[1].ArgsJson), &args)
 	md, _ = args["metadata"].(map[string]any)
-	if md["review_status"] != "accepted" || md["reviewed_by"] != "kmlead" || args["document_id"] == nil || args["document_id"] == "" {
+	if args["review_status"] != "accepted" || args["reviewed_by"] != nil || len(md) != 0 || args["document_id"] == nil || args["document_id"] == "" {
 		t.Fatalf("curator args: %s", b.brain.calls[1].ArgsJson)
 	}
 }
@@ -420,9 +421,11 @@ func TestGcAddIsRefusedWithoutAWriteRight(t *testing.T) {
 }
 
 // th_pending lists what waits for review in a brain the caller curates:
-// aggregate_metadata groups the chunks by document under the review_status
-// filter, then knowledge_get reads each, with the curator's key. th_review
-// decides: knowledge_update with the decision and the curator as reviewer.
+// aggregate_metadata groups the chunks by document under a filter on the
+// engine's key _review_status (which lifts the review gate for that status),
+// then knowledge_get reads each, with the curator's key. th_review decides:
+// knowledge_update with the explicit decision fields and the curator as
+// reviewer, and no metadata, so the stored metadata is kept.
 // Both are refused to a writer who is not a curator.
 func TestGcPendingAndGcReviewAreForCurators(t *testing.T) {
 	b := start(t)
@@ -442,7 +445,7 @@ func TestGcPendingAndGcReviewAreForCurators(t *testing.T) {
 	var args map[string]any
 	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
 	filters, _ := args["filters"].(map[string]any)
-	if b.brain.calls[0].Name != "aggregate_metadata" || args["collection"] != "team-acme" || args["type"] != "group_by" || fmt.Sprint(args["group_by"]) != "[document_id]" || filters["review_status"] != "proposed" || args["limit"] != float64(1) {
+	if b.brain.calls[0].Name != "aggregate_metadata" || args["collection"] != "team-acme" || args["type"] != "group_by" || fmt.Sprint(args["group_by"]) != "[document_id]" || filters["_review_status"] != "proposed" || args["limit"] != float64(1) {
 		t.Fatalf("pending args: %s", b.brain.calls[0].ArgsJson)
 	}
 	args = nil // Unmarshal into a map keeps the old keys.
@@ -463,8 +466,7 @@ func TestGcPendingAndGcReviewAreForCurators(t *testing.T) {
 		t.Fatalf("review: %s", res.Content[0].(*mcp.TextContent).Text)
 	}
 	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
-	md, _ := args["metadata"].(map[string]any)
-	if b.brain.calls[0].Name != "knowledge_update" || args["knowledge_id"] != "spec-2" || args["collection"] != "team-acme" || md["review_status"] != "accepted" || md["reviewed_by"] != "kmlead" {
+	if _, md := args["metadata"]; b.brain.calls[0].Name != "knowledge_update" || args["knowledge_id"] != "spec-2" || args["collection"] != "team-acme" || args["review_status"] != "accepted" || args["reviewed_by"] != nil || md {
 		t.Fatalf("review args: %s", b.brain.calls[0].ArgsJson)
 	}
 	if l := b.auditLines(t)[2]; l["tool"] != "th_review" || l["ids"].(map[string]any)["knowledge_id"] != "spec-2" || l["ids"].(map[string]any)["decision"] != "accepted" {

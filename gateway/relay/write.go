@@ -14,7 +14,8 @@ import (
 )
 
 // The write circuit of the federated endpoint. th_add proposes a document
-// into a brain the caller may write: it lands with review_status proposed,
+// into a brain the caller may write: it lands with review_status proposed
+// (the explicit field of ingest_document, never a metadata key),
 // and is served only once a curator accepts it, when the brain's server
 // runs with the review gate. A curator's own document is accepted at once.
 // th_pending lists what waits in a brain the caller curates; th_review
@@ -150,14 +151,15 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	for k, v := range args.Metadata {
 		md[k] = v
 	}
+	req := map[string]any{"document_id": args.DocumentID, "content": args.Content, "author": user, "metadata": md}
 	access, _ := s.rights().Access(user, args.Brain)
 	if access == rights.Curate {
-		md["review_status"] = "accepted"
-		md["reviewed_by"] = user
+		// The engine names the calling key as reviewer and refuses another
+		// name, so the gateway sends none.
+		req["review_status"] = "accepted"
 	} else {
-		md["review_status"] = "proposed"
+		req["review_status"] = "proposed"
 	}
-	req := map[string]any{"document_id": args.DocumentID, "content": args.Content, "author": user, "metadata": md}
 	if args.Title != "" {
 		req["title"] = args.Title
 	}
@@ -176,7 +178,8 @@ type pendingHit struct {
 }
 
 // pending lists the proposed documents of the brain: aggregate_metadata
-// groups the chunks by document under the review_status filter (a search
+// groups the chunks by document under a filter on the engine's key
+// _review_status, which lifts the review gate for that status (a search
 // needs a text, a listing does not), then knowledge_get reads each
 // document. One audit line names them all.
 // get reads one document whole. knowledge_get takes no collection: the
@@ -218,7 +221,7 @@ func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mc
 }
 
 func (s *Server) listPending(ctx context.Context, b rights.Brain, user, name string, topK int) ([]pendingHit, error) {
-	req := map[string]any{"type": "group_by", "group_by": []string{"document_id"}, "filters": map[string]any{"review_status": "proposed"}, "limit": topK}
+	req := map[string]any{"type": "group_by", "group_by": []string{"document_id"}, "filters": map[string]any{"_review_status": "proposed"}, "limit": topK}
 	result, err := s.callBrain(ctx, b, user, name, "aggregate_metadata", req)
 	if err != nil {
 		return nil, err
@@ -278,6 +281,9 @@ func (s *Server) review(ctx context.Context, user string, args reviewArgs) *mcp.
 	if err != nil {
 		return errResult(err)
 	}
-	req := map[string]any{"knowledge_id": args.KnowledgeID, "metadata": map[string]string{"review_status": args.Decision, "reviewed_by": user}}
+	// The decision goes through the explicit fields, with no metadata, so the
+	// engine keeps the stored metadata and takes the calling key as reviewer;
+	// a reviewed_by naming anyone else would be refused.
+	req := map[string]any{"knowledge_id": args.KnowledgeID, "review_status": args.Decision}
 	return s.audited(ctx, b, user, args.Brain, "th_review", "knowledge_update", req, map[string]any{"knowledge_id": args.KnowledgeID, "decision": args.Decision})
 }
