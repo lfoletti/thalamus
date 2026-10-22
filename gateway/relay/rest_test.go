@@ -81,8 +81,7 @@ func TestRestAddsADocument(t *testing.T) {
 	}
 	var args map[string]any
 	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
-	md, _ := args["metadata"].(map[string]any)
-	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-9" || args["author"] != "lfoletti" || md["review_status"] != "proposed" {
+	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-9" || args["author"] != "lfoletti" || args["review_status"] != "proposed" {
 		t.Fatalf("args: %s", b.brain.calls[0].ArgsJson)
 	}
 	if l := b.auditLines(t)[0]; l["tool"] != "th_add" || l["ids"].(map[string]any)["document_id"] != "spec-9" || l["ok"] != true {
