@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" width="760" height="480" role="img" aria-labelledby="title desc">
   <title id="title">Automatic recall in Claude Code</title>
-  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brain on the machine. The best extracts are merged with their source, and the hook adds them to the prompt before the agent answers.</desc>
+  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brain on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
   <style>
     .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
     .core { fill: #312e81; stroke: #312e81; }
@@ -27,56 +27,49 @@
     }
   </style>
 
-  <!-- Top row: the request, left to right -->
-  <rect class="box" x="16" y="24" width="150" height="58" rx="8"/>
-  <text class="label" x="91" y="49" text-anchor="middle">The employee</text>
-  <text class="small" x="91" y="68" text-anchor="middle">types a prompt</text>
+  <!-- Row 1: the request -->
+  <rect class="box" x="30" y="24" width="200" height="58" rx="8"/>
+  <text class="label" x="130" y="49" text-anchor="middle">The employee</text>
+  <text class="small" x="130" y="68" text-anchor="middle">types a prompt</text>
 
-  <rect class="box core" x="210" y="24" width="160" height="58" rx="8"/>
-  <text class="label" x="290" y="49" text-anchor="middle" style="fill:#ffffff">Thalamus hook</text>
-  <text class="mono" x="290" y="68" text-anchor="middle" style="font-size:12px;fill:#c7d2fe">UserPromptSubmit</text>
+  <rect class="box core" x="280" y="24" width="200" height="58" rx="8"/>
+  <text class="label" x="380" y="49" text-anchor="middle" style="fill:#ffffff">Thalamus hook</text>
+  <text class="mono" x="380" y="68" text-anchor="middle" style="font-size:12px;fill:#c7d2fe">UserPromptSubmit</text>
 
-  <rect class="box core" x="414" y="24" width="160" height="58" rx="8"/>
-  <text class="label" x="494" y="49" text-anchor="middle" style="fill:#ffffff">Thalamus gateway</text>
-  <text class="mono" x="494" y="68" text-anchor="middle" style="font-size:12px;fill:#c7d2fe">th_recall</text>
+  <rect class="box core" x="530" y="24" width="200" height="58" rx="8"/>
+  <text class="label" x="630" y="49" text-anchor="middle" style="fill:#ffffff">Thalamus gateway</text>
+  <text class="mono" x="630" y="68" text-anchor="middle" style="font-size:12px;fill:#c7d2fe">th_recall</text>
 
-  <path class="line" d="M166 53 L 200 53"/><path class="head" d="M210 53 L 199 47.5 L 199 58.5 Z"/>
-  <path class="line" d="M370 53 L 404 53"/><path class="head" d="M414 53 L 403 47.5 L 403 58.5 Z"/>
+  <path class="line" d="M230 53 L 270 53"/><path class="head" d="M280 53 L 269 47.5 L 269 58.5 Z"/>
+  <path class="line" d="M480 53 L 520 53"/><path class="head" d="M530 53 L 519 47.5 L 519 58.5 Z"/>
 
-  <!-- Middle row: the local brain under the hook, the server brains under the gateway -->
-  <path class="dash" d="M290 82 L 290 128"/><path class="phead" d="M290 138 L 284.5 127 L 295.5 127 Z"/>
-  <rect class="box plan" x="210" y="140" width="160" height="58" rx="8"/>
-  <text class="label" x="290" y="165" text-anchor="middle">Local brain</text>
-  <text class="ptext" x="290" y="184" text-anchor="middle">on the machine · planned</text>
+  <!-- Row 2: the brains -->
+  <path class="dash" d="M380 82 L 380 130"/><path class="phead" d="M380 140 L 374.5 129 L 385.5 129 Z"/>
+  <rect class="box plan" x="280" y="140" width="200" height="58" rx="8"/>
+  <text class="label" x="380" y="165" text-anchor="middle">Local brain</text>
+  <text class="ptext" x="380" y="184" text-anchor="middle">on the machine · planned</text>
 
-  <path class="line" d="M494 82 L 494 116"/><path class="head" d="M494 126 L 488.5 115 L 499.5 115 Z"/>
-  <text class="small" x="504" y="108">employee's key, readable brains only</text>
-  <rect class="box" x="426" y="128" width="148" height="58" rx="8"/>
-  <rect class="box" x="420" y="134" width="148" height="58" rx="8"/>
-  <rect class="box" x="414" y="140" width="148" height="58" rx="8"/>
-  <text class="label" x="488" y="174" text-anchor="middle">Server brains</text>
+  <path class="line" d="M630 82 L 630 118"/><path class="head" d="M630 128 L 624.5 117 L 635.5 117 Z"/>
+  <text class="small" x="620" y="110" text-anchor="end">employee's key, readable brains only</text>
+  <rect class="box" x="542" y="128" width="200" height="58" rx="8"/>
+  <rect class="box" x="536" y="134" width="200" height="58" rx="8"/>
+  <rect class="box" x="530" y="140" width="200" height="58" rx="8"/>
+  <text class="label" x="630" y="174" text-anchor="middle">Server brains</text>
 
-  <!-- Both sides go to the merge -->
-  <path class="dash" d="M290 198 L 290 226 L 600 226 L 600 244"/><path class="phead" d="M600 254 L 594.5 243 L 605.5 243 Z"/>
-  <path class="line" d="M574 160 L 690 160 L 690 244"/><path class="head" d="M690 254 L 684.5 243 L 695.5 243 Z"/>
+  <!-- Row 3: the merged extracts, added to the prompt -->
+  <path class="dash" d="M380 198 L 380 246"/><path class="phead" d="M380 256 L 374.5 245 L 385.5 245 Z"/>
+  <path class="line" d="M630 198 L 630 246"/><path class="head" d="M630 256 L 624.5 245 L 635.5 245 Z"/>
+  <rect class="box" x="280" y="256" width="450" height="58" rx="8"/>
+  <text class="label" x="505" y="281" text-anchor="middle">Prompt + best extracts, merged</text>
+  <text class="small" x="505" y="300" text-anchor="middle">each with brain, document and author, added as context by the hook</text>
 
-  <!-- Bottom row: the answer, right to left -->
-  <rect class="box" x="540" y="256" width="204" height="58" rx="8"/>
-  <text class="label" x="642" y="281" text-anchor="middle">Best extracts, merged</text>
-  <text class="small" x="642" y="300" text-anchor="middle">each with brain, document, author</text>
-
-  <rect class="box" x="278" y="256" width="214" height="58" rx="8"/>
-  <text class="label" x="385" y="281" text-anchor="middle">Prompt + extracts</text>
-  <text class="small" x="385" y="300" text-anchor="middle">added as context by the hook</text>
-
-  <rect class="box" x="16" y="256" width="214" height="58" rx="8"/>
-  <text class="label" x="123" y="281" text-anchor="middle">The agent answers</text>
-  <text class="small" x="123" y="300" text-anchor="middle">and can open a source with th_get</text>
-
-  <path class="line" d="M540 285 L 502 285"/><path class="head" d="M492 285 L 503 279.5 L 503 290.5 Z"/>
-  <path class="line" d="M278 285 L 240 285"/><path class="head" d="M230 285 L 241 279.5 L 241 290.5 Z"/>
+  <!-- Row 4: the answer -->
+  <path class="line" d="M505 314 L 505 362"/><path class="head" d="M505 372 L 499.5 361 L 510.5 361 Z"/>
+  <rect class="box" x="355" y="372" width="300" height="58" rx="8"/>
+  <text class="label" x="505" y="397" text-anchor="middle">The agent answers</text>
+  <text class="small" x="505" y="416" text-anchor="middle">and can open a source with th_get</text>
 
   <!-- Legend -->
-  <path class="dash" d="M16 340 L 52 340"/>
-  <text class="ptext" x="60" y="344">planned, not built yet</text>
+  <path class="dash" d="M30 462 L 66 462"/>
+  <text class="ptext" x="74" y="466">planned, not built yet</text>
 </svg>
