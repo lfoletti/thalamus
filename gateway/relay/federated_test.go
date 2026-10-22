@@ -633,7 +633,7 @@ func pyramidBench(t *testing.T) (*bench, string) {
 
 // th_recall serves the syntheses of a brain's pyramid first, marked as
 // such, then the passages: the pyramid is searched in its own collection,
-// with the same key, for at most `syntheses` results (2 by default, 0 for
+// with the same key, for at most `syntheses` results (4 by default, 0 for
 // none). A brain without a pyramid is not searched twice. A pyramid that
 // fails is said in skipped, and the passages stay.
 func TestRecallServesTheSynthesesFirst(t *testing.T) {
@@ -645,10 +645,10 @@ func TestRecallServesTheSynthesesFirst(t *testing.T) {
 	}
 	s := b.federated(t, secret)
 	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 2}))
-	if len(got.Results) != 4 || got.Results[0].KnowledgeID != "pyramide/ledger" || got.Results[1].KnowledgeID != "pyramide/cutover" || got.Results[2].KnowledgeID != "a-1" {
+	if len(got.Results) != 5 || got.Results[0].KnowledgeID != "pyramide/ledger" || got.Results[1].KnowledgeID != "pyramide/cutover" || got.Results[3].KnowledgeID != "a-1" {
 		t.Fatalf("order: %+v", got.Results)
 	}
-	if got.Results[0].Level != "synthesis" || got.Results[2].Level != "" || got.Results[0].Provenance != "[team/acme] synthesis: Ledger, pyramide/ledger" {
+	if got.Results[0].Level != "synthesis" || got.Results[3].Level != "" || got.Results[0].Provenance != "[team/acme] synthesis: Ledger, pyramide/ledger" {
 		t.Fatalf("level: %+v", got.Results[0])
 	}
 	asked := map[string]float64{}
@@ -657,11 +657,11 @@ func TestRecallServesTheSynthesesFirst(t *testing.T) {
 		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
 		asked[args["collection"].(string)] = args["top_k"].(float64)
 	}
-	if len(asked) != 3 || asked["acme-pyramid"] != 2 || asked["team-acme"] != 2 || b.brain.bearers["acme-pyramid"] != "Bearer "+secret {
+	if len(asked) != 3 || asked["acme-pyramid"] != 4 || asked["team-acme"] != 2 || b.brain.bearers["acme-pyramid"] != "Bearer "+secret {
 		t.Fatalf("calls: %+v", b.brain.calls)
 	}
 	ids := b.auditLines(t)[0]["ids"].(map[string]any)["knowledge_ids"].([]any)
-	if fmt.Sprint(ids) != "[team/acme:a-1 team/acme:a-2 team/acme:pyramide/cutover team/acme:pyramide/ledger team/other:o-1]" {
+	if fmt.Sprint(ids) != "[team/acme:a-1 team/acme:a-2 team/acme:pyramide/cutover team/acme:pyramide/ledger team/acme:pyramide/third team/other:o-1]" {
 		t.Fatalf("audit ids: %v", ids)
 	}
 
@@ -679,6 +679,67 @@ func TestRecallServesTheSynthesesFirst(t *testing.T) {
 	got = decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 2}))
 	if len(got.Results) != 2 || got.Results[0].KnowledgeID != "a-1" || len(got.Skipped) != 1 || got.Skipped[0].Brain != "team/acme" || !strings.HasPrefix(got.Skipped[0].Reason, "pyramid: ") {
 		t.Fatalf("failed pyramid: %+v", got)
+	}
+}
+
+// th_recall asks each brain for the chunks of its documents, in graph mode,
+// top_k chunks in at most 1 000 characters each (10 chunks and 4 syntheses by
+// default): a chunk is a result, with the id, title and source of its
+// document from the same answer, or its document id alone. A brain that
+// answers no chunk is served its documents' snippets. A document read
+// through two chunks is audited once.
+func TestRecallServesTheChunksOfTheDocuments(t *testing.T) {
+	b, secret := pyramidBench(t)
+	b.brain.hits = map[string][]fakeHit{
+		"team-acme":    {{"a-1", "Ledger plan", "The ledger..."}},
+		"acme-pyramid": {{"pyramide/ledger", "Ledger", "The ledger moves..."}},
+		"other":        {{"o-1", "Other", "Something else."}},
+	}
+	b.brain.chunks = map[string][]fakeChunk{
+		"team-acme":    {{"a-1", "The ledger moves on Sunday night."}, {"a-1", "The rollback window is two hours."}, {"zz", "A chunk of a document the answer does not list."}, {"a-1", "A fourth chunk."}},
+		"acme-pyramid": {{"pyramide/ledger", "The ledger moves on Sunday, with two hours of rollback."}},
+	}
+	s := b.federated(t, secret)
+	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "top_k": 3}))
+	var lines []string
+	for _, r := range got.Results {
+		lines = append(lines, r.Level+"|"+r.Provenance+"|"+r.Snippet)
+	}
+	want := []string{
+		"synthesis|[team/acme] synthesis: Ledger, pyramide/ledger, https://wiki/pyramide/ledger, by mdupont|The ledger moves on Sunday, with two hours of rollback.",
+		"|[team/acme] Ledger plan, a-1, https://wiki/a-1, by mdupont|The ledger moves on Sunday night.",
+		"|[team/acme] Ledger plan, a-1, https://wiki/a-1, by mdupont|The rollback window is two hours.",
+		"|[team/acme] zz|A chunk of a document the answer does not list.",
+	}
+	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("results:\n%s\nskipped: %+v", strings.Join(lines, "\n"), got.Skipped)
+	}
+	for _, c := range b.brain.calls {
+		var args map[string]any
+		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+		chunks := map[string]float64{"team-acme": 3, "other": 3, "acme-pyramid": 4}[args["collection"].(string)]
+		if args["retrieval_mode"] != "graph" || args["top_k"] != chunks || args["max_context_chunks"] != chunks || args["max_context_chars"] != 1000*chunks {
+			t.Fatalf("args: %v", args)
+		}
+	}
+	ids := b.auditLines(t)[0]["ids"].(map[string]any)["knowledge_ids"].([]any)
+	if fmt.Sprint(ids) != "[team/acme:a-1 team/acme:pyramide/ledger team/acme:zz team/other:o-1]" {
+		t.Fatalf("audit ids: %v", ids)
+	}
+
+	got = decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "ledger", "brains": []string{"team/other"}}))
+	if len(got.Results) != 1 || got.Results[0].Snippet != "Something else." || got.Results[0].Provenance != "[team/other] Other, o-1" {
+		t.Fatalf("a brain without chunks: %+v", got.Results)
+	}
+	b.brain.calls = nil
+	mustCall(t, s, "th_recall", map[string]any{"query": "ledger"})
+	for _, c := range b.brain.calls {
+		var args map[string]any
+		_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+		want := map[string]float64{"team-acme": 10, "other": 10, "acme-pyramid": 4}[args["collection"].(string)]
+		if args["max_context_chunks"] != want {
+			t.Fatalf("defaults: %v", args)
+		}
 	}
 }
 

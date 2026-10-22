@@ -20,7 +20,7 @@ import (
 // defaultSyntheses is how many syntheses th_recall serves when the caller
 // says nothing; defaultDescent is how many sources th_descend reads.
 const (
-	defaultSyntheses = 2
+	defaultSyntheses = 4
 	defaultDescent   = 5
 )
 

@@ -123,7 +123,7 @@ func TestTheHookInjectsTheExtractsWithTheirProvenance(t *testing.T) {
 			t.Fatalf("context lacks %q:\n%s", want, ctx)
 		}
 	}
-	if len(g.calls) != 1 || g.calls[0]["query"] != "when does the ledger move?" || g.calls[0]["top_k"] != float64(3) {
+	if len(g.calls) != 1 || g.calls[0]["query"] != "when does the ledger move?" || g.calls[0]["top_k"] != float64(10) {
 		t.Fatalf("calls: %+v", g.calls)
 	}
 	// TH_RECALL_TOPK sets the number asked.

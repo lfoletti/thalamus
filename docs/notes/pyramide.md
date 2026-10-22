@@ -69,9 +69,17 @@ Ce que la mesure établit :
 - Le hook est le cas le plus faible (51,7 %), parce qu'il injecte 3 extraits.
 - Temps moyen de `th_recall` : 110 ms par question.
 
-Suite proposée : `th_recall` demande les morceaux par `search_graphrag_lexical` (mode graphe, `max_context_chars`), garde la fusion RRF et la provenance par document, et le hook injecte le texte des morceaux dans son budget.
+Suite (tranche 16, même soir) : `knowledge_search` rend déjà les morceaux (`chunks`) à côté des documents. `th_recall` les demande en mode graphe et les sert, avec la provenance de leur document. Les défauts viennent d'une mesure par le relais : 4 morceaux de synthèses puis 10 morceaux de passages donnent 79,5 % au budget du pilote et 81,3 % à 9 000 caractères (2 morceaux de synthèses : 76,1 %, 6 : 81,7 %). Mesure après la tranche, à travers le gateway :
 
-Défaut vu pendant la mesure : `th-gateway serve` s'arrête proprement sur SIGINT seulement (`cmd/th-gateway/main.go`). Sur SIGTERM, l'audit n'est pas fermé, et les lectures comptées du jour sont perdues (0 ligne après environ 200 lectures).
+| Bras | Avant (tranche 15) | Après (tranche 16) |
+| :- | :- | :- |
+| `th_recall` par défaut, budget du pilote | 54,4 % (10 extraits) | 79,5 % |
+| `th_recall` par défaut, 9 000 caractères | | 81,3 % |
+| Hook, contexte injecté (8 442 caractères en moyenne) | 51,7 % | **81,3 %** |
+
+Le hook atteint le bras du pilote (81,2 %) et dépasse contaixt (76,4 %).
+
+Défaut vu pendant la mesure : `th-gateway serve` s'arrête proprement sur SIGINT seulement (`cmd/th-gateway/main.go`). Sur SIGTERM, l'audit n'est pas fermé, et les lectures comptées du jour sont perdues (0 ligne après environ 200 lectures). Corrigé par la tranche 16 : sur la même copie, après SIGTERM, l'audit contient la ligne des 100 lectures comptées.
 
 Scripts et résultats : `scratchpad/m15/` de la session (`measure.py`, `probe2.py`, `score.json`), hors dépôt.
 

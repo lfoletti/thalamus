@@ -37,6 +37,7 @@ type brain struct {
 	fail              bool
 	failOn            string                    // a collection whose calls fail
 	hits              map[string][]fakeHit      // knowledge_search answers by collection
+	chunks            map[string][]fakeChunk    // the chunks knowledge_search adds, by collection
 	badJSON           bool                      // answer knowledge_search with text that is not JSON
 	pending           map[string][]fakeHit      // what aggregate_metadata and knowledge_get serve, by collection
 	failTool, badTool string                    // one tool that fails, one that answers text that is not JSON
@@ -46,6 +47,8 @@ type brain struct {
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
+
+type fakeChunk struct{ DocumentID, Content string }
 
 type call struct{ Name, ArgsJson string }
 
@@ -132,6 +135,8 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 		type h struct {
 			KnowledgeID string  `json:"knowledge_id"`
 			Title       string  `json:"title"`
+			SourceURL   string  `json:"source_url,omitempty"`
+			Author      string  `json:"author,omitempty"`
 			Snippet     string  `json:"snippet"`
 			Score       float64 `json:"score"`
 		}
@@ -140,9 +145,28 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			if args.TopK > 0 && i >= args.TopK {
 				break
 			}
-			hs = append(hs, h{x.ID, x.Title, x.Snippet, 1 / float64(i+1)})
+			hit := h{KnowledgeID: x.ID, Title: x.Title, Snippet: x.Snippet, Score: 1 / float64(i+1)}
+			if b.chunks[args.Collection] != nil {
+				hit.SourceURL, hit.Author = "https://wiki/"+x.ID, "mdupont"
+			}
+			hs = append(hs, hit)
 		}
-		out, _ := json.Marshal(map[string]any{"query": "q", "results": hs})
+		reply := map[string]any{"query": "q", "results": hs}
+		var max struct {
+			Chunks int `json:"max_context_chunks"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &max)
+		var cs []map[string]any
+		for i, c := range b.chunks[args.Collection] {
+			if max.Chunks > 0 && i >= max.Chunks {
+				break
+			}
+			cs = append(cs, map[string]any{"ID": fmt.Sprintf("chunk:%s:%d", c.DocumentID, i), "DocumentID": c.DocumentID, "Content": c.Content, "Score": 1 / float64(i+1)})
+		}
+		if cs != nil {
+			reply["chunks"] = cs
+		}
+		out, _ := json.Marshal(reply)
 		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
 	}
 	return &rpcv1.CallToolResponse{ResultJson: `{"echo":` + req.GetArgsJson() + `}`}, nil

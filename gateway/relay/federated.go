@@ -26,6 +26,15 @@ import (
 // rrfK is the constant of reciprocal rank fusion: score = weight / (k + rank).
 const rrfK = 60
 
+// defaultTopK is how many chunks th_recall asks of each brain, and
+// chunkChars the room it gives each one. Measured on the ai-audio pilot
+// (22 October 2026): 4 syntheses then 10 chunks hold 81 % of the facts in
+// 9 000 characters, where the snippets of 10 documents hold 54 %.
+const (
+	defaultTopK = 10
+	chunkChars  = 1000
+)
+
 // holderOf finds the caller behind a bearer, looking through the key files
 // of every brain, and refuses a caller with no right left.
 func (s *Server) holderOf(r *http.Request) (string, int, error) {
@@ -187,7 +196,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		return recallResult{}, errors.New("th_recall: query is required")
 	}
 	if args.TopK <= 0 {
-		args.TopK = 5
+		args.TopK = defaultTopK
 	}
 	syntheses := defaultSyntheses
 	if args.Syntheses != nil {
@@ -251,6 +260,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	sort.Slice(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
 	sort.Strings(brains)
 	sort.Strings(read)
+	read = slices.Compact(read)
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
 	s.note(entry)
 	results := append(fuse(synths, syntheses, "synthesis"), fuse(lists, args.TopK, "")...)
@@ -297,7 +307,7 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 // askBrain calls knowledge_search on one collection of a brain (none: the
 // whole server) with the user's key for it.
 func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name, query string, topK int, collection string) ([]hit, error) {
-	req := map[string]any{"query": query, "top_k": topK}
+	req := map[string]any{"query": query, "top_k": topK, "retrieval_mode": "graph", "max_context_chunks": topK, "max_context_chars": chunkChars * topK}
 	if collection != "" {
 		req["collection"] = collection
 	}
@@ -307,11 +317,27 @@ func (s *Server) askBrain(ctx context.Context, b rights.Brain, user, name, query
 	}
 	var out struct {
 		Results []hit `json:"results"`
+		Chunks  []struct {
+			DocumentID string
+			Content    string
+		} `json:"chunks"`
 	}
 	if err := json.Unmarshal([]byte(result), &out); err != nil {
 		return nil, fmt.Errorf("decode knowledge_search: %w", err)
 	}
-	return out.Results, nil
+	if len(out.Chunks) == 0 {
+		return out.Results, nil
+	}
+	docs := map[string]hit{}
+	for _, h := range out.Results {
+		docs[h.KnowledgeID] = h
+	}
+	hits := make([]hit, 0, len(out.Chunks))
+	for _, c := range out.Chunks {
+		h := docs[c.DocumentID]
+		hits = append(hits, hit{KnowledgeID: c.DocumentID, Title: h.Title, SourceURL: h.SourceURL, Author: h.Author, Snippet: c.Content})
+	}
+	return hits, nil
 }
 
 // fuse merges the brains' lists by weighted reciprocal rank. The same
