@@ -37,4 +37,4 @@ Couverture : 100 % des instructions hors les deux `main`.
 - Une session MCP par clé, gardée en mémoire tant que le gateway tourne.
 - Le rappel fédéré fusionne des extraits de texte, pas des nœuds : une question par entité à travers les cerveaux est une tranche ultérieure. Dédoublonnage sur le texte de l'extrait (les réponses de `knowledge_search` ne portent pas le hash).
 - Pas d'OIDC, pas d'extraction, pas de contradictions : prochaines tranches.
-- Le gateway importe CortexDB v2.134.1 en bibliothèque ; les sept PR ouvertes ne sont pas dedans. Le banc d'essai lance le serveur construit depuis `cortexdb/` (branche `proto/granular-cortex`), qui les contient.
+- Le gateway importe CortexDB v2.136.0 en bibliothèque (liste blanche par outil des clés confinées, #72 à #74, fusionnée) ; les trois PR ouvertes du lot C (#75 hash de contenu, #76 expiration, #77 relecture) ne sont pas dedans. Le banc d'essai lance le serveur construit depuis `cortexdb/` (branche `proto/granular-cortex` : v2.136.0 et les têtes du lot C), qui les contient.
