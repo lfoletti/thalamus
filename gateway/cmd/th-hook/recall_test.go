@@ -26,6 +26,7 @@ type fakeGateway struct {
 	noTool  bool // a gateway without th_recall
 	odd     int  // 1: an answer with no content, 2: an answer that is not text
 	calls   []map[string]any
+	listing []map[string]any // what th_brains answers
 }
 
 func (g *fakeGateway) start(t *testing.T) string {
@@ -52,6 +53,10 @@ func (g *fakeGateway) start(t *testing.T) string {
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.ImageContent{Data: []byte("x"), MIMEType: "image/png"}}}, nil
 		}
 		out, _ := json.Marshal(map[string]any{"results": g.results, "skipped": g.skipped})
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(out)}}}, nil
+	})
+	srv.AddTool(&mcp.Tool{Name: "th_brains", InputSchema: map[string]any{"type": "object"}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		out, _ := json.Marshal(g.listing)
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(out)}}}, nil
 	})
 	h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{JSONResponse: true})

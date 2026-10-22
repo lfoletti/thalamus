@@ -1,29 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 364" width="760" height="364" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" width="760" height="330" role="img" aria-labelledby="title desc">
   <title id="title">Combining local and global brains</title>
-  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. Planned: the hook also searches the local brains on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
+  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. At the same time, the hook searches the local brains on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
   <style>
     .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
     .core { fill: #312e81; stroke: #312e81; }
-    .plan { stroke: #6366f1; stroke-width: 1.5; stroke-dasharray: 6 4; }
     .line { fill: none; stroke: #4338ca; stroke-width: 1.5; }
-    .dash { fill: none; stroke: #6366f1; stroke-width: 1.5; stroke-dasharray: 6 4; }
     .head { fill: #4338ca; }
-    .phead { fill: #6366f1; }
     text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1e1b4b; }
     .label { font-size: 14px; }
     .small { font-size: 12px; fill: #4338ca; }
-    .ptext { font-size: 12px; fill: #6366f1; font-style: italic; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
     @media (prefers-color-scheme: dark) {
       .box { fill: #1e1b4b; stroke: #a5b4fc; }
       .core { fill: #4338ca; stroke: #a5b4fc; }
-      .plan, .dash { stroke: #818cf8; }
       .line { stroke: #a5b4fc; }
       .head { fill: #a5b4fc; }
-      .phead { fill: #818cf8; }
       text { fill: #e0e7ff; }
       .small { fill: #c7d2fe; }
-      .ptext { fill: #a5b4fc; }
     }
   </style>
 
@@ -44,12 +37,12 @@
   <path class="line" d="M480 53 L 520 53"/><path class="head" d="M530 53 L 519 47.5 L 519 58.5 Z"/>
 
   <!-- Row 2: the brains -->
-  <path class="dash" d="M380 82 L 380 118"/><path class="phead" d="M380 128 L 374.5 117 L 385.5 117 Z"/>
-  <rect class="box plan" x="292" y="128" width="200" height="58" rx="8"/>
-  <rect class="box plan" x="286" y="134" width="200" height="58" rx="8"/>
-  <rect class="box plan" x="280" y="140" width="200" height="58" rx="8"/>
+  <path class="line" d="M380 82 L 380 118"/><path class="head" d="M380 128 L 374.5 117 L 385.5 117 Z"/>
+  <rect class="box" x="292" y="128" width="200" height="58" rx="8"/>
+  <rect class="box" x="286" y="134" width="200" height="58" rx="8"/>
+  <rect class="box" x="280" y="140" width="200" height="58" rx="8"/>
   <text class="label" x="380" y="165" text-anchor="middle">Local brains</text>
-  <text class="ptext" x="380" y="184" text-anchor="middle">on the machine · planned</text>
+  <text class="small" x="380" y="184" text-anchor="middle">on the machine</text>
 
   <path class="line" d="M630 82 L 630 118"/><path class="head" d="M630 128 L 624.5 117 L 635.5 117 Z"/>
   <text class="small" x="620" y="110" text-anchor="end">employee's key, readable brains only</text>
@@ -59,7 +52,7 @@
   <text class="label" x="630" y="174" text-anchor="middle">Server brains</text>
 
   <!-- Row 3: the merged extracts, added to the prompt -->
-  <path class="dash" d="M380 198 L 380 246"/><path class="phead" d="M380 256 L 374.5 245 L 385.5 245 Z"/>
+  <path class="line" d="M380 198 L 380 246"/><path class="head" d="M380 256 L 374.5 245 L 385.5 245 Z"/>
   <path class="line" d="M630 198 L 630 246"/><path class="head" d="M630 256 L 624.5 245 L 635.5 245 Z"/>
   <rect class="box" x="280" y="256" width="450" height="58" rx="8"/>
   <text class="label" x="505" y="281" text-anchor="middle">Prompt + best extracts, merged</text>
@@ -71,7 +64,4 @@
   <text class="label" x="130" y="281" text-anchor="middle">The agent answers</text>
   <text class="small" x="130" y="300" text-anchor="middle">can open a source with th_get</text>
 
-  <!-- Legend -->
-  <path class="dash" d="M30 346 L 66 346"/>
-  <text class="ptext" x="74" y="350">planned, not built yet</text>
 </svg>

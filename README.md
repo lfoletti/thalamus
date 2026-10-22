@@ -42,16 +42,19 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 
 ## Combining local and global brains
 
-The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the gateway for the best extracts and gives them to the agent before it answers. The employee does not ask for them.
+The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the shared brains and the local brains of the machine at the same time. It gives the best extracts to the agent before the agent answers. The employee does not ask for them.
 
-<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The Thalamus hook of the plugin sends it to th_recall on the Thalamus gateway, with the employee's key. The gateway searches the readable brains. The best extracts come back with their source, and the hook adds them to the prompt before the agent answers." width="760"></p>
+<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The Thalamus hook sends it to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains. At the same time, the hook searches the local brains on the machine. The hook adds the best extracts, with their source, to the prompt. Then the agent answers." width="760"></p>
 
 - The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the 3 best extracts to the prompt, with their source, in 9,000 characters or fewer.
 - It does not ask for a prompt of fewer than 3 words, or for a `/` command.
 - It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
 - The agent can open the full document of an extract with `th_get`.
 
-Planned: the hook also searches the local brains of the machine, and adds their extracts to the extracts of the server brains. By default, the only local brain is the brain of the project. A setting adds other local brains, for example the brain in the home directory or the brain of another project. The local brains stay on the machine. They do not go through the gateway.
+- For the local brains, the hook runs the native recall of CortexDB, once per brain. By default, the only local brain is the brain of the project. A setting adds other local brains, for example the brain in the home directory or the brain of another project.
+- The local brains stay on the machine. They do not go through the gateway, and they are not in the audit.
+- The block has the shared extracts first, then one section per local brain. The local sections use 3,000 characters or fewer.
+- Each person chooses the brains of the automatic recall, local and shared, with `/th-recall` (`on`, `off`, `only`). The choice does not change the rights.
 
 Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant. Thalamus has one for Claude Code.
 
@@ -129,10 +132,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - The Claude Code plugin: recall hook, tools and the `/th-add` command.
 - The Chrome extension: propose a page or a selection. It keeps the main content of the page.
 - A proportionate audit: named writes, reviews, logins and refusals, reads counted without a name, named reads only on the brains that ask for it, and a retention period.
-
-**Next in Thalamus**
-
-- The recall hook also searches the local brains of the machine: the brain of the project by default, and other brains on request.
+- Local and shared brains in one recall: the hook adds the local brains of the machine, and each person chooses the brains of the automatic recall.
 
 **With CortexDB**
 

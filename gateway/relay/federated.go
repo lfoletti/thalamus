@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -103,6 +104,7 @@ type recallArgs struct {
 	Query  string   `json:"query"`
 	TopK   int      `json:"top_k,omitempty"`
 	Brains []string `json:"brains,omitempty"`
+	Skip   []string `json:"skip_brains,omitempty"`
 }
 
 type fused struct {
@@ -150,11 +152,12 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			return jsonResult(s.brainsOf(user)), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
+	srv.AddTool(&mcp.Tool{Name: "th_recall", Description: "Asks every brain the caller may read (or only those named in brains, less those in skip_brains) with the caller's own key, and fuses the answers by weighted reciprocal rank. Returns the results with their provenance and the brains that were skipped.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
-			"query":  map[string]any{"type": "string", "description": "the question"},
-			"top_k":  map[string]any{"type": "integer", "description": "results to return, default 5"},
-			"brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "restrict to these brains"},
+			"query":       map[string]any{"type": "string", "description": "the question"},
+			"top_k":       map[string]any{"type": "integer", "description": "results to return, default 5"},
+			"brains":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "restrict to these brains"},
+			"skip_brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "leave out these brains"},
 		}, "required": []string{"query"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args recallArgs
@@ -194,6 +197,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 		}
 		grants = kept
 	}
+	grants = without(grants, args.Skip)
 
 	var (
 		mu     sync.Mutex
@@ -229,6 +233,17 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
 	s.note(entry)
 	return recallResult{Results: fuse(lists, args.TopK), Skipped: skips}, nil
+}
+
+// without leaves out of grants the brains named in skip.
+func without(grants []rights.Grant, skip []string) []rights.Grant {
+	out := []rights.Grant{}
+	for _, g := range grants {
+		if !slices.Contains(skip, g.Brain) {
+			out = append(out, g)
+		}
+	}
+	return out
 }
 
 // callBrain calls one tool on one brain with the user's key for it. The
