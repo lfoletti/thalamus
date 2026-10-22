@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" width="760" height="250" role="img" aria-labelledby="title desc">
   <title id="title">Thalamus architecture</title>
-  <desc id="desc">The Claude Code plugin, the Chrome extension and th-gateway login call th-gateway. The gateway reads rights.yaml, writes audit.jsonl, and calls the CortexDB servers with one key per person and per brain.</desc>
+  <desc id="desc">The Claude Code plugin, the Chrome extension and th-gateway login call the Thalamus gateway. The gateway reads rights.yaml, writes audit.jsonl, and calls the CortexDB servers with one key per person and per brain.</desc>
   <style>
     .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
     .core { fill: #312e81; stroke: #312e81; }
@@ -40,7 +40,7 @@
 
   <!-- Gateway -->
   <rect class="box core" x="294" y="30" width="196" height="190" rx="10"/>
-  <text class="title mono" x="392" y="64" text-anchor="middle" style="font-size:16px;font-weight:600;fill:#ffffff">th-gateway</text>
+  <text class="title" x="392" y="64" text-anchor="middle" style="fill:#ffffff">Thalamus gateway</text>
   <rect class="file" x="318" y="92" width="148" height="40" rx="6"/>
   <text class="mono" x="392" y="116" text-anchor="middle">rights.yaml</text>
   <rect class="file" x="318" y="148" width="148" height="40" rx="6"/>
