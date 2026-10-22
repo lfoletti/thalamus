@@ -2,22 +2,24 @@
 
 # Thalamus
 
-A shared memory for an organisation, its people and their coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). 
+A shared memory for an organisation and its coding agents, built on [CortexDB](https://github.com/liliang-cn/cortexdb). 
 CortexDB is the engine: documents, chunks, entities, a property graph, RDF and SPARQL, scoped API keys. 
-Thalamus is the thin layer around it: a gateway, a Claude Code plugin and a browser extension.
+Thalamus is a thin layer around it.
 
 *Version française plus bas.*
 
 ## Why
 
-A shared brain needs a clearance policy, and the engine has none: its key file is a list of secrets written by hand. Nothing ties a key to a person, nothing says which employee may read which brain, and no line says who read what. Thalamus decides which employee gets which key on which brain, from one rights file, and records every call under a person's name. It serves the team that runs the brains, the curators and the employees. Its principles:
+The engine reads its keys from a file of secrets written by hand. It does not know which person holds which key, so it cannot apply a clearance policy to a shared brain. Thalamus keeps the rights of each person in one file. It gives each person a key for each brain they may use, and it records every call under that person's name. It is for the team that runs the brains and for the people who use them.
 
-1. **No fork of the engine.** The fixes this layer needed went upstream as small pull requests. The layer imports CortexDB at a pinned version. No maintenance debt.
-2. **The engine enforces, not a proxy.** Every employee reaches a brain with their own confined key. The gateway cannot err in the caller's favour: it decides who gets a key, the engine decides what the key may do.
-3. **One key per person and per brain.** Revocation is individual. Every audit line names a person, not a shared token.
-4. **Provenance on every extract.** The agent and the reader know which brain, which document and which author a sentence comes from.
-5. **One recall for every readable brain.** The employee does not choose where to look, and sees only what their rights allow.
-6. **Thin and proven.** A few hundred lines. Every test was written before its code and fails without it. Every rule has a recorded hand mutation that its test catches. An end-to-end bench runs a real server.
+Principles:
+
+1. **Fixes to the engine go upstream.** When Thalamus needed a change in CortexDB, the change went to the engine as a small pull request. Thalamus imports CortexDB at a pinned version and keeps no fork.
+2. **The engine enforces the rights.** Each person calls a brain with their own key, confined to what they may read or write. The gateway decides who gets a key. The engine checks every call against that key.
+3. **One key per person and per brain.** To remove the access of one person, the gateway revokes their keys. Each audit line names the person who made the call.
+4. **Each extract shows its source.** A result names its brain, its document and its author.
+5. **One recall over the readable brains.** The employee asks once. The gateway asks each brain the employee may read and merges the answers.
+6. **Small and tested.** About 3,000 lines outside tests. Each test was written before its code and fails without it. Each rule has a recorded hand mutation that its test catches. A bench runs the gateway against a real server.
 
 ## What it does
 
@@ -69,18 +71,20 @@ MIT. CortexDB is MIT too.
 
 # Thalamus (français)
 
-Une mémoire partagée pour une organisation, ses employés et leurs agents de code, construite sur [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus est la couche mince autour : un gateway, un plugin Claude Code et une extension de navigateur.
+Une mémoire partagée pour une organisation et ses agents de code, construite sur [CortexDB](https://github.com/liliang-cn/cortexdb). CortexDB est le moteur : documents, extraits, entités, graphe de propriétés, RDF et SPARQL, clés d'API à portée. Thalamus est une couche mince autour de lui.
 
 ## Pourquoi
 
-Un cerveau partagé demande une politique d'accès, et le moteur n'en a pas : son fichier de clés est une liste de secrets écrite à la main. Rien ne lie une clé à une personne, rien ne dit quel employé peut lire quel cerveau, et aucune ligne ne dit qui a lu quoi. Thalamus décide quel employé reçoit quelle clé sur quel cerveau, à partir d'un seul fichier de droits, et journalise chaque appel au nom d'une personne. Il sert à l'équipe qui exploite les cerveaux, aux curateurs et aux employés. Ses principes :
+Le moteur lit ses clés dans un fichier de secrets écrit à la main. Il ne sait pas quelle personne tient quelle clé, et il ne peut donc pas appliquer une politique d'accès à un cerveau partagé. Thalamus garde les droits de chaque personne dans un seul fichier. Il donne à chaque personne une clé pour chaque cerveau qu'elle peut utiliser, et il journalise chaque appel au nom de cette personne. Il sert à l'équipe qui exploite les cerveaux et aux personnes qui s'en servent.
 
-1. **Pas de fork du moteur.** Les correctifs dont cette couche a besoin sont partis en amont en petites PR. La couche importe CortexDB à une version épinglée. Pas de dette de maintenance.
-2. **C'est le moteur qui applique, pas un proxy.** Chaque employé joint un cerveau avec sa propre clé confinée. Le gateway ne peut pas se tromper en faveur de l'appelant : il décide qui reçoit une clé, le moteur décide ce que la clé peut faire.
-3. **Une clé par personne et par cerveau.** La révocation est individuelle. Chaque ligne d'audit nomme une personne, pas un jeton partagé.
-4. **Provenance sur chaque extrait.** L'agent et le lecteur savent de quel cerveau, de quel document et de quel auteur vient une phrase.
-5. **Un rappel pour tous les cerveaux lisibles.** L'employé ne choisit pas où chercher, et ne voit que ce que ses droits permettent.
-6. **Mince et prouvé.** Quelques centaines de lignes. Chaque test a été écrit avant son code et tombe sans lui. Chaque règle a une mutation à la main consignée, que son test attrape. Un banc de bout en bout tourne sur un vrai serveur.
+Principes :
+
+1. **Les correctifs du moteur partent en amont.** Quand Thalamus a eu besoin d'un changement dans CortexDB, ce changement est parti vers le moteur en petite PR. Thalamus importe CortexDB à une version épinglée et ne garde aucun fork.
+2. **Le moteur applique les droits.** Chaque personne appelle un cerveau avec sa propre clé, confinée à ce qu'elle peut lire ou écrire. Le gateway décide qui reçoit une clé. Le moteur contrôle chaque appel avec cette clé.
+3. **Une clé par personne et par cerveau.** Pour retirer l'accès d'une personne, le gateway révoque ses clés. Chaque ligne d'audit nomme la personne qui a fait l'appel.
+4. **Chaque extrait montre sa source.** Un résultat nomme son cerveau, son document et son auteur.
+5. **Un rappel sur les cerveaux lisibles.** L'employé pose sa question une fois. Le gateway interroge chaque cerveau que l'employé peut lire et fusionne les réponses.
+6. **Petit et testé.** Environ 3 000 lignes hors tests. Chaque test a été écrit avant son code et tombe sans lui. Chaque règle a une mutation à la main consignée, que son test attrape. Un banc fait tourner le gateway devant un vrai serveur.
 
 ## Ce que ça fait
 
