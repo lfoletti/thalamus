@@ -19,6 +19,7 @@ func fakeRecall(t *testing.T) string {
 	path := filepath.Join(t.TempDir(), "fake-recall")
 	script := `#!/bin/sh
 [ "$1" = "--recall" ] || exit 3
+[ -n "$CORTEXDB_PATH" ] || exit 4
 cat > "$CORTEXDB_PATH.in"
 body="$(cat "$CORTEXDB_PATH")"
 case "$body" in

@@ -25,7 +25,8 @@ const usage = `usage:
   th-gateway key list <rights.yaml>
   th-gateway key sync <rights.yaml> [--dry-run]
   th-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]
-  th-gateway login <gateway> [--env ~/.thalamus/env] [--no-browser]`
+  th-gateway login <gateway> [--env ~/.thalamus/env] [--no-browser]
+  th-gateway audit <audit.jsonl> [--since YYYY-MM-DD] [--user login] [--brain brain]`
 
 // run dispatches the subcommand and returns the exit code: 0 done, 1 the
 // command failed, 2 the command line is wrong.
@@ -34,6 +35,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	switch {
 	case len(args) >= 1 && args[0] == "serve":
 		err = serve(ctx, args[1:], stdout, stderr)
+	case len(args) >= 1 && args[0] == "audit":
+		err = auditCommand(args[1:], stdout)
 	case len(args) >= 1 && args[0] == "login":
 		err = loginCommand(ctx, args[1:], stdout)
 	case len(args) >= 2 && args[0] == "rights" && args[1] == "check":

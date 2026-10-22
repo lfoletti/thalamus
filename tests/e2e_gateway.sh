@@ -243,6 +243,8 @@ grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","to
 grep -q '"user":"lfoletti".*"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$A" && ok "a read the brain refuses is named, as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$A")"
 grep -q '"user":"kmlead".*"brain":"org/secrets".*"knowledge_id":"secret-doc"' "$A" && ok "kmlead's save audited on org/secrets" || ko "kmlead audit line" "$(grep kmlead "$A")"
 grep -q '"user":"kmlead".*"brain":"team/acme","tool":"th_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$A" && ok "the review is audited with its decision" || ko "th_review audit line" "$(grep th_review "$A")"
+sum=$("$GW" audit "$A")
+if printf '%s' "$sum" | grep -q '^  [0-9-]*  team/acme  [0-9]* calls, [0-9]* failed, counted$' && printf '%s' "$sum" | grep -q '^  kmlead  th_review  team/acme  1$' && printf '%s' "$sum" | grep -q 'graph_statistics  .*PermissionDenied'; then ok "th-gateway audit sums up the audit file"; else ko "audit summary" "$sum"; fi
 echo
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]
