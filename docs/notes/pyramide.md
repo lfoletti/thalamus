@@ -96,6 +96,13 @@ Même procédure sur une copie de `crooners-vecteurs.db` (593 morceaux, 47 synth
 - 20 morceaux de passages au lieu de 10 donnent 65,9 % sur crooners, mais seulement 1,4 point de plus sur ai-audio (80,3 contre 78,9 %). Les défauts restent à 10 morceaux. `TH_RECALL_TOPK=20` est le réglage à essayer sur un petit corpus.
 - Sur ai-audio, le même réglage (4 + 10) donne 78,9 % ou 81,3 % selon la liste des synthèses demandée (`top_k` 20 ou 10) : le classement du moteur change avec `top_k`. C'est l'ordre de grandeur du bruit de cette mesure.
 
+### Essai dans une vraie session Claude Code (22 octobre 2026, 22 h)
+
+`tests/e2e_plugin.sh` avec haiku, 11/11. Le banc a maintenant une pyramide : une synthèse qui cite `cutover-plan` et `budget-memo`.
+
+- Question 1 : le hook sert le passage entier et la synthèse. La session répond juste (MARMOT, jeudi 5 novembre, salle Lavaux) sans `th_get`. Avant la tranche 16, l'extrait coupé obligeait à lire le document entier.
+- Question 3 : « ouvre les sources de la synthèse et donne le montant ». Le hook ne sert pas `budget-memo` (aucun mot commun avec la question). La session appelle `th_descend` et répond 48 000 CHF. Un premier essai avait le mot « approved » dans la question : le hook servait alors `budget-memo`, et le banc ne prouvait pas la descente. Un contrôle le vérifie maintenant.
+
 Défaut vu pendant la mesure : `th-gateway serve` s'arrête proprement sur SIGINT seulement (`cmd/th-gateway/main.go`). Sur SIGTERM, l'audit n'est pas fermé, et les lectures comptées du jour sont perdues (0 ligne après environ 200 lectures). Corrigé par la tranche 16 : sur la même copie, après SIGTERM, l'audit contient la ligne des 100 lectures comptées.
 
 Scripts et résultats : `scratchpad/m15/` de la session (`measure.py`, `probe2.py`, `score.json`), hors dépôt.
