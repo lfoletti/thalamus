@@ -21,6 +21,12 @@ Rien. Un cerveau avec `collection` (clé confinée) n'a que les extraits de `kno
 
 Contournement écarté : le gateway tient une clé non confinée par serveur, appelle les outils de graphe et filtre lui-même par collection. Il deviendrait alors le seul garde d'un accès complet au serveur, et il recopierait la règle de provenance du moteur. Les deux vont contre une couche mince.
 
+## Constats du 22 octobre 2026 (v2.136.0)
+
+- Sans extracteur sur le serveur, `ingest_document` ne crée aucune entité : un essai sur un cerveau temporaire donne le document et son chunk, et `search_graphrag_lexical` rend `Entities` vide.
+- Une clé confinée ne peut pas déclarer `entities` ni `relations` (`graphDenied` dans `pkg/authz/allowlist.go`). `th_add` ne peut donc pas créer d'entités. Les entités d'un cerveau confiné viennent seulement de l'extracteur du serveur.
+- Le commentaire de `graphDenied` parle des collections connues d'une entité (`cortexdb.mergeEntityCollections`) et d'une barrière des parcours qui les lit. Avant l'envoi, relire cette fiche contre ce mécanisme : une partie de la PR 1 existe peut-être déjà.
+
 ## Ce que le moteur a déjà
 
 - `CallerScope.Knowledge(collection) bool` (`pkg/cortexdb/memory_owner.go`, v2.135.0) : le périmètre de l'appelant dans le contexte, posé par les ports gRPC et REST pour une clé confinée.
