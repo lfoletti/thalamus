@@ -2,7 +2,7 @@
 
 # Thalamus
 
-Thalamus brings the knowledge of an organisation to each user and to their coding agent, at the moment they need it, within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
+Thalamus brings the knowledge of an organisation to each user and to their coding agent within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
 
 > **Work in progress.** The interfaces change between versions. A short French summary is at the end.
 
