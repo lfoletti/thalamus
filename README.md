@@ -46,7 +46,7 @@ The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At 
 
 <p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The Thalamus hook sends it to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains. At the same time, the hook searches the local brains on the machine. The hook adds the best extracts, with their source, to the prompt. Then the agent answers." width="760"></p>
 
-- The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the 3 best extracts to the prompt, with their source, in 9,000 characters or fewer.
+- The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the best passages of the documents to the prompt, with their source, in 9,000 characters or fewer: 10 passages, after 4 passages of syntheses when a brain has a pyramid of syntheses.
 - It does not ask for a prompt of fewer than 3 words, or for a `/` command.
 - It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
 - The agent can open the full document of an extract with `th_get`.
@@ -62,9 +62,10 @@ Other assistants use the same tools through MCP. The automatic recall needs a ho
 
 The steps start one CortexDB server with two brains, then the gateway, then the plugin. Do all the steps in the root of this repository.
 
-1. Build the binaries. `cortexdb/` is a clone of CortexDB next to `gateway/`.
+1. Clone CortexDB into `cortexdb/`, next to `gateway/`, then build the binaries.
 
    ```sh
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.138.0)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -122,7 +123,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 ## Roadmap
 
-**Done** (22 October 2026)
+**Done** (23 October 2026)
 
 - Rights, keys and one MCP endpoint per brain.
 - Federated recall over the brains that a person may read, with the source of each extract.
@@ -133,17 +134,20 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - The Chrome extension: propose a page or a selection. It keeps the main content of the page.
 - A proportionate audit: named writes, reviews, logins and refusals, reads counted without a name, named reads only on the brains that ask for it, and a retention period.
 - Local and shared brains in one recall: the hook adds the local brains of the machine, and each person chooses the brains of the automatic recall.
+- Recall on the passages of the documents, not on short extracts.
+- A pyramid of syntheses per brain: `th_recall` serves the syntheses first, and `th_descend` opens the documents that a synthesis cites.
+- Questions in several languages: `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart. A Swiss bench measures the recall from one language to another (French, German, Italian, Romansh) in `tests/eval_ch/`.
 
 **With CortexDB**
 
 Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. These parts go to CortexDB as small pull requests.
 
-- In review: content hash and duplicate check (#75), expiry dates (#76), review status (#77). The review of proposed documents needs #77.
+- Merged: the allowlist of tools for a confined key (#72 to #74, #78), content hash and duplicate check (#75), expiry dates (#76), review status (#77), and other fixes (#61, #67 to #71, #82, #83). Thalamus uses CortexDB v2.138.0.
 - Prepared: the server reads its key file again when it changes. Then a new or revoked key applies without a restart (`docs/upstream/01-key-file-reload.md`).
 - Prepared: graph tools for a key confined to one collection. Then Thalamus can merge entities across brains, in addition to text extracts (`docs/upstream/06-graph-tools-confined.md`).
 - Prepared, smaller: a tool that lists the documents waiting for review, the touched ids in the server's request log, and the author of a document taken from the caller's key.
 
-The prepared proposals go to CortexDB after #75 to #77 are settled and this repository is public. The repository becomes public at the end of the current series of fixes.
+The prepared proposals go to CortexDB one at a time, when Thalamus needs them.
 
 ## Principles
 
@@ -172,4 +176,4 @@ MIT. CortexDB is also under the MIT license.
 
 ## Résumé en français
 
-Thalamus donne à une équipe et à ses agents de code des bases de connaissances partagées, avec des droits par personne. Il est construit sur CortexDB. Le gateway lit les droits dans `rights.yaml` et donne à chaque personne une clé par cerveau. Il cherche dans tous les cerveaux qu'une personne peut lire et donne la source de chaque extrait. Un curateur relit les documents proposés. Le projet est en construction : la feuille de route ci-dessus dit ce qui est fait et ce qui vient.
+Thalamus donne à une équipe et à ses agents de code des bases de connaissances partagées, avec des droits par personne. Il est construit sur CortexDB. Le gateway lit les droits dans `rights.yaml` et donne à chaque personne une clé par cerveau. Il cherche dans tous les cerveaux qu'une personne peut lire et donne la source de chaque extrait. Un curateur relit les documents proposés. Le rappel sert les passages des documents, les synthèses d'abord, et accepte la question en plusieurs langues. Le projet est en construction : la feuille de route ci-dessus dit ce qui est fait et ce qui vient.
