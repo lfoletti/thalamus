@@ -28,7 +28,7 @@ M = [
  ("relay/relay.go", "entry.IDs = idsOf(args)", "entry.IDs = nil", "relay", "TestACallIsRelayedWithTheCallersKeyAndAudited", "no ids in the audit"),
  ("relay/relay.go", "entry.OK = true\n\t\ts.note(entry)", "entry.OK = true", "relay", "TestACallIsRelayedWithTheCallersKeyAndAudited", "a success is not audited"),
  ("relay/relay.go", "entry.Error = err.Error()\n\t\t\tentry.Denied = denied(err)\n\t\t\ts.note(entry)", "entry.Error = err.Error()", "relay", "TestAToolFailureIsAudited", "a failure is not audited"),
- ("relay/relay.go", "return &mcp.CallToolResult{IsError: true,", "return &mcp.CallToolResult{IsError: false,", "relay", "TestAToolFailureIsAudited", "a failure is a success"),
+ ("relay/relay.go", "return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(\"tool %s: %v\"", "return &mcp.CallToolResult{IsError: false, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(\"tool %s: %v\"", "relay", "TestAToolFailureIsAudited", "a failure is a success"),
  ("relay/relay.go", "ArgsJson: args}", "ArgsJson: \"{}\"}", "relay", "TestACallIsRelayedWithTheCallersKeyAndAudited", "the arguments are dropped"),
  ("relay/audit.go", "os.O_CREATE|os.O_WRONLY|os.O_APPEND", "os.O_CREATE|os.O_WRONLY|os.O_TRUNC", "relay", "TestTheAuditFileAppendsAndNamesItselfOnFailure", "the audit file is truncated"),
  # tranche 2 : point fédéré
@@ -392,6 +392,20 @@ M = [
  ("relay/federated.go", "\"description\": fmt.Sprintf(\"passages to return, default %d\", defaultTopK)},", "\"description\": \"passages to return, default 5\"},", "relay", "TestRecallSchemaSaysItsDefaults", "the schema says another top_k"),
  ("relay/federated.go", "fmt.Sprintf(\"passages of the brains' pyramids of syntheses to serve first, default %d, 0 for none\", defaultSyntheses)},", "\"passages of the brains' pyramids of syntheses to serve first, default 2, 0 for none\"},", "relay", "TestRecallSchemaSaysItsDefaults", "the schema says another number of syntheses"),
  ("relay/federated.go", "\"maxItems\": maxVariants,", "", "relay", "TestRecallSchemaSaysItsDefaults", "the schema has no bound on the variants"),
+ ('relay/relay.go', 'if key, repeated := repeatedKey([]byte(args)); repeated {', 'if key, repeated := repeatedKey([]byte(args)); repeated && false {', 'relay', 'TestTheRelayRefusesArgumentsThatRepeatAKey', 'a repeated key is relayed'),
+ ('relay/relay.go', 'entry.Denied = true\n', '', 'relay', 'TestTheRelayRefusesArgumentsThatRepeatAKey', 'the refusal of a repeated key is counted, not named'),
+ ('relay/relay.go', 'entry.Denied = true\n\t\t\ts.note(entry)', 'entry.Denied = true', 'relay', 'TestTheRelayRefusesArgumentsThatRepeatAKey', 'the refusal of a repeated key is not audited'),
+ ('relay/relay.go', 'return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("tool %s: %s"', 'return &mcp.CallToolResult{IsError: false, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("tool %s: %s"', 'relay', 'TestTheRelayRefusesArgumentsThatRepeatAKey', 'the refusal of a repeated key is a success'),
+ ('relay/repeat.go', 'if top.keys[folded] {', 'if false {', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'a repeated key is not seen'),
+ ('relay/repeat.go', '\t\t\t\ttop.key = false\n', '', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'a string value is taken for a key'),
+ ('relay/repeat.go', '\t\ttop.key = true\n\t}\n}', '\t}\n}', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'no key is read after the first value'),
+ ('relay/repeat.go', 'stack = append(stack, &frame{keys: map[string]bool{}, key: true})', 'stack = append(stack, &frame{keys: func() map[string]bool {\n\t\t\t\tif top != nil && top.keys != nil {\n\t\t\t\t\treturn top.keys\n\t\t\t\t}\n\t\t\t\treturn map[string]bool{}\n\t\t\t}(), key: true})', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'a nested object shares the keys of its parent'),
+ ('relay/repeat.go', 'if err != nil {\n\t\t\treturn "", false', 'if err != nil {\n\t\t\treturn "?", true', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'raw that is not JSON is a repeat'),
+ ('relay/repeat.go', 'folded := foldKey(k)', 'folded := k', 'relay', 'TestTheRelayRefusesArgumentsThatRepeatAKey', 'two spellings of one key under case folding are relayed'),
+ ('relay/repeat.go', "r -= 'a' - 'A'", 'r -= 0', 'relay', 'TestFoldKeyAgreesWithEqualFold', 'ASCII letters are not folded'),
+ ('relay/repeat.go', 'next := unicode.SimpleFold(r)', 'next := r', 'relay', 'TestFoldKeyAgreesWithEqualFold', 'other runes are not folded'),
+ ('relay/repeat.go', 'if next <= r {\n\t\t\t\tr = next\n\t\t\t\tbreak', 'if true {\n\t\t\t\tr = next\n\t\t\t\tbreak', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'a rune folds to the next of its set, not the smallest'),
+ ('relay/repeat.go', 'return k, true', 'return folded, true', 'relay', 'TestRepeatedKeyFindsAKeyGivenTwiceInOneObject', 'the refusal names the folded key, not the spelling sent'),
 ]
 
 bad = 0
