@@ -1,0 +1,30 @@
+--- FAIL: TestAConfinedKeyChecksOnlyItsCollection (0.00s)
+    check_sources_confined_test.go:28: notes {"collection":"secrets","sentences":[{"text":"Orpheus earns 5.","sources":["hr-salaries-2026","chunk:hr-salaries-2026:000"]}],"equivalents":{"rgpd":["gdpr"]}}: denied: check_against_sources is not a tool this server defines, want a denial saying "asks for \"secrets\""
+    check_sources_confined_test.go:28: notes {"sentences":[{"text":"Orpheus earns 5.","sources":["hr-salaries-2026","chunk:hr-salaries-2026:000"]}],"equivalents":{"rgpd":["gdpr"]}}: denied: check_against_sources is not a tool this server defines, want a denial saying "leaves collection unset"
+    check_sources_confined_test.go:28: notes {"collection":"notes","limit":3}: denied: check_against_sources is not a tool this server defines, want a denial saying "takes no limit argument"
+    check_sources_confined_test.go:28: hermes {"collection":"notes","sentences":[{"text":"Orpheus earns 5.","sources":["hr-salaries-2026","chunk:hr-salaries-2026:000"]}],"equivalents":{"rgpd":["gdpr"]}}: denied: check_against_sources is not a tool this server defines, want a denial saying "takes no user_id argument"
+    check_sources_confined_test.go:32: notes in its own collection: denied: check_against_sources is not a tool this server defines
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.314s
+FAIL
+--- FAIL: TestAConfinedKeyChecksAgainstItsOwnSourcesOverGRPC (0.05s)
+    confined_check_sources_test.go:42: rpc error: code = PermissionDenied desc = denied: check_against_sources is not a tool this server defines
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.436s
+--- FAIL: TestAConfinedKeyChecksAgainstItsOwnSourcesOverREST (0.04s)
+    confined_check_sources_test.go:33: check = 403: {"error":"denied: check_against_sources is not a tool this server defines"}
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.694s
+FAIL
+# github.com/liliang-cn/cortexdb/v2/pkg/cortexdb [github.com/liliang-cn/cortexdb/v2/pkg/cortexdb.test]
+pkg/cortexdb/check_sources_test.go:29:3: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:31:43: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:38:43: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:39:35: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:40:38: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:46:34: undefined: sentenceFacts
+pkg/cortexdb/check_sources_test.go:47:12: undefined: missingFacts
+pkg/cortexdb/check_sources_test.go:59:13: undefined: missingFacts
+pkg/cortexdb/check_sources_test.go:63:12: undefined: missingFacts
+pkg/cortexdb/check_sources_test.go:141:102: undefined: SentenceCheck
+pkg/cortexdb/check_sources_test.go:63:12: too many errors

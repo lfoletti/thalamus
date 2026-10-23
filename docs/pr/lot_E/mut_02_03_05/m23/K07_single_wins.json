@@ -1,0 +1,1 @@
+[{"file": "pkg/cortexdb/knowledge_api.go", "old": "\tif len(req.KnowledgeIDs) > 0 {\n\t\tresp := &KnowledgeGetResponse{}", "new": "\tif len(req.KnowledgeIDs) > 0 && req.KnowledgeID == \"\" {\n\t\tresp := &KnowledgeGetResponse{}"}]
