@@ -329,6 +329,8 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 	} else if !set && b.Collection != "" {
 		req["collection"] = b.Collection
 	}
+	// Encoded from a map, the arguments name each key once: the caller's
+	// JSON is never relayed as it came.
 	raw, _ := json.Marshal(req)
 	resp, err := rpcv1.NewToolsServiceClient(conn).CallTool(ctx, &rpcv1.CallToolRequest{Name: tool, ArgsJson: string(raw)})
 	if err != nil {
