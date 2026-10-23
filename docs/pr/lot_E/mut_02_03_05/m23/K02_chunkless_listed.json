@@ -1,0 +1,1 @@
+[{"file": "pkg/cortexdb/memory_owner.go", "old": "return len(record.ChunkIDs) > 0 && scope.Knowledge(record.Collection)", "new": "return scope.Knowledge(record.Collection)"}]

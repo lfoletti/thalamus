@@ -1,0 +1,109 @@
+== M1_no_stamp.json
+--- FAIL: TestAnIngestRecordsItsWriterAndAClientCannotClaimAnother (0.02s)
+--- FAIL: TestAReIngestByAnotherKeyIsSignedByIt (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.437s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.617s
+--- FAIL: TestAToolWriteTakesTheMarksTheFacadeReplaces (0.02s)
+--- FAIL: TestAnIngestByAnUnconfinedKeyIsSignedByTheKey (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.305s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.04s)
+--- FAIL: TestAnIngestByAnUnconfinedKeyIsSignedByTheKeyOverGRPC (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.033s
+FAIL
+KILLED
+== M2_stamp_after_compare.json
+--- FAIL: TestAReIngestByAnotherKeyIsSignedByIt (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.462s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.631s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.140s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.391s
+FAIL
+KILLED
+== M3_no_writer_keys_back.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.521s
+--- FAIL: TestTheDocumentToolsTakeTheSignatureBack (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.544s
+--- FAIL: TestAToolWriteTakesTheMarksTheFacadeReplaces (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.695s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.516s
+FAIL
+KILLED
+== M4_memory_save_takes_back.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.456s
+--- FAIL: TestTheDocumentToolsTakeTheSignatureBack (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.335s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.04s)
+--- FAIL: TestATypedWriteTakesTheSignatureTheFacadeReplaces (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.732s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.06s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.620s
+FAIL
+KILLED
+== M5_case_insensitive.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.564s
+--- FAIL: TestAConfinedKeyDeclaresNoEntityOrRelationAndNoEngineKey (0.00s)
+--- FAIL: TestTheDocumentToolsTakeTheSignatureBack (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.316s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.05s)
+--- FAIL: TestAToolWriteTakesTheMarksTheFacadeReplaces (0.08s)
+--- FAIL: TestATypedWriteTakesTheSignatureTheFacadeReplaces (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.817s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.06s)
+--- FAIL: TestATypedWriteTakesTheSignatureTheFacadeReplaces (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.547s
+FAIL
+KILLED
+== M6_no_writer_guard.json
+--- FAIL: TestWithoutAWriterAnIngestStoresMetadataAsGiven (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.441s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	1.229s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.726s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.041s
+FAIL
+KILLED
+== M7_igd_check_removed.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.520s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.970s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.774s
+--- FAIL: TestATypedWriteTakesTheSignatureTheFacadeReplaces (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.832s
+FAIL
+KILLED
+== M8_igd_written_by_only.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.496s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.565s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.830s
+--- FAIL: TestATypedWriteTakesTheSignatureTheFacadeReplaces (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.518s
+FAIL
+KILLED
+== M9_writerkeys_written_by_only.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.431s
+--- FAIL: TestTheDocumentToolsTakeTheSignatureBack (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.632s
+--- FAIL: TestAToolWriteTakesTheMarksTheFacadeReplaces (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.314s
+--- FAIL: TestATypedKnowledgeWriteTakesTheMarksTheFacadeReplaces (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.027s
+FAIL
+KILLED
