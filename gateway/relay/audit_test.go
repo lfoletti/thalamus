@@ -228,30 +228,104 @@ func TestTheAuditDropsTheLinesOlderThanTheRetention(t *testing.T) {
 	}
 }
 
-// A drop that cannot read or write the file is the call's error, and
-// names the file. The lines stay as they were.
+// A drop that cannot read the file, or cannot create the temporary file
+// next to it, is the call's error, and names the file. The lines stay as
+// they were.
 func TestADropThatCannotReadOrWriteIsAnError(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	old := `{"ts":"2026-01-01T00:00:00Z","tool":"login"}` + "\n"
 	r := policy(t, "audit:\n  retention_days: 30\n")
-	for _, mode := range []os.FileMode{0o200, 0o400} {
+	for _, c := range []struct {
+		name  string
+		block func(path string) error
+	}{
+		{"unreadable", func(path string) error { return os.Chmod(path, 0o200) }},
+		{"a directory where the temporary file goes", func(path string) error {
+			return os.MkdirAll(filepath.Join(path+".tmp", "full"), 0o700)
+		}},
+	} {
+		path := filepath.Join(t.TempDir(), "audit.jsonl")
 		if err := os.WriteFile(path, []byte(old), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		c := &clock{time.Date(2026, 10, 22, 9, 0, 0, 0, time.UTC)}
-		a := openAt(t, path, c)
-		if err := os.Chmod(path, mode); err != nil {
+		a := openAt(t, path, &clock{time.Date(2026, 10, 22, 9, 0, 0, 0, time.UTC)})
+		if err := c.block(path); err != nil {
 			t.Fatal(err)
 		}
 		err := a.Note(Entry{User: "lfoletti", Tool: "login", OK: true}, r)
 		_ = a.Close()
 		_ = os.Chmod(path, 0o600)
 		if err == nil || !strings.Contains(err.Error(), "audit.jsonl") {
-			t.Fatalf("mode %v: %v", mode, err)
+			t.Fatalf("%s: %v", c.name, err)
 		}
 		if got := lines(t, path); len(got) != 1 || !strings.Contains(got[0], "2026-01-01") {
-			t.Fatalf("mode %v: %q", mode, got)
+			t.Fatalf("%s: %q", c.name, got)
 		}
+	}
+}
+
+// The drop writes the kept lines to a temporary file next to the audit,
+// syncs it, and renames it over the audit. A write that fails before the
+// rename leaves the old file whole and no temporary file; the call is an
+// error. A temporary file left by an earlier stop is replaced. A rename
+// that succeeds leaves the kept lines, mode 0600, and the audit appends the
+// new lines after them.
+func TestADropReplacesTheFileInOneStep(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.jsonl")
+	old := `{"ts":"2026-01-01T00:00:00Z","user":"x","key":"","brain":"","tool":"login","ok":true}` + "\n" +
+		`{"ts":"2026-10-21T00:00:00Z","user":"y","key":"","brain":"","tool":"login","ok":true}` + "\n"
+	if err := os.WriteFile(path, []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := policy(t, "audit:\n  retention_days: 30\n")
+	write := Entry{User: "lfoletti", Brain: "team/acme", Tool: "th_add", OK: true}
+	c := &clock{time.Date(2026, 10, 22, 9, 0, 0, 0, time.UTC)}
+
+	defer func(f func(*os.File) error) { syncFile = f }(syncFile)
+	synced := 0
+	syncFile = func(f *os.File) error {
+		synced++
+		if data, _ := os.ReadFile(f.Name()); strings.Contains(string(data), "2026-01-01") || !strings.Contains(string(data), "2026-10-21") {
+			t.Errorf("the temporary file holds %q at the sync", data)
+		}
+		return errors.New("disk full")
+	}
+	a := openAt(t, path, c)
+	if err := a.Note(write, r); err == nil || !strings.Contains(err.Error(), "disk full") || !strings.Contains(err.Error(), "audit.jsonl") {
+		t.Fatalf("failed sync: %v", err)
+	}
+	if data, _ := os.ReadFile(path); string(data) != old {
+		t.Fatalf("the old file is not whole: %q", data)
+	}
+	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("the temporary file stays: %v", err)
+	}
+	if synced != 1 {
+		t.Fatalf("synced %d times", synced)
+	}
+	_ = a.Close()
+
+	// A temporary file left by a stop before the rename is replaced.
+	if err := os.WriteFile(path+".tmp", []byte("left by a stop\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	syncFile = func(f *os.File) error { synced++; return f.Sync() }
+	a = openAt(t, path, c)
+	if err := a.Note(write, r); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Note(write, r); err != nil {
+		t.Fatal(err)
+	}
+	_ = a.Close()
+	got := lines(t, path)
+	if synced != 2 || len(got) != 3 || !strings.Contains(got[0], "2026-10-21") || !strings.Contains(got[1], "lfoletti") || !strings.Contains(got[2], "lfoletti") {
+		t.Fatalf("synced %d, after the rename: %q", synced, got)
+	}
+	if info, _ := os.Stat(path); info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v", info.Mode().Perm())
+	}
+	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("the temporary file stays: %v", err)
 	}
 }
 
@@ -281,22 +355,28 @@ func TestALineThatCannotBeWrittenIsAnError(t *testing.T) {
 	}
 }
 
-// When no line is old enough to go, the drop leaves the file as it is: a
-// file the gateway may not rewrite is no error then.
+// When no line is old enough to go, the drop leaves the file as it is: the
+// same file, and a place where no temporary file can go is no error then.
 func TestADropWithNothingToDropLeavesTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	recent := `{"ts":"2026-10-21T00:00:00Z","tool":"login"}` + "\n"
 	if err := os.WriteFile(path, []byte(recent), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	a := openAt(t, path, &clock{time.Date(2026, 10, 22, 9, 0, 0, 0, time.UTC)})
-	defer func() { _ = a.Close() }()
-	if err := os.Chmod(path, 0o400); err != nil {
+	before, err := os.Stat(path)
+	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Chmod(path, 0o600) }()
+	a := openAt(t, path, &clock{time.Date(2026, 10, 22, 9, 0, 0, 0, time.UTC)})
+	defer func() { _ = a.Close() }()
+	if err := os.MkdirAll(filepath.Join(path+".tmp", "full"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := a.Note(Entry{Brain: "team/acme", Tool: "knowledge_get", OK: true}, policy(t, "audit:\n  retention_days: 30\n")); err != nil {
 		t.Fatalf("drop with nothing to drop: %v", err)
+	}
+	if after, err := os.Stat(path); err != nil || !os.SameFile(before, after) {
+		t.Fatalf("the file was replaced: %v", err)
 	}
 }
 

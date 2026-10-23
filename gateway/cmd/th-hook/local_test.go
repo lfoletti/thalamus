@@ -114,15 +114,13 @@ func TestTheLocalBrainsHaveADefaultAndSettings(t *testing.T) {
 // gateway that is not set leaves the local brains. A wrong TH_LOCAL_BRAINS
 // leaves the shared brains.
 func TestALocalProblemLeavesTheRest(t *testing.T) {
-	defer func(d time.Duration) { deadline = d }(deadline)
-	deadline = time.Second
 	g := &fakeGateway{secret: "s3", results: []map[string]any{{"brain": "team/acme", "knowledge_id": "spec-1", "snippet": "The ledger moves on Sunday.", "provenance": "[team/acme] Spec, spec-1"}}}
 	url := g.start(t)
 	dir := t.TempDir()
 	fake := fakeRecall(t) + " --recall"
 	brains := fmt.Sprintf("f=%s,b=%s,s=%s,e=%s,ok=%s", brainFile(t, dir, "f.db", "FAIL"), brainFile(t, dir, "b.db", "BAD"), brainFile(t, dir, "s.db", "SLEEP"), brainFile(t, dir, "e.db", "EMPTY"), brainFile(t, dir, "ok.db", "- Kept memory"))
 	began := time.Now()
-	code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LOCAL_RECALL": fake, "TH_LOCAL_BRAINS": brains}, prompt)
+	code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LOCAL_RECALL": fake, "TH_LOCAL_BRAINS": brains, "TH_RECALL_TIMEOUT": "1s"}, prompt)
 	if took := time.Since(began); took > 3*time.Second {
 		t.Fatalf("a slow local brain held the hook %v", took)
 	}
