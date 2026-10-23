@@ -1,6 +1,6 @@
 # 09. `ingest_document` ignore l'encodeur, et `vector_dimension_repair` efface la provenance
 
-**Statut** : 2 défauts confirmés sur `main` (`0328e0a`, v2.136.0) le 22 octobre 2026. Issue ouverte le même jour sur commande de Lauro : liliang-cn/cortexdb#84. La PR suit si le propriétaire la veut. **Taille estimée de la PR** : environ 60 lignes hors tests pour le défaut 2. Le défaut 1 est une décision de conception, à laisser au propriétaire.
+**Statut** : **corrigés en v2.137.0** (23 octobre 2026, issue #84 fermée par le propriétaire : c2fd833 pour l'encodeur, avec la marque `_vectors` ; 122cede pour la réparation, qui rend aussi `doc_id` et les métadonnées des lignes vidées, mais pas les ACL). Fiche close. Historique : 2 défauts confirmés sur `main` (`0328e0a`, v2.136.0) le 22 octobre 2026. Issue ouverte le même jour sur commande de Lauro : liliang-cn/cortexdb#84. La PR suit si le propriétaire la veut. **Taille estimée de la PR** : environ 60 lignes hors tests pour le défaut 2. Le défaut 1 est une décision de conception, à laisser au propriétaire.
 
 Origine : le pilote de contaixt sur CortexDB (`~/Agents/science-extractor`, `CHANTIER_PILOTE_CORTEXDB.md`), avec un encodeur local servi à `cortexdb-grpc` par `OPENAI_BASE_URL`.
 

@@ -188,7 +188,7 @@
 "article": "art_28",
 "doc_lang": "fr",
 "q_lang": "de",
-"query": 7,
+"query": 6,
 "variants": 1
 },
 {
@@ -212,7 +212,7 @@
 "article": "art_106",
 "doc_lang": "fr",
 "q_lang": "it",
-"query": 1,
+"query": 0,
 "variants": 1
 },
 {
@@ -236,7 +236,7 @@
 "article": "art_162",
 "doc_lang": "fr",
 "q_lang": "de",
-"query": 5,
+"query": 4,
 "variants": 1
 },
 {
@@ -285,7 +285,7 @@
 "doc_lang": "it",
 "q_lang": "fr",
 "query": 3,
-"variants": 1
+"variants": 4
 },
 {
 "id": "q37",

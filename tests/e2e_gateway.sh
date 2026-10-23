@@ -203,7 +203,8 @@ IDPPORT=$((50000 + $$ % 10000))
 node "$ROOT/tests/fake_idp.mjs" --port "$IDPPORT" --client-id thalamus-cli --audience thalamus > "$S/data/idp.log" 2>&1 &
 IDP=$!
 printf 'identity:\n  issuer: http://127.0.0.1:%s\n  audience: thalamus\n  client_id: thalamus-cli\n  strip_domain: true\n' "$IDPPORT" >> "$S/data/rights.yaml"
-sleep 1
+# Node can take more than a second to start: wait for the discovery document.
+for i in $(seq 1 50); do curl -sf "http://127.0.0.1:$IDPPORT/.well-known/openid-configuration" >/dev/null && break; sleep 0.2; done
 code=$(rest POST /v1/login "not-a-token" "")
 [ "$code" = 401 ] && grep -q 'three parts' "$S/rest.out" && ok "POST /v1/login with a bad token is 401" || ko "login 401" "$code $(cat "$S/rest.out")"
 code=$(rest GET /v1/identity "" "")
