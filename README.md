@@ -2,25 +2,65 @@
 
 # Thalamus
 
-Thalamus brings the knowledge of an organisation to each employee and to their coding agent, at the moment they need it, within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
+Thalamus brings the knowledge of an organisation to each user and to their coding agent, at the moment they need it, within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
 
 > **Work in progress.** The interfaces change between versions. A short French summary is at the end.
 
 ## What it does
 
-A team keeps its knowledge in several CortexDB brains: one for the team, one for a client, one for the whole organisation. Each employee may read some of them and write to fewer. Thalamus is the gateway between the employees and these brains.
+A team keeps its knowledge in several CortexDB brains: one for the team, one for a client, one for the whole organisation. Each user may read some of them and write to fewer. Thalamus is the gateway between the users and these brains.
 
-The employee's assistant reaches the brains through the gateway, which is an MCP server. When the assistant asks a question with `th_recall`, the gateway searches each brain that this employee may read, with the employee's own key, and merges the results. Each extract comes with its source: the brain, the document and the author. With `th_get`, the assistant reads the full document behind an extract.
+The user's assistant reaches the brains through the gateway, which is an MCP server. When the assistant asks a question with `th_recall`, the gateway searches each brain that this user may read, with the user's own key, and merges the results. Each extract comes with its source: the brain, the document and the author. With `th_get`, the assistant reads the full document behind an extract.
 
-An employee can also propose a document, from Claude Code or from a page in Chrome. The document waits for a curator of the brain, who accepts or rejects it.
+A user can also propose a document, from Claude Code or from a page in Chrome. The document waits for a curator of the brain, who accepts or rejects it.
 
 ## Why use it
 
-- **Knowledge at the moment of need.** One question reaches every brain that the employee may read. The employee does not choose where to look. Each extract gives its source, so the employee can open the full document. In Claude Code, a hook brings the extracts at each prompt (see [Combining local and global brains](#combining-local-and-global-brains)).
-- **Access without requests.** An employee logs in with the account of the organisation, and the gateway issues the keys that the rights allow. To give a person access to a team's brains, add the login to the team's group in `rights.yaml`. The change applies at the next call, without a restart.
-- **Knowledge added in one step.** An employee proposes a document from Claude Code or from a page in Chrome. A curator of the brain accepts or rejects it, from the same tools.
-- **Brains of the correct size.** A brain is a whole CortexDB server or one collection of a shared server. Small teams can share one server. A sensitive brain can have its own server. Each brain can have a weight in the merged results.
-- **Access that stays under control.** Each person has a personal key, and CortexDB checks it on every call. To revoke one person, the gateway removes that person's keys only. The audit records the writes, the reviews and the logins.
+### 1. Governance
+
+Thalamus is a thin governance layer. It lets an organisation share its knowledge with calm and with efficiency, and it keeps each access under control. The management stays easy: the rights are in one file, the keys follow the rights, and a change applies without a restart.
+
+- **Access without requests.** A user logs in with the account of the organisation (OpenID Connect). The gateway issues the keys that the rights allow. To give a person access to a team's brains, add the login to the team's group in `rights.yaml`. The change applies at the next call, without a restart.
+- **One key per person and per brain.** CortexDB checks the key on every call, so the scope of a key does not depend on the gateway. To revoke one person, the gateway removes that person's keys only.
+- **Knowledge added in one step.** A user proposes a document from Claude Code or from a page in Chrome. A curator of the brain accepts or rejects it, from the same tools.
+- **Simple administration.** `th-gateway key list` compares the keys with the rights, and `key sync` corrects the difference. `th-gateway audit` gives a summary of the reads, the writes, the refusals and the logins.
+
+### 2. Compliance and sovereignty
+
+Thalamus is built to support compliance with the GDPR, the Swiss Federal Act on Data Protection and the EU AI Act. A tool does not make an organisation compliant. But Thalamus gives the controls that these frameworks ask for:
+
+| Control | In Thalamus | Articles |
+| :- | :- | :- |
+| Data minimisation | The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` has named reads. | GDPR 5(1)(c), 25(2). FADP 6(2), 7(3). |
+| Storage limitation | `audit: retention_days` limits how long the audit lines stay. | GDPR 5(1)(e). FADP 6(4). |
+| Security and traceability | Personal keys, checked by the engine. The writes, the reviews, the logins and the refused calls have a line with the name of the person. | GDPR 5(1)(f), 5(2), 32. FADP 8. AI Act 12. |
+| Human oversight | A proposed document waits for a curator before the recall serves it. | AI Act 14, 26(2). |
+| Data location | The organisation hosts the gateway and the CortexDB servers. The local brains stay on the machine of the user and do not go through the gateway. | GDPR 44. FADP 16. |
+| Transparency | Each extract gives its brain, its document and its author. | GDPR 5(1)(a). |
+
+GDPR: Regulation (EU) 2016/679. FADP: the revised Swiss Federal Act on Data Protection (SR 235.1). AI Act: Regulation (EU) 2024/1689. The AI Act articles apply to high-risk AI systems. For a deployer of such a system, Thalamus gives the matching control.
+
+### 3. Local and shared brains in one recall
+
+- **Brains of the correct size.** A brain is a whole CortexDB server or one collection of a shared server. Small teams can share one server. A sensitive brain can have its own server.
+- **Federation.** One question reaches every brain that the user may read. The gateway merges the results, with a weight per brain. The user does not choose where to look.
+- **Local and shared together.** In Claude Code, a hook asks the shared brains and the local brains of the machine at the same time, at each prompt. Each person chooses the brains of the automatic recall with `/th-recall` (see [Combining local and global brains](#combining-local-and-global-brains)).
+
+### 4. Accuracy that you can check
+
+- **Passages with their source.** The recall serves the passages of the documents, not short extracts. With `th_get`, the agent reads the full document.
+- **A pyramid of syntheses.** A brain can have a collection of syntheses above its documents. `th_recall` serves the syntheses first, and `th_descend` opens the documents that a synthesis cites.
+- **Measured.** On a research pilot, the facts found by the automatic recall went from 51.7 % to 81.3 % with the passages and the syntheses, and to 85.1 % with a variant of the question in English.
+- **Next.** A check of each sentence of a synthesis against its sources, proposed to CortexDB. Then the federation of the entities across brains, in addition to the passages.
+
+### 5. Multilingual
+
+A user asks in their language, and the document that answers is often in another one. `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart.
+
+- The Swiss bench (`tests/eval_ch/`) has 40 questions on the Federal Constitution, in German, French, Italian and Romansh. Each question asks for an article in another language.
+- With `multilingual-e5-large` and the variants, 97 % of the expected articles are in the first 10 results, and 91 % for Romansh. Without an encoder, only 7 % are.
+
+For coding agents, Thalamus brings the knowledge into the session: through MCP for each assistant, and through an automatic recall at each prompt in Claude Code.
 
 ## Concepts
 
@@ -38,15 +78,15 @@ An employee can also propose a document, from Claude Code or from a page in Chro
 - The gateway reads `rights.yaml` and issues the keys. It reads the file again when it changes, so a removed right applies at the next call.
 - Each call goes to CortexDB with the caller's key. CortexDB checks the key on every call, so the scope of a key does not depend on the gateway.
 - The gateway keeps an audit in `audit.jsonl`, for security and traceability. The writes, the reviews, the logins and the refused calls have a line with the name of the person. The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` in `rights.yaml` has named reads. `audit: retention_days` limits how long the lines stay.
-- An employee logs in with the organisation's identity provider (OpenID Connect). The gateway then issues the keys that the rights allow.
+- A user logs in with the organisation's identity provider (OpenID Connect). The gateway then issues the keys that the rights allow.
 
 ## Combining local and global brains
 
-The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the shared brains and the local brains of the machine at the same time. It gives the best extracts to the agent before the agent answers. The employee does not ask for them.
+The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At each prompt, the hook asks the shared brains and the local brains of the machine at the same time. It gives the best extracts to the agent before the agent answers. The user does not ask for them.
 
-<p align="center"><img src="docs/img/recall-hook.svg" alt="The employee types a prompt. The Thalamus hook sends it to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains. At the same time, the hook searches the local brains on the machine. The hook adds the best extracts, with their source, to the prompt. Then the agent answers." width="760"></p>
+<p align="center"><img src="docs/img/recall-hook.svg" alt="The user types a prompt. The Thalamus hook sends it to th_recall on the Thalamus gateway, with the user's key, and the gateway searches the server brains. At the same time, the hook searches the local brains on the machine. The hook adds the best extracts, with their source, to the prompt. Then the agent answers." width="760"></p>
 
-- The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the employee's key. It adds the best passages of the documents to the prompt, with their source, in 9,000 characters or fewer: 10 passages, after 4 passages of syntheses when a brain has a pyramid of syntheses.
+- The hook (`th-hook`, on the `UserPromptSubmit` event) sends the prompt to `th_recall` with the user's key. It adds the best passages of the documents to the prompt, with their source, in 9,000 characters or fewer: 10 passages, after 4 passages of syntheses when a brain has a pyramid of syntheses.
 - It does not ask for a prompt of fewer than 3 words, or for a `/` command.
 - It never stops a prompt. If the gateway does not answer, or if the key is refused, the prompt continues without extracts.
 - The agent can open the full document of an extract with `th_get`.
@@ -176,4 +216,4 @@ MIT. CortexDB is also under the MIT license.
 
 ## Résumé en français
 
-Thalamus donne à une équipe et à ses agents de code des bases de connaissances partagées, avec des droits par personne. Il est construit sur CortexDB. Le gateway lit les droits dans `rights.yaml` et donne à chaque personne une clé par cerveau. Il cherche dans tous les cerveaux qu'une personne peut lire et donne la source de chaque extrait. Un curateur relit les documents proposés. Le rappel sert les passages des documents, les synthèses d'abord, et accepte la question en plusieurs langues. Le projet est en construction : la feuille de route ci-dessus dit ce qui est fait et ce qui vient.
+Thalamus donne à une équipe et à ses agents de code des bases de connaissances partagées, avec des droits par personne. Il a 5 axes : la gouvernance et une administration simple, le soutien à la conformité (RGPD, LPD suisse, AI Act) et la souveraineté des données, les cerveaux locaux et partagés dans un seul rappel, une précision vérifiable (passages sourcés, pyramide de synthèses), et l'accès d'une langue à une autre. Il est construit sur CortexDB. Le gateway lit les droits dans `rights.yaml` et donne à chaque personne une clé par cerveau. Il cherche dans tous les cerveaux qu'une personne peut lire et donne la source de chaque extrait. Un curateur relit les documents proposés. Le rappel sert les passages des documents, les synthèses d'abord, et accepte la question en plusieurs langues. Le projet est en construction : la feuille de route ci-dessus dit ce qui est fait et ce qui vient.
