@@ -181,7 +181,7 @@
 "doc_lang": "fr",
 "q_lang": "it",
 "query": 0,
-"variants": 3
+"variants": 2
 },
 {
 "id": "q24",
@@ -189,7 +189,7 @@
 "doc_lang": "fr",
 "q_lang": "de",
 "query": 0,
-"variants": 5
+"variants": 4
 },
 {
 "id": "q25",
@@ -205,7 +205,7 @@
 "doc_lang": "fr",
 "q_lang": "de",
 "query": 0,
-"variants": 0
+"variants": 8
 },
 {
 "id": "q27",

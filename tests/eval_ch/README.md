@@ -32,6 +32,8 @@ Article attendu au 1er rang, dans les 5 premiers, dans les 10 premiers, et rang 
 | multilingual-e5-large (1024), question seule | 0,03 | 0,55 | 0,82 | 0,21 | 0,45 | 0,82 |
 | multilingual-e5-large, avec variantes | **0,75** | **0,97** | **0,97** | **0,85** | **0,91** | **0,91** |
 
+Rejeu sur CortexDB v2.138.0 (23 octobre 2026, rappel par rareté des mots) : mêmes chiffres à une question près. Lexical avec variantes 0,65 à @10 (0,62 avant) ; MiniLM avec variantes 0,90 (0,88), romanche 0,64 (0,55) ; e5-large sans variante @1 0,00 (0,03), avec variantes @1 0,72 (0,75), @5 et @10 inchangés.
+
 ## Constats
 
 1. **Sans encodeur, le rappel ne traverse pas la langue** : 7 % des articles dans les 10 premiers. Les variantes aident seulement quand une variante est dans la langue du document (62 % en tout, 18 % pour le romanche).
