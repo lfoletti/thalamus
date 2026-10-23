@@ -1,5 +1,5 @@
 // A fake OpenID Connect provider for the benches: discovery, JWKS, an
-// authorize endpoint that signs the one employee in without a question
+// authorize endpoint that signs the one user in without a question
 // (code flow with PKCE, or implicit id_token for the extension), and a
 // token endpoint that checks the PKCE verifier. RS256 with a key made at
 // start. Usage: node fake_idp.mjs --port 4xxxx [--client-id thalamus-cli]

@@ -127,7 +127,7 @@ func testCtx(t *testing.T) context.Context {
 	return ctx
 }
 
-// browser acts as the employee's browser: it opens the address and
+// browser acts as the user's browser: it opens the address and
 // follows the redirects to the loopback callback.
 func browser(t *testing.T, wantBody string) func(string) error {
 	return func(u string) error {
@@ -153,7 +153,7 @@ func browser(t *testing.T, wantBody string) func(string) error {
 // The whole flow: the gateway names the provider, the browser signs in,
 // the code is exchanged with the PKCE verifier, the nonce is checked, the
 // id_token goes to the gateway, and the keys come back. The address is
-// printed before the browser opens, so an employee without a browser can
+// printed before the browser opens, so a user without a browser can
 // paste it.
 func TestTheFlowSignsInAndBringsTheKeys(t *testing.T) {
 	p := newIDP(t)
@@ -176,7 +176,7 @@ func TestTheFlowSignsInAndBringsTheKeys(t *testing.T) {
 		t.Fatalf("out: %s", out.String())
 	}
 	// A browser that fails to open is told, and the flow still waits for
-	// the callback: the employee opens the printed address by hand.
+	// the callback: the user opens the printed address by hand.
 	out.Reset()
 	f = &Flow{Gateway: gw.URL, Out: &out, Open: func(u string) error {
 		go func() { _ = browser(t, "Signed in")(u) }()

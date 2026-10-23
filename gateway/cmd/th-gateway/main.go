@@ -1,5 +1,5 @@
 // Command th-gateway is the Thalamus gateway: it reads rights.yaml,
-// issues and revokes the confined CortexDB keys of employees, and serves the
+// issues and revokes the confined CortexDB keys of users, and serves the
 // MCP relay that audits every tool call.
 //
 //	th-gateway rights check <rights.yaml>

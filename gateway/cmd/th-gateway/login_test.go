@@ -89,7 +89,7 @@ func TestLoginWritesTheEnvFile(t *testing.T) {
 	if code, out, errOut := call(t, "login", gw); code != 0 || !strings.Contains(out, filepath.Join(dir, ".thalamus", "env")) {
 		t.Fatalf("default path: %d %s %s", code, out, errOut)
 	}
-	// --no-browser prints the address and waits: the employee opens it.
+	// --no-browser prints the address and waits: the user opens it.
 	openBrowser = func(string) error { t.Error("--no-browser opened the browser"); return nil }
 	var lout lockedBuffer
 	go func() {

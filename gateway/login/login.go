@@ -1,5 +1,5 @@
-// Package login is the employee's side of POST /v1/login: it asks the
-// gateway which identity provider to use, sends the employee to that
+// Package login is the user's side of POST /v1/login: it asks the
+// gateway which identity provider to use, sends the user to that
 // provider in the browser (authorization code with PKCE, loopback
 // redirect), exchanges the code for an id_token, and hands the id_token to
 // the gateway, which issues the keys.
@@ -41,14 +41,14 @@ type Answer struct {
 	Brains []Brain `json:"brains"`
 }
 
-// Brain is one brain the employee may reach, with its key.
+// Brain is one brain the user may reach, with its key.
 type Brain struct {
 	Brain  string `json:"brain"`
 	Access string `json:"access"`
 	Key    string `json:"key"`
 }
 
-// Run signs the employee in and returns the keys.
+// Run signs the user in and returns the keys.
 func (f *Flow) Run(ctx context.Context) (*Answer, error) {
 	gateway := strings.TrimRight(f.Gateway, "/")
 	var id struct{ Issuer, ClientID string }

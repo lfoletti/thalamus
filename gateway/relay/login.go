@@ -11,13 +11,13 @@ import (
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
-// POST /v1/login: the employee presents the id_token of the organisation's
+// POST /v1/login: the user presents the id_token of the organisation's
 // identity provider, the gateway derives the login, issues the keys the
 // rights allow where they are missing, and returns them. No key is handed
 // out by hand any more. The identity block of rights.yaml names the
 // provider; without it the route does not exist.
 
-// loginAnswer is what the employee receives: one key for the federated
+// loginAnswer is what the user receives: one key for the federated
 // endpoint (the first brain's), and one per brain.
 type loginAnswer struct {
 	Login  string       `json:"login"`
@@ -45,7 +45,7 @@ func (s *Server) verifier(id *rights.Identity) *identity.Verifier {
 }
 
 // serveIdentity answers GET /v1/identity: the provider, the audience and
-// the client id, for the tools that sign the employee in.
+// the client id, for the tools that sign the user in.
 func (s *Server) serveIdentity(w http.ResponseWriter, r *http.Request) {
 	id := s.rights().Identity
 	if id == nil {
