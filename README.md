@@ -27,18 +27,27 @@ Thalamus is a thin governance layer. It lets an organisation share its knowledge
 
 ### 2. Compliance and sovereignty
 
-Thalamus is built to support compliance with the GDPR, the Swiss Federal Act on Data Protection and the EU AI Act. A tool does not make an organisation compliant. But Thalamus gives the controls that these frameworks ask for:
+Thalamus is built to support compliance with the GDPR, the Swiss Federal Act on Data Protection and, for a high-risk use, the EU AI Act. A tool does not make an organisation compliant. But Thalamus gives the controls that these frameworks ask for:
 
 | Control | In Thalamus | Articles |
 | :- | :- | :- |
 | Data minimisation | The reads are counted per brain and per day, without a name. Only a brain with `audit_reads: true` has named reads. | GDPR 5(1)(c), 25(2). FADP 6(2), 7(3). |
 | Storage limitation | `audit: retention_days` limits how long the audit lines stay. | GDPR 5(1)(e). FADP 6(4). |
-| Security and traceability | Personal keys, checked by the engine. The writes, the reviews, the logins and the refused calls have a line with the name of the person. | GDPR 5(1)(f), 5(2), 32. FADP 8. AI Act 12. |
-| Human oversight | A proposed document waits for a curator before the recall serves it. | AI Act 14, 26(2). |
+| Security and traceability | Personal keys, checked by the engine. The writes, the reviews, the logins and the refused calls have a line with the name of the person. | GDPR 5(1)(f), 5(2), 32. FADP 8. |
 | Data location | The organisation hosts the gateway and the CortexDB servers. The local brains stay on the machine of the user and do not go through the gateway. | GDPR 44. FADP 16. |
 | Transparency | Each extract gives its brain, its document and its author. | GDPR 5(1)(a). |
+| **Not covered:** the transfer to the model provider | The hook puts passages into the prompt, and the prompt goes to the model provider of the assistant. Thalamus does not control this transfer. The organisation covers it itself: a processing agreement with the provider, transfer safeguards when the provider is outside Switzerland or the EU, and the retention setting at the provider. | GDPR 28, 44 to 46. FADP 9, 16. |
 
-GDPR: Regulation (EU) 2016/679. FADP: the revised Swiss Federal Act on Data Protection (SR 235.1). AI Act: Regulation (EU) 2024/1689. The AI Act articles apply to high-risk AI systems. For a deployer of such a system, Thalamus gives the matching control.
+A brain with `audit_reads: true` keeps a named read log, and that log is personal data: the organisation informs the users, answers their access requests and sets its retention (GDPR 13, 15. FADP 19, 25).
+
+**If the use is high-risk.** The AI Act articles below apply to high-risk AI systems only. A recall for coding agents is not a high-risk use in general. For a deployer of a high-risk system, Thalamus gives the matching control:
+
+| Control | In Thalamus | Articles |
+| :- | :- | :- |
+| Record-keeping | The writes, the reviews, the logins and the refused calls have a line with the name of the person. | AI Act 12. |
+| Human oversight | A proposed document waits for a curator before the recall serves it. | AI Act 14, 26(2). |
+
+GDPR: Regulation (EU) 2016/679. FADP: the revised Swiss Federal Act on Data Protection (SR 235.1). AI Act: Regulation (EU) 2024/1689.
 
 ### 3. Local and shared brains in one recall
 
@@ -218,6 +227,6 @@ MIT. CortexDB is also under the MIT license.
 
 Thalamus apporte la connaissance d'une organisation à chaque utilisateur et à son agent de code, au moment où il en a besoin, dans les limites de ses droits. Il est construit sur CortexDB. Une équipe garde sa connaissance dans plusieurs cerveaux CortexDB : un pour l'équipe, un pour un client, un pour toute l'organisation. Le gateway de Thalamus est un serveur MCP placé entre les utilisateurs et ces cerveaux. Quand l'assistant pose une question avec `th_recall`, le gateway cherche dans chaque cerveau que l'utilisateur peut lire, avec la clé de cet utilisateur, et fusionne les résultats. Chaque extrait donne sa source : le cerveau, le document et l'auteur.
 
-Les droits sont dans un seul fichier, `rights.yaml`, et un changement s'applique sans redémarrage. Un utilisateur se connecte avec le compte de l'organisation (OpenID Connect), et le gateway lui donne une clé par cerveau. CortexDB vérifie cette clé à chaque appel, donc la portée d'une clé ne dépend pas du gateway. Un document proposé depuis Claude Code ou depuis une page dans Chrome attend la décision d'un curateur. Thalamus aide à la conformité au RGPD, à la LPD suisse révisée et à l'AI Act : lectures comptées sans nom, durée de conservation de l'audit, contrôle humain, source de chaque extrait. L'organisation héberge le gateway et les serveurs, et les cerveaux locaux restent sur la machine de l'utilisateur.
+Les droits sont dans un seul fichier, `rights.yaml`, et un changement s'applique sans redémarrage. Un utilisateur se connecte avec le compte de l'organisation (OpenID Connect), et le gateway lui donne une clé par cerveau. CortexDB vérifie cette clé à chaque appel, donc la portée d'une clé ne dépend pas du gateway. Un document proposé depuis Claude Code ou depuis une page dans Chrome attend la décision d'un curateur. Thalamus aide à la conformité au RGPD et à la LPD suisse révisée : lectures comptées sans nom, durée de conservation de l'audit, source de chaque extrait. L'organisation héberge le gateway et les serveurs, et les cerveaux locaux restent sur la machine de l'utilisateur. Thalamus ne couvre pas le transfert au fournisseur du modèle : le hook met des passages dans le prompt, et le prompt part chez le fournisseur du modèle de l'assistant. L'organisation couvre ce transfert elle-même (contrat de sous-traitance, garanties de transfert, réglage de conservation chez le fournisseur ; RGPD 28, 44 à 46, LPD 9, 16). Un journal des lectures nominatif (`audit_reads: true`) est une donnée personnelle : information des utilisateurs, droit d'accès, durée de conservation. Les articles de l'AI Act cités (12, 14, 26) valent pour un usage à haut risque, et un rappel pour agents de code n'en est pas un en général ; pour un tel usage, Thalamus donne le journal et le contrôle humain par les curateurs.
 
 Dans Claude Code, un hook interroge à chaque prompt les cerveaux partagés et les cerveaux locaux du poste, et chaque utilisateur choisit ses cerveaux avec `/th-recall`. Le rappel sert les passages des documents, avec leur source, et `th_get` lit le document entier. Un cerveau peut avoir une pyramide de synthèses : `th_recall` sert les synthèses d'abord, et `th_descend` ouvre les documents qu'elles citent. Le rappel accepte aussi la question en plusieurs langues. Sur le banc suisse (Constitution fédérale en allemand, français, italien et romanche), 97 % des articles attendus sont dans les 10 premiers résultats avec un encodeur multilingue. Le projet est en construction : la feuille de route ci-dessus dit ce qui est fait et ce qui vient.
