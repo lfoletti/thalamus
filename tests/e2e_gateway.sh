@@ -14,7 +14,7 @@ ADDR=127.0.0.1:47998
 GWADDR=127.0.0.1:47997
 mkdir -p "$S/data"
 
-# The operator key is the server's own; the gateway adds the employees' keys
+# The operator key is the server's own; the gateway adds the users' keys
 # next to it.
 cat > "$S/data/keys.json" <<'EOK'
 {"keys":[{"id":"operator","secret":"op-secret","clearance":"read-write"}]}
@@ -131,7 +131,7 @@ printf '%s' "$srv" | grep -q 'spec-3' && ok "accepted spec-3 is served" || ko "a
 got=$(mcp "$KMA" team/acme knowledge_get '{"knowledge_id":"spec-3"}')
 printf '%s' "$got" | grep -q '_reviewed_by.*th/kmlead/team/acme' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
 
-# The client: the plugin's hook asks th_recall with the employee's key and
+# The client: the plugin's hook asks th_recall with the user's key and
 # hands the extracts to Claude Code; a prompt too short asks nothing.
 ctx=$(printf '%s' '{"prompt":"when does the ledger move to the new cluster?","cwd":"/tmp"}' | TH_GATEWAY="http://$GWADDR" TH_KEY="$LF" TH_HOOK_BIN="$S/th-hook" "$ROOT/plugin/bin/th-recall")
 if printf '%s' "$ctx" | grep -q '"hookEventName":"UserPromptSubmit"' && printf '%s' "$ctx" | grep -q '\[team/acme\] Spec migration, spec-1'; then ok "the hook injects spec-1 with its provenance"; else ko "hook" "$ctx"; fi

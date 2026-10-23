@@ -1,6 +1,6 @@
 // Package keys issues and revokes the confined CortexDB keys the gateway
-// hands to employees, in the key file of the brain's server. The key is the
-// employee's credential on that brain: the engine enforces the collection
+// hands to users, in the key file of the brain's server. The key is the
+// user's credential on that brain: the engine enforces the collection
 // and the clearance, the gateway only decides who gets which key.
 package keys
 
@@ -18,7 +18,7 @@ import (
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
-// Issued is the key handed to the employee.
+// Issued is the key handed to the user.
 type Issued struct {
 	ID         string
 	Secret     string

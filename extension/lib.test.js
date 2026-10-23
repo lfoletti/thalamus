@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { writableBrains, documentID, buildAdd, statusText, settingsOf, authorizeURL, tokenOf, signInText, randomString, mainText } from "./lib.js";
 
-// Only the brains the employee may write to, with a key, sorted by name.
+// Only the brains the user may write to, with a key, sorted by name.
 test("writableBrains keeps the brains one may write to, with a key, sorted", () => {
   const got = writableBrains([
     { brain: "team/zeta", access: "write", key: true },

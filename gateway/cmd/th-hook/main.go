@@ -1,6 +1,6 @@
 // Command th-hook is the client side of the gateway for Claude Code: the
 // UserPromptSubmit hook that asks the gateway's th_recall with the
-// employee's key and hands the extracts, with their provenance, to the
+// user's key and hands the extracts, with their provenance, to the
 // agent as additional context.
 //
 //	th-hook recall    reads the hook payload on stdin; TH_GATEWAY, TH_KEY,

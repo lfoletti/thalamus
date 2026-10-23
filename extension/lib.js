@@ -1,7 +1,7 @@
 // Pure functions of the Thalamus extension: what to send and what to say.
 // No DOM, no chrome.* here, so that node --test covers every rule.
 
-// writableBrains keeps the brains the employee may write to (write or
+// writableBrains keeps the brains the user may write to (write or
 // curate), with a key issued, sorted by name.
 export function writableBrains(brains) {
   return (brains || [])

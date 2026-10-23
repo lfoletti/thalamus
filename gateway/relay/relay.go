@@ -1,5 +1,5 @@
 // Package relay is the gateway's MCP server: one HTTP endpoint per brain,
-// where an employee presents the key the gateway issued, and every tool call
+// where a user presents the key the gateway issued, and every tool call
 // is forwarded to the brain's CortexDB server with that key and written to
 // the audit file. The engine enforces the key's scope; the gateway checks
 // that the key is one it issued, for this brain, to a user who still has the

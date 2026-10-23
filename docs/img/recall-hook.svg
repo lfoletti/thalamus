@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" width="760" height="330" role="img" aria-labelledby="title desc">
   <title id="title">Combining local and global brains</title>
-  <desc id="desc">The employee types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the employee's key, and the gateway searches the server brains that the employee may read. At the same time, the hook searches the local brains on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
+  <desc id="desc">The user types a prompt. The Thalamus hook of the plugin sends the prompt to th_recall on the Thalamus gateway, with the user's key, and the gateway searches the server brains that the user may read. At the same time, the hook searches the local brains on the machine. The hook merges the best extracts with their source and adds them to the prompt. Then the agent answers.</desc>
   <style>
     .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
     .core { fill: #312e81; stroke: #312e81; }
@@ -22,7 +22,7 @@
 
   <!-- Row 1: the request -->
   <rect class="box" x="30" y="24" width="200" height="58" rx="8"/>
-  <text class="label" x="130" y="49" text-anchor="middle">The employee</text>
+  <text class="label" x="130" y="49" text-anchor="middle">The user</text>
   <text class="small" x="130" y="68" text-anchor="middle">types a prompt</text>
 
   <rect class="box core" x="280" y="24" width="200" height="58" rx="8"/>
@@ -45,7 +45,7 @@
   <text class="small" x="380" y="184" text-anchor="middle">on the machine</text>
 
   <path class="line" d="M630 82 L 630 118"/><path class="head" d="M630 128 L 624.5 117 L 635.5 117 Z"/>
-  <text class="small" x="620" y="110" text-anchor="end">employee's key, readable brains only</text>
+  <text class="small" x="620" y="110" text-anchor="end">user's key, readable brains only</text>
   <rect class="box" x="542" y="128" width="200" height="58" rx="8"/>
   <rect class="box" x="536" y="134" width="200" height="58" rx="8"/>
   <rect class="box" x="530" y="140" width="200" height="58" rx="8"/>
@@ -58,7 +58,7 @@
   <text class="label" x="505" y="281" text-anchor="middle">Prompt + best extracts, merged</text>
   <text class="small" x="505" y="300" text-anchor="middle">each with brain, document and author, added as context by the hook</text>
 
-  <!-- The answer, under the employee -->
+  <!-- The answer, under the user -->
   <path class="line" d="M280 285 L 240 285"/><path class="head" d="M230 285 L 241 279.5 L 241 290.5 Z"/>
   <rect class="box" x="30" y="256" width="200" height="58" rx="8"/>
   <text class="label" x="130" y="281" text-anchor="middle">The agent answers</text>

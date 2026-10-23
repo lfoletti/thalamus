@@ -14,7 +14,7 @@ import (
 	"github.com/lfoletti/thalamus/gateway/login"
 )
 
-// loginCommand signs the employee in through the browser and writes
+// loginCommand signs the user in through the browser and writes
 // TH_GATEWAY and TH_KEY into the env file, for the plugin and the hook.
 func loginCommand(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("login", flag.ContinueOnError)

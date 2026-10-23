@@ -1,5 +1,5 @@
 // Package rights reads rights.yaml: the brains an organisation runs, the
-// groups of its employees, and who may read or write each brain. It is the
+// groups of its users, and who may read or write each brain. It is the
 // one place the gateway decides access; the engine then enforces it through
 // the confined key the gateway issued.
 package rights
@@ -133,7 +133,7 @@ type Identity struct {
 	Audience    string `yaml:"audience"`
 	Claim       string `yaml:"claim"`
 	StripDomain bool   `yaml:"strip_domain"`
-	// ClientID is the client the provider knows the employees' tools by
+	// ClientID is the client the provider knows the users' tools by
 	// (th-gateway login, the extension); GET /v1/identity hands it out.
 	ClientID string `yaml:"client_id"`
 }
