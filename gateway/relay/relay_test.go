@@ -47,6 +47,15 @@ type brain struct {
 	docs              map[string]map[string]any // what knowledge_get serves by id, in any collection
 	failID            string                    // a knowledge_get id whose call fails
 	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
+	graph             map[string]fakeGraph      // what get_nodes and knowledge_memory_neighbors serve, by the caller's secret
+}
+
+// fakeGraph is one key's part of the graph around one entity.
+type fakeGraph struct {
+	Known     bool             // get_nodes serves the entity
+	Neighbors []map[string]any // what knowledge_memory_neighbors serves
+	Fail      bool
+	Deny      bool // the brain refuses the key (PermissionDenied)
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -112,6 +121,30 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	}
 	if b.denyTool == req.GetName() {
 		return nil, status.Error(codes.PermissionDenied, "not for this key")
+	}
+	if g, ok := b.graph[strings.TrimPrefix(bearer, "Bearer ")]; ok && (req.GetName() == "get_nodes" || req.GetName() == "knowledge_memory_neighbors") {
+		if g.Fail {
+			return nil, errors.New("graph says no")
+		}
+		if g.Deny {
+			return nil, status.Error(codes.PermissionDenied, "not for this key")
+		}
+		var walk struct {
+			EntityName string   `json:"entity_name"`
+			NodeIDs    []string `json:"node_ids"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &walk)
+		id := "entity:" + strings.ToLower(walk.EntityName)
+		reply := map[string]any{"resolved_node_id": id, "neighbors": g.Neighbors}
+		if req.GetName() == "get_nodes" {
+			nodes := []map[string]any{}
+			if g.Known {
+				nodes = append(nodes, map[string]any{"id": walk.NodeIDs[0], "vector": nil, "content": walk.NodeIDs[0]})
+			}
+			reply = map[string]any{"nodes": nodes}
+		}
+		out, _ := json.Marshal(reply)
+		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
 	}
 	if req.GetName() == "aggregate_metadata" {
 		var lim struct {

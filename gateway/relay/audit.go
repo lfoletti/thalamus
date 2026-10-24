@@ -52,7 +52,7 @@ type count struct {
 
 // readsOf are the gateway's own tools that read; th_add, th_review and
 // login write. An engine tool reads when the engine says so.
-var readsOf = map[string]bool{"th_recall": true, "th_get": true, "th_descend": true, "th_pending": true, "th_brains": true}
+var readsOf = map[string]bool{"th_recall": true, "th_entity": true, "th_get": true, "th_descend": true, "th_pending": true, "th_brains": true}
 
 // Reads reports whether a tool reads: a gateway tool that reads, or an
 // engine tool that the engine classes as a read. The audit summary of
@@ -70,15 +70,16 @@ func reads(tool string) bool {
 // decide is the audit policy: what one call leaves as named lines and as
 // counted reads. A write keeps a named line, and so does a tool the engine
 // does not know. A read keeps a named line on a brain with audit_reads, or
-// when the brain refused the key, and is counted elsewhere. th_recall follows the rule brain by brain; th_brains
-// reads no brain and leaves nothing.
+// when the brain refused the key, and is counted elsewhere. th_recall and
+// th_entity follow the rule brain by brain; th_brains reads no brain and
+// leaves nothing.
 func decide(e Entry, r *rights.Rights) ([]Entry, []count) {
 	switch {
 	case !reads(e.Tool):
 		return []Entry{e}, nil
 	case e.Tool == "th_brains":
 		return nil, nil
-	case e.Tool == "th_recall":
+	case e.Tool == "th_recall", e.Tool == "th_entity":
 		return splitRecall(e, r)
 	case r.Brains[e.Brain].AuditReads, e.Denied:
 		return []Entry{e}, nil
@@ -86,9 +87,11 @@ func decide(e Entry, r *rights.Rights) ([]Entry, []count) {
 	return nil, []count{{Brain: e.Brain, Failed: !e.OK}}
 }
 
-// splitRecall keeps, in one named line, the brains of the recall that have
-// audit_reads and the ids read there, and counts the other brains.
+// splitRecall keeps, in one named line, the brains of a federated read that
+// have audit_reads and the ids read there, with the other ids of the call,
+// and counts the other brains.
 func splitRecall(e Entry, r *rights.Rights) ([]Entry, []count) {
+	refusals := refusedLines(e)
 	brains, _ := e.IDs["brains"].([]string)
 	read, _ := e.IDs["knowledge_ids"].([]string)
 	var named, ids []string
@@ -101,7 +104,7 @@ func splitRecall(e Entry, r *rights.Rights) ([]Entry, []count) {
 		}
 	}
 	if len(named) == 0 {
-		return nil, counted
+		return refusals, counted
 	}
 	for _, id := range read {
 		for _, b := range named {
@@ -111,8 +114,33 @@ func splitRecall(e Entry, r *rights.Rights) ([]Entry, []count) {
 		}
 	}
 	out := e
-	out.IDs = map[string]any{"brains": named, "knowledge_ids": ids}
-	return []Entry{out}, counted
+	out.IDs = map[string]any{}
+	for k, v := range e.IDs {
+		out.IDs[k] = v
+	}
+	delete(out.IDs, "denied")
+	out.IDs["brains"], out.IDs["knowledge_ids"] = named, ids
+	return append([]Entry{out}, refusals...), counted
+}
+
+// refusedLines is one named line per brain of a federated read that
+// refused the caller's key, as for any refused read.
+func refusedLines(e Entry) []Entry {
+	denied, _ := e.IDs["denied"].(map[string]string)
+	var out []Entry
+	for _, b := range sortedKeys(denied) {
+		out = append(out, Entry{User: e.User, Key: e.Key, Brain: b, Tool: e.Tool, Error: denied[b], Denied: true})
+	}
+	return out
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // keep drops the lines dated before cutoff. A line whose time cannot be

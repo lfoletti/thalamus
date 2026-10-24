@@ -66,7 +66,7 @@ func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	s := b.federated(t, k.Secret)
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 7 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_descend" || tools.Tools[3].Name != "th_get" || tools.Tools[4].Name != "th_pending" || tools.Tools[5].Name != "th_recall" || tools.Tools[6].Name != "th_review" {
+	if err != nil || len(tools.Tools) != 8 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_descend" || tools.Tools[3].Name != "th_entity" || tools.Tools[4].Name != "th_get" || tools.Tools[5].Name != "th_pending" || tools.Tools[6].Name != "th_recall" || tools.Tools[7].Name != "th_review" {
 		t.Fatalf("tools: %+v %v", tools, err)
 	}
 	res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_brains"})
@@ -1032,5 +1032,27 @@ func TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly(t *testing.T) {
 	b.brain.badTool = "knowledge_get"
 	if res := mustCall(t, sessions["mdupont"], "th_get", map[string]any{"brain": "team/acme", "knowledge_id": "a-1"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "decode knowledge_get") {
 		t.Fatalf("bad JSON: %+v", res)
+	}
+}
+
+// A brain named twice in brains is searched once, and a brain that refuses
+// the caller's key leaves a named audit line, as any refused read does.
+func TestGcRecallAsksABrainOnceAndAuditsARefusedKey(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	s := b.federated(t, k.Secret)
+	decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "x", "brains": []string{"team/acme", "team/acme"}, "syntheses": 0}))
+	if len(b.brain.calls) != 1 {
+		t.Fatalf("calls: %+v", b.brain.calls)
+	}
+	b.brain.denyTool = "knowledge_search"
+	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "x", "brains": []string{"team/acme"}}))
+	if len(got.Skipped) != 1 {
+		t.Fatalf("skipped: %+v", got.Skipped)
+	}
+	lines := b.auditLines(t)
+	l := lines[len(lines)-1]
+	if l["brain"] != "team/acme" || l["tool"] != "th_recall" || l["ok"] != false || !strings.Contains(fmt.Sprint(l["error"]), "not for this key") {
+		t.Fatalf("audit: %+v", lines)
 	}
 }
