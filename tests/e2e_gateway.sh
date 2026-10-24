@@ -8,6 +8,11 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 S=$(mktemp -d)
 (cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway && go build -o "$S/th-hook" ./cmd/th-hook) || exit 1
+# The bench owns its environment: no setting of this machine's Thalamus
+# (TH_*, ~/.thalamus) reaches the hook or the gateway. HOME changes after
+# the builds, which use the Go caches under the real HOME.
+unset TH_GATEWAY TH_KEY TH_ENV TH_RECALL_FILE TH_RECALL_TIMEOUT TH_RECALL_TOPK TH_LOCAL_RECALL TH_LOCAL_BRAINS TH_HOOK_BIN
+HOME=$S; export HOME
 GRPC=$S/cortexdb-grpc
 GW=$S/th-gateway
 ADDR=127.0.0.1:47998
@@ -235,15 +240,17 @@ if [ "$lcode" = 0 ] && grep -q 'Signed in as lfoletti' "$S/data/login.out" && gr
 TH_KEY=$LFS" ] && ok "the env file holds the gateway and the first brain's key, issued before" || ko "env file" "$(cat "$S/data/env")"
 grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme","team/review"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
 kill $IDP 2>/dev/null; wait $IDP 2>/dev/null
-sed -i '' '/^identity:/,$d' "$S/data/rights.yaml"
+# sed -i takes its suffix differently in BSD and GNU sed: edit through a copy.
+edit() { sed "$1" "$2" > "$2.new" && mv "$2.new" "$2"; }
+edit '/^identity:/,$d' "$S/data/rights.yaml"
 sleep 0.5
 
 # The rights file changes while the gateway runs: a withdrawn right is
 # refused at the next call, no restart; a restored right is served again.
 # lfoletti reads org/secrets by name only, so one line withdraws it all.
-sed -i '' 's/    readers: \[user:lfoletti\]/    readers: []/' "$S/data/rights.yaml"
+edit 's/    readers: \[user:lfoletti\]/    readers: []/' "$S/data/rights.yaml"
 check "lfoletti: right on org/secrets withdrawn in rights.yaml (403, no restart)" denied "$(mcp "$LFS" org/secrets knowledge_search '{"query":"secret","collection":"secrets"}')"
-sed -i '' 's/    readers: \[\]/    readers: [user:lfoletti]/' "$S/data/rights.yaml"
+edit 's/    readers: \[\]/    readers: [user:lfoletti]/' "$S/data/rights.yaml"
 check "lfoletti: right on org/secrets restored in rights.yaml (served again)" ok "$(mcp "$LFS" org/secrets knowledge_search '{"query":"secret","collection":"secrets"}')"
 
 # The administration: key list shows who holds what against the rights,
