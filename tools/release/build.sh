@@ -9,6 +9,13 @@
 set -eu
 version=${1:?version, for example v0.1.0}
 out=${2:?output directory}
+case $version in
+v[0-9]*) ;;
+*) echo "build.sh: the version must start with v and a digit, for example v0.1.0: $version" >&2; exit 2 ;;
+esac
+case $version in
+*/*) echo "build.sh: the version must not contain a slash: $version" >&2; exit 2 ;;
+esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
 mkdir -p "$out"
 out=$(cd "$out" && pwd)
