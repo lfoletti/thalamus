@@ -62,7 +62,8 @@ GDPR: Regulation (EU) 2016/679. FADP: the revised Swiss Federal Act on Data Prot
 - **Passages with their source.** The recall serves the passages of the documents, not short extracts. With `th_get`, the agent reads the full document.
 - **A pyramid of syntheses.** A brain can have a collection of syntheses above its documents. `th_recall` serves the syntheses first, and `th_descend` opens the documents that a synthesis cites.
 - **Measured.** On a research pilot, the facts found by the automatic recall went from 51.7 % to 81.3 % with the passages and the syntheses, and to 85.1 % with a variant of the question in English.
-- **Next.** A check of each sentence of a synthesis against its sources, proposed to CortexDB. Then the federation of the entities across brains, in addition to the passages.
+- **Entities across brains.** `th_entity` finds one entity in every brain that the user may read. It merges the neighbors by node id and names the brains that serve each one.
+- **Next.** A check of each sentence of a synthesis against its sources, with the tool of CortexDB v2.139.0.
 
 ### 5. Multilingual
 
@@ -211,6 +212,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - Local and shared brains in one recall: the hook adds the local brains of the machine, and each person chooses the brains of the automatic recall.
 - Recall on the passages of the documents, not on short extracts.
 - A pyramid of syntheses per brain: `th_recall` serves the syntheses first, and `th_descend` opens the documents that a synthesis cites.
+- Entities across brains: `th_entity` asks each brain for one entity and its neighbors, with the user's key for that brain, and merges the nodes by id.
 - Questions in several languages: `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart. A Swiss bench measures the recall from one language to another (French, German, Italian, Romansh) in `tests/eval_ch/`.
 
 **With CortexDB**
@@ -220,7 +222,7 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
 - Merged: the allowlist of tools for a confined key (#72 to #74, #78), content hash and duplicate check (#75), expiry dates (#76), review status (#77), and other fixes (#61, #67 to #71, #82, #83).
 - Merged in v2.139.0, from discussion #86:
   - Keys and signatures: the server reads its key file again when it changes, so a new or revoked key applies without a restart (#87). Each write is signed by the caller's key (#88). A memory is read only when the caller's scope permits it (#89).
-  - Graph tools for a key confined to one collection (#94 to #98). The next slice of Thalamus uses them to merge entities across brains, in addition to passages.
+  - Graph tools for a key confined to one collection (#94 to #98). `th_entity` uses them to merge entities across brains, in addition to passages.
   - Three tools and an index: the touched ids in the request log (#90), `knowledge_get` on a list of ids (#91), a check of a sentence against its cited sources (#92), and two redundant edge indexes removed (#93).
   - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
 - Thalamus uses CortexDB v2.139.0.
