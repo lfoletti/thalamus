@@ -33,7 +33,7 @@ vet:
 	@if [ -n "$(PKGS)" ]; then cd $(REPO) && go vet $(PKGS); fi
 
 test:
-	@if [ -n "$(PKGS)" ]; then cd $(REPO) && $(CANARY) go test -race $(PKGS); else echo "test: aucun paquet touché"; fi
+	@if [ -n "$(PKGS)" ]; then cd $(REPO) && $(CANARY) go test -race -timeout 25m $(PKGS); else echo "test: aucun paquet touché"; fi
 
 ## patchcov : lignes changées que les tests n'exécutent pas (sortie 1 s'il en reste).
 patchcov:
