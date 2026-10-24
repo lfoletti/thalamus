@@ -196,18 +196,27 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 	return strings.Join(parts, "\n\n"), problems
 }
 
-// askShared asks th_recall with the person's key, under the filter.
+// askShared asks th_recall with the person's key, under the filter, for an
+// answer within the time left once connected.
 func askShared(ctx context.Context, get func(string) string, prompt string, topK int, only, skip []string) (recallOut, error) {
 	gateway, key, err := settings(get)
 	if err != nil {
 		return recallOut{}, err
 	}
-	args := map[string]any{"query": prompt, "top_k": topK}
-	if len(only) > 0 {
-		args["brains"] = only
-	}
-	if len(skip) > 0 {
-		args["skip_brains"] = skip
+	args := func() (map[string]any, error) {
+		end, _ := ctx.Deadline()
+		deadline, err := sharedDeadline(time.Until(end))
+		if err != nil {
+			return nil, err
+		}
+		args := map[string]any{"query": prompt, "top_k": topK, "deadline_ms": deadline.Milliseconds()}
+		if len(only) > 0 {
+			args["brains"] = only
+		}
+		if len(skip) > 0 {
+			args["skip_brains"] = skip
+		}
+		return args, nil
 	}
 	text, err := callTool(ctx, gateway, key, "th_recall", args)
 	if err != nil {
@@ -233,7 +242,7 @@ func listBrains(get func(string) string, stdout, stderr io.Writer) int {
 	gateway, key, err := settings(get)
 	if err == nil {
 		var text string
-		if text, err = callTool(ctx, gateway, key, "th_brains", map[string]any{}); err == nil {
+		if text, err = callTool(ctx, gateway, key, "th_brains", noArgs); err == nil {
 			err = json.Unmarshal([]byte(text), &server)
 		}
 	}
@@ -270,11 +279,15 @@ func (b bearer) RoundTrip(req *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(req)
 }
 
-// callTool calls one tool on the gateway's federated endpoint and returns
-// the text of its answer, or the end of ctx, whichever comes first: on a
-// cancelled call the MCP client still notifies the gateway, for up to 5 s,
-// and the hook does not wait for that.
-func callTool(ctx context.Context, gateway, key, name string, args map[string]any) (string, error) {
+// noArgs is the arguments of a tool that takes none.
+func noArgs() (map[string]any, error) { return map[string]any{}, nil }
+
+// callTool calls one tool on the gateway's federated endpoint, with the
+// arguments that args gives once connected, and returns the text of its
+// answer, or the end of ctx, whichever comes first: on a cancelled call the
+// MCP client still notifies the gateway, for up to 5 s, and the hook does
+// not wait for that.
+func callTool(ctx context.Context, gateway, key, name string, args func() (map[string]any, error)) (string, error) {
 	type answer struct {
 		text string
 		err  error
@@ -292,14 +305,18 @@ func callTool(ctx context.Context, gateway, key, name string, args map[string]an
 	}
 }
 
-func callToolAndWait(ctx context.Context, gateway, key, name string, args map[string]any) (string, error) {
+func callToolAndWait(ctx context.Context, gateway, key, name string, args func() (map[string]any, error)) (string, error) {
 	tr := &mcp.StreamableClientTransport{Endpoint: gateway + "/mcp", HTTPClient: &http.Client{Transport: bearer{key}}, MaxRetries: -1}
 	session, err := mcp.NewClient(&mcp.Implementation{Name: "th-hook", Version: "0"}, nil).Connect(ctx, tr, nil)
 	if err != nil {
 		return "", fmt.Errorf("connect to %s: %w", gateway, err)
 	}
 	defer func() { _ = session.Close() }()
-	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+	arguments, err := args()
+	if err != nil {
+		return "", err
+	}
+	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: arguments})
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", name, err)
 	}

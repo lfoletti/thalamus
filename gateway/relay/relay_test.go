@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -48,6 +49,8 @@ type brain struct {
 	failID            string                    // a knowledge_get id whose call fails
 	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
 	graph             map[string]fakeGraph      // what get_nodes and knowledge_memory_neighbors serve, by the caller's secret
+	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
+	cut               atomic.Bool               // a slow call saw its caller go away
 }
 
 // fakeGraph is one key's part of the graph around one entity.
@@ -96,6 +99,19 @@ func (b *brain) ListTools(ctx context.Context, _ *rpcv1.ListToolsRequest) (*rpcv
 }
 
 func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv1.CallToolResponse, error) {
+	// A slow collection waits before the lock, so the other brains answer.
+	var where struct {
+		Collection string `json:"collection"`
+	}
+	_ = json.Unmarshal([]byte(req.GetArgsJson()), &where)
+	if d := b.slow[where.Collection]; d > 0 && req.GetName() == "knowledge_search" {
+		select {
+		case <-time.After(d):
+		case <-ctx.Done():
+			b.cut.Store(true)
+			return nil, ctx.Err()
+		}
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	bearer := b.seen(ctx)

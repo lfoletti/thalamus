@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -27,6 +29,9 @@ type fakeGateway struct {
 	odd     int  // 1: an answer with no content, 2: an answer that is not text
 	calls   []map[string]any
 	listing []map[string]any // what th_brains answers
+	// slowInit is how long the first request, initialize, waits.
+	slowInit time.Duration
+	requests atomic.Int32
 }
 
 func (g *fakeGateway) start(t *testing.T) string {
@@ -64,6 +69,9 @@ func (g *fakeGateway) start(t *testing.T) string {
 		if r.URL.Path != "/mcp" || r.Header.Get("Authorization") != "Bearer "+g.secret {
 			http.Error(w, "refused", http.StatusUnauthorized)
 			return
+		}
+		if g.requests.Add(1) == 1 {
+			time.Sleep(g.slowInit)
 		}
 		h.ServeHTTP(w, r)
 	}))
