@@ -1,0 +1,8 @@
+.git
+cortexdb/
+bin/
+gateway/bin/
+plugin/bin/th-hook
+extension/node_modules/
+tests/
+docs/

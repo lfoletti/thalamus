@@ -2,7 +2,7 @@
 
 # Thalamus
 
-[![CI](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml) [![Licence: MIT](https://img.shields.io/github/license/lfoletti/thalamus)](LICENSE)
+[![CI](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/lfoletti/thalamus)](https://github.com/lfoletti/thalamus/releases) [![Licence: MIT](https://img.shields.io/github/license/lfoletti/thalamus)](LICENSE)
 
 Thalamus brings the knowledge of an organisation to each user and to their coding agent within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
 
@@ -108,6 +108,30 @@ The Thalamus plugin for Claude Code adds a hook to the tools of the gateway. At 
 - Each person chooses the brains of the automatic recall, local and shared, with `/th-recall` (`on`, `off`, `only`). The choice does not change the rights.
 
 Other assistants use the same tools through MCP. The automatic recall needs a hook in the assistant. Thalamus has one for Claude Code.
+
+## Install
+
+Each release has these files:
+
+- `thalamus_<version>_<os>_<arch>.tar.gz`: the binaries `th-gateway` and `th-hook`, for macOS and Linux, amd64 and arm64.
+- `thalamus-plugin_<version>_<os>_<arch>.tar.gz`: the Claude Code plugin, with `th-hook` in `bin/`. Start Claude Code with `claude --plugin-dir thalamus-plugin`.
+- `thalamus-extension_<version>.zip`: the Chrome extension. Unzip it, open `chrome://extensions`, turn on the developer mode, then click **Load unpacked**.
+- `checksums.txt`: the SHA-256 of each file.
+
+With Go, install the binaries from the source:
+
+```sh
+go install github.com/lfoletti/thalamus/gateway/cmd/th-gateway@latest
+go install github.com/lfoletti/thalamus/gateway/cmd/th-hook@latest
+```
+
+The gateway is also an image. Put `rights.yaml` and the key files in one directory, then mount it in `/etc/thalamus`:
+
+```sh
+docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus:latest
+```
+
+The audit file is in `/var/lib/thalamus`. Mount a volume there to keep it. The gateway needs a CortexDB gRPC server for each brain (see [Try it](#try-it)).
 
 ## Try it
 
