@@ -196,6 +196,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 		})
 	s.addWriteTools(srv, user)
 	s.addPyramidTools(srv, user)
+	s.addEntityTools(srv, user)
 	return srv
 }
 
@@ -215,22 +216,10 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if args.Syntheses != nil {
 		syntheses = *args.Syntheses
 	}
-	grants := s.rights().BrainsOf(user)
-	if len(args.Brains) > 0 {
-		readable := map[string]bool{}
-		for _, g := range grants {
-			readable[g.Brain] = true
-		}
-		var kept []rights.Grant
-		for _, name := range args.Brains {
-			if !readable[name] {
-				return recallResult{}, fmt.Errorf("th_recall: %s is not a brain %s may read", name, user)
-			}
-			kept = append(kept, rights.Grant{Brain: name})
-		}
-		grants = kept
+	grants, err := s.grantsFor(user, args.Brains, args.Skip, "th_recall")
+	if err != nil {
+		return recallResult{}, err
 	}
-	grants = without(grants, args.Skip)
 
 	var (
 		mu     sync.Mutex
@@ -298,6 +287,28 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	s.note(entry)
 	results := append(fuse(slices.Concat(synths...), syntheses, "synthesis"), fuse(slices.Concat(lists...), args.TopK, "")...)
 	return recallResult{Results: results, Skipped: skips}, nil
+}
+
+// grantsFor chooses the brains a federated tool asks: every brain the
+// caller may read, or only those named in brains, less those in skip. A
+// named brain the caller may not read is refused.
+func (s *Server) grantsFor(user string, brains, skip []string, tool string) ([]rights.Grant, error) {
+	grants := s.rights().BrainsOf(user)
+	if len(brains) > 0 {
+		readable := map[string]bool{}
+		for _, g := range grants {
+			readable[g.Brain] = true
+		}
+		var kept []rights.Grant
+		for _, name := range brains {
+			if !readable[name] {
+				return nil, fmt.Errorf("%s: %s is not a brain %s may read", tool, name, user)
+			}
+			kept = append(kept, rights.Grant{Brain: name})
+		}
+		grants = kept
+	}
+	return without(grants, skip), nil
 }
 
 // without leaves out of grants the brains named in skip.
