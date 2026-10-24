@@ -3,7 +3,7 @@ module github.com/lfoletti/thalamus/gateway
 go 1.26.5
 
 require (
-	github.com/liliang-cn/cortexdb/v2 v2.138.0
+	github.com/liliang-cn/cortexdb/v2 v2.139.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v3 v3.0.1
