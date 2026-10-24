@@ -1,0 +1,14 @@
+{
+  "name": "thalamus",
+  "owner": {
+    "name": "Lauro Foletti",
+    "url": "https://github.com/lfoletti/thalamus"
+  },
+  "plugins": [
+    {
+      "name": "thalamus",
+      "source": "./plugin",
+      "description": "Recall from the shared brains behind the Thalamus gateway, and the gateway's MCP tools."
+    }
+  ]
+}
