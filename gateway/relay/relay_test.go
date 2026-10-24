@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -45,6 +46,7 @@ type brain struct {
 	denyTool          string                    // one tool the brain refuses to the key (PermissionDenied)
 	docs              map[string]map[string]any // what knowledge_get serves by id, in any collection
 	failID            string                    // a knowledge_get id whose call fails
+	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -52,6 +54,18 @@ type fakeHit struct{ ID, Title, Snippet string }
 type fakeChunk struct{ DocumentID, Content string }
 
 type call struct{ Name, ArgsJson string }
+
+// named is the arguments of the first call to a tool, nil when there is none.
+func (b *brain) named(tool string) map[string]any {
+	for _, c := range b.calls {
+		if c.Name == tool {
+			var args map[string]any
+			_ = json.Unmarshal([]byte(c.ArgsJson), &args)
+			return args
+		}
+	}
+	return nil
+}
 
 func (b *brain) seen(ctx context.Context) string {
 	md, _ := metadata.FromIncomingContext(ctx)
@@ -131,6 +145,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 				out, _ := json.Marshal(map[string]any{"knowledge": map[string]any{"id": x.ID, "title": x.Title, "author": "mdupont", "content": x.Snippet}})
 				return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
 			}
+		}
+		if b.missing {
+			return nil, status.Error(codes.NotFound, "not found")
 		}
 	}
 	if req.GetName() == "knowledge_search" && b.hits != nil {
@@ -590,4 +607,41 @@ func TestARefusedReadIsNamed(t *testing.T) {
 			t.Fatalf("line %d: %+v", i, l)
 		}
 	}
+}
+
+// A brain with curators has its review circuit in the gateway: th_add,
+// th_pending and th_review on /mcp. Its per-brain endpoint would hand the
+// engine's raw tools to a writer's key, which the engine lets accept a
+// proposal, publish without review, replace or delete another author's
+// document (essai du 24.10.2026 sur un cerveau local). It is refused to every
+// key, before the brain is reached; a brain without curators keeps it.
+func TestABrainWithCuratorsIsServedThroughTheFederatedEndpointOnly(t *testing.T) {
+	b := start(t)
+	withCurator(t, b)
+	for _, c := range []struct {
+		user   string
+		access rights.Access
+	}{{"mdupont", rights.Write}, {"kmlead", rights.Curate}} {
+		k, _ := keys.Issue(b.keysFile, c.user, "team/acme", "team-acme", c.access)
+		req, _ := http.NewRequest(http.MethodPost, b.url+"/mcp/team/acme", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`))
+		req.Header.Set("Authorization", "Bearer "+k.Secret)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden || !strings.Contains(string(body), "review circuit") {
+			t.Fatalf("%s: %d %s", c.user, resp.StatusCode, body)
+		}
+	}
+	if len(b.brain.calls) != 0 {
+		t.Fatalf("the brain was reached: %+v", b.brain.calls)
+	}
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/other", "other", rights.Write)
+	s, err := b.session(t, "team/other", k.Secret)
+	if err != nil {
+		t.Fatalf("a brain without curators: %v", err)
+	}
+	_ = s.Close()
 }

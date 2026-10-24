@@ -23,14 +23,14 @@ import (
 // block is cut whole extracts at a time under a margin below that.
 const contextBudget = 9000
 
-const usage = `usage: th-hook recall               (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK, TH_LOCAL_RECALL, TH_LOCAL_BRAINS)
+const usage = `usage: th-hook recall               (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK, TH_RECALL_TIMEOUT, TH_LOCAL_RECALL, TH_LOCAL_BRAINS)
        th-hook brains               (the brains of the automatic recall, on or off)
        th-hook on|off <brain>...    (local brains are local:<name>)
        th-hook only <brain>... | --clear
        th-hook install              (TH_LOCAL_RECALL from the CortexDB binary of this machine)`
 
-// deadline bounds one recall, the gateway and the local brains together.
-var deadline = 8 * time.Second
+// listDeadline bounds th-hook brains, a command typed by the person.
+const listDeadline = 8 * time.Second
 
 type hookInput struct {
 	Prompt string `json:"prompt"`
@@ -132,7 +132,11 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 			locals = append(locals, b)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	timeout, err := recallTimeout(get)
+	if err != nil {
+		problems = append(problems, err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var wg sync.WaitGroup
@@ -148,8 +152,18 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 	}
 	var out recallOut
 	var sharedErr error
+	note := ""
 	if only, skip, ask := choice.shared(); ask {
-		out, sharedErr = askShared(ctx, get, prompt, topK, only, skip)
+		down := downFile(get)
+		if since, recent := downSince(down); recent {
+			note = skippedNote(since)
+			problems = append(problems, errors.New(note))
+		} else {
+			out, sharedErr = askShared(ctx, get, prompt, topK, only, skip)
+			if unreachable(sharedErr) {
+				markDown(down)
+			}
+		}
 	}
 	wg.Wait()
 	for i, err := range errs {
@@ -175,6 +189,9 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 		if p != "" {
 			parts = append(parts, p)
 		}
+	}
+	if note != "" && len(parts) > 0 {
+		parts = append(parts, note)
 	}
 	return strings.Join(parts, "\n\n"), problems
 }
@@ -211,7 +228,7 @@ func listBrains(get func(string) string, stdout, stderr io.Writer) int {
 	var server []struct {
 		Brain string `json:"brain"`
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	ctx, cancel := context.WithTimeout(context.Background(), listDeadline)
 	defer cancel()
 	gateway, key, err := settings(get)
 	if err == nil {
@@ -254,8 +271,28 @@ func (b bearer) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // callTool calls one tool on the gateway's federated endpoint and returns
-// the text of its answer.
+// the text of its answer, or the end of ctx, whichever comes first: on a
+// cancelled call the MCP client still notifies the gateway, for up to 5 s,
+// and the hook does not wait for that.
 func callTool(ctx context.Context, gateway, key, name string, args map[string]any) (string, error) {
+	type answer struct {
+		text string
+		err  error
+	}
+	done := make(chan answer, 1)
+	go func() {
+		text, err := callToolAndWait(ctx, gateway, key, name, args)
+		done <- answer{text, err}
+	}()
+	select {
+	case a := <-done:
+		return a.text, a.err
+	case <-ctx.Done():
+		return "", fmt.Errorf("%s on %s: %w", name, gateway, ctx.Err())
+	}
+}
+
+func callToolAndWait(ctx context.Context, gateway, key, name string, args map[string]any) (string, error) {
 	tr := &mcp.StreamableClientTransport{Endpoint: gateway + "/mcp", HTTPClient: &http.Client{Transport: bearer{key}}, MaxRetries: -1}
 	session, err := mcp.NewClient(&mcp.Implementation{Name: "th-hook", Version: "0"}, nil).Connect(ctx, tr, nil)
 	if err != nil {

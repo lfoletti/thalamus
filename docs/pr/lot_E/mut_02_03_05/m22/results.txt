@@ -1,0 +1,83 @@
+== N10_bad_json_read.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.327s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.392s
+SURVIVED
+== N1_no_rowdata.json
+--- FAIL: TestRowIDsOfReadsEveryDeclaredPath (0.00s)
+--- FAIL: TestEveryArgumentThatNamesARowIsLogged (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.322s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.395s
+FAIL
+KILLED
+== N2_no_memory_ids.json
+--- FAIL: TestRowIDsOfReadsEveryDeclaredPath (0.00s)
+--- FAIL: TestEveryArgumentThatNamesARowIsLogged (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.325s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.389s
+FAIL
+KILLED
+== N3_no_plan_pin.json
+--- FAIL: TestRowIDsOfReadsEveryDeclaredPath (0.00s)
+--- FAIL: TestEveryArgumentThatNamesARowIsLogged (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.332s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.379s
+FAIL
+KILLED
+== N4_record_unfilled.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.324s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.373s
+FAIL
+KILLED
+== N5_heuristic_off_list.json
+--- FAIL: TestRowIDsOfTakesNothingOffTheAllowlist (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.317s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.664s
+FAIL
+KILLED
+== N6_no_guarded_ids.json
+--- FAIL: TestRowIDsOfReadsEveryDeclaredPath (0.00s)
+--- FAIL: TestRowIDsOfTakesNothingOffTheAllowlist (0.00s)
+--- FAIL: TestEveryArgumentThatNamesARowIsLogged (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.316s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.060s
+FAIL
+KILLED
+== N7_no_count_on_line.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.365s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.393s
+FAIL
+KILLED
+== N8_count_paths.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.316s
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver [build failed]
+FAIL
+KILLED
+== N9_empty_entries.json
+--- FAIL: TestRowIDsOfTakesNothingOffTheAllowlist (0.00s)
+--- FAIL: TestEveryArgumentThatNamesARowIsLogged (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.321s
+--- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.382s
+FAIL
+KILLED

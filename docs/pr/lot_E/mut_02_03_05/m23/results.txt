@@ -1,0 +1,126 @@
+== K01_listed_always.json
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.577s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.973s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.723s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGetOverREST (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.272s
+FAIL
+KILLED
+== K02_chunkless_listed.json
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.891s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	1.244s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.430s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.010s
+FAIL
+KILLED
+== K03_absent_silent.json
+--- FAIL: TestKnowledgeGetListsSeveralInTheOrderAsked (0.02s)
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.489s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.905s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.279s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGetOverREST (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.645s
+FAIL
+KILLED
+== K04_order_lost.json
+--- FAIL: TestKnowledgeGetListsSeveralInTheOrderAsked (0.02s)
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.02s)
+--- FAIL: TestKnowledgeGetListServesWhatTheSingleFormServes (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	1.112s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.601s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.312s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.369s
+FAIL
+KILLED
+== K05_read_error_missing.json
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	1.223s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.666s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.511s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.309s
+FAIL
+KILLED
+== K06_no_oneof.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.555s
+--- FAIL: TestTheAllowlistTableNamesEveryToolAndEveryIDField (0.00s)
+--- FAIL: TestKnowledgeGetTakesOneFormFromAConfinedKey (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.635s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.997s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGetOverREST (0.06s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.321s
+FAIL
+KILLED
+== K07_single_wins.json
+--- FAIL: TestKnowledgeGetListsSeveralInTheOrderAsked (0.07s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	1.548s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.324s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.704s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.982s
+FAIL
+KILLED
+== K08_not_classified.json
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.862s
+--- FAIL: TestEveryToolAndEveryArgumentIsClassifiedForConfinedKeys (0.00s)
+--- FAIL: TestKnowledgeGetTakesOneFormFromAConfinedKey (0.00s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.329s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.05s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.233s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGetOverREST (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.859s
+FAIL
+KILLED
+== K09_empty_not_missing.json
+--- FAIL: TestKnowledgeGetListsSeveralInTheOrderAsked (0.02s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.487s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.986s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.742s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	1.359s
+FAIL
+KILLED
+== K10_no_first.json
+--- FAIL: TestKnowledgeGetListsSeveralInTheOrderAsked (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.847s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.322s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.311s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.951s
+FAIL
+KILLED
+== K11_collection_ignored.json
+--- FAIL: TestKnowledgeGetListHidesAnotherCollectionAsMissing (0.04s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/cortexdb	0.882s
+ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.327s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGet (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	1.402s
+--- FAIL: TestAConfinedKeyListsOnlyItsCollectionWithKnowledgeGetOverREST (0.03s)
+FAIL
+FAIL	github.com/liliang-cn/cortexdb/v2/pkg/httpapi	0.971s
+FAIL
+KILLED

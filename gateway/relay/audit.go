@@ -224,8 +224,7 @@ func (a *Audit) flush() error {
 }
 
 // drop rewrites the file without the lines older than days; 0 keeps every
-// line. The file is rewritten in place: the append descriptor writes at the
-// new end, and the drop runs at most once a day.
+// line. It runs at most once a day.
 func (a *Audit) drop(days int) error {
 	if days == 0 {
 		return nil
@@ -238,9 +237,41 @@ func (a *Audit) drop(days int) error {
 	if len(kept) == len(data) {
 		return nil
 	}
-	if err := os.WriteFile(a.path, kept, 0o600); err != nil {
-		return fmt.Errorf("drop old audit lines: %w", err)
+	if err := a.replace(kept); err != nil {
+		return fmt.Errorf("drop old audit lines of %s: %w", a.path, err)
 	}
+	return nil
+}
+
+// syncFile flushes a file to the disk; the tests make it fail.
+var syncFile = (*os.File).Sync
+
+// replace writes data to a temporary file next to the audit, syncs it, and
+// renames it over the audit, so that a stop at any point leaves either the
+// old file or the new one, whole. The temporary file's descriptor, opened
+// for append, becomes the audit's descriptor. On a failure the temporary
+// file goes and the old descriptor stays.
+func (a *Audit) replace(data []byte) error {
+	tmp := a.path + ".tmp"
+	_ = os.Remove(tmp) // left by a stop before the rename
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = syncFile(f)
+	}
+	if err == nil {
+		err = os.Rename(tmp, a.path)
+	}
+	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return err
+	}
+	_ = a.file.Close()
+	a.file = f
 	return nil
 }
 

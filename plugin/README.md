@@ -5,7 +5,7 @@ Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 - le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
 - une commande `/th-add <cerveau> <fichier ou texte>` qui propose un document à la relecture des curateurs ;
 - une commande `/th-recall [brains | on <cerveau> | off <cerveau> | only <cerveau>… | only --clear]` qui choisit les cerveaux du rappel automatique ;
-- un hook `UserPromptSubmit` (`bin/th-recall` → `th-hook recall`) qui injecte dans chaque prompt les 3 meilleurs extraits des cerveaux lisibles, avec leur provenance, et les cerveaux sautés, puis une section par cerveau local ;
+- un hook `UserPromptSubmit` (`bin/th-recall` → `th-hook recall`) qui injecte dans chaque prompt les passages des cerveaux lisibles (10 passages par défaut, `TH_RECALL_TOPK`, et jusqu'à 4 passages de synthèses en tête quand un cerveau a une pyramide), avec leur provenance, et les cerveaux sautés, puis une section par cerveau local ;
 - une compétence (`skills/thalamus`) qui dit à l'agent comment citer la provenance et quand appeler `th_recall`.
 
 ## Installation
@@ -20,9 +20,9 @@ claude --plugin-dir ./plugin
 
 Sans fournisseur d'identité sur le gateway, exporter `TH_GATEWAY` et `TH_KEY` (clé émise par `th-gateway key issue`) à la main.
 
-Variables : `TH_GATEWAY`, `TH_KEY` (le hook les lit aussi dans `~/.thalamus/env`, ou le fichier `TH_ENV` ; l'environnement l'emporte champ par champ), `TH_RECALL_TOPK` (10 morceaux par défaut), `TH_HOOK_BIN` (chemin du binaire, sinon `bin/th-hook` à côté du lanceur). Le serveur MCP (`.mcp.json`) ne lit que l'environnement : d'où le `set -a`.
+Variables : `TH_GATEWAY`, `TH_KEY` (le hook les lit aussi dans `~/.thalamus/env`, ou le fichier `TH_ENV` ; l'environnement l'emporte champ par champ), `TH_RECALL_TOPK` (10 morceaux par défaut), `TH_RECALL_TIMEOUT` (le délai du rappel, gateway et cerveaux locaux ensemble, une durée Go, 1.5s par défaut ; une valeur fausse est dite sur stderr et le défaut s'applique), `TH_HOOK_BIN` (chemin du binaire, sinon `bin/th-hook` à côté du lanceur). Le serveur MCP (`.mcp.json`) ne lit que l'environnement : d'où le `set -a`.
 
-Le hook ne bloque jamais un prompt : sans réglage, sans binaire, gateway injoignable, clé refusée ou aucun résultat, il sort en 0 sans rien injecter. Prompt vide, de moins de 3 mots, ou commande `/…` : rien n'est demandé.
+Le hook ne bloque jamais un prompt : sans réglage, sans binaire, gateway injoignable, clé refusée ou aucun résultat, il sort en 0 sans rien injecter. Un gateway qui ne répond pas (connexion refusée, délai dépassé) est noté dans `gateway-down`, à côté du fichier d'environnement (`~/.thalamus/`, ou le dossier de `TH_ENV`) : pendant 5 minutes le hook ne le rattend pas, les cerveaux locaux restent servis, et le bloc finit par une ligne qui le dit (« Shared brains skipped: … »). Une clé refusée n'est pas notée : le gateway a répondu. Prompt vide, de moins de 3 mots, ou commande `/…` : rien n'est demandé.
 
 ## Cerveaux locaux
 

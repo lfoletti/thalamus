@@ -49,3 +49,7 @@ Rejeu sur CortexDB v2.138.0 (23 octobre 2026, rappel par rareté des mots) : mê
 - Les questions et les variantes sont écrites par le modèle (Claude), pas par des locuteurs. Le texte romanche est la traduction officielle.
 - Un article par document, court : le corpus d'une organisation a des documents plus longs et plus variés.
 - `bge-m3` n'est pas dans `fastembed` ; e5-large est le modèle de la même classe disponible.
+
+## Jeu d'évaluation pour CortexDB
+
+`make_dataset_ch.py` construit le jeu `pkg/eval/testdata/dataset_ch.json` proposé à CortexDB : les 24 articles les plus courts des questions, en de, fr, it et rm (96 documents), et 230 requêtes dans la langue de l'article (question et variantes, titres, titres sans accents, mots composés allemands), plus 6 requêtes négatives. Commande : `python3 -I tests/eval_ch/make_dataset_ch.py . dataset_ch.json`. Le fichier sort identique octet par octet à chaque exécution.
