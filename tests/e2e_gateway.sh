@@ -198,6 +198,23 @@ desc=$(mcp "$LF" "" th_descend '{"brain":"team/acme","knowledge_id":"pyramide/le
 if printf '%s' "$desc" | grep -q 'knowledge_id\\":\\"spec-1' && printf '%s' "$desc" | grep -q 'rollback window is two hours' && ! printf '%s' "$desc" | grep -q isError; then ok "th_descend opens spec-1, the source of the synthesis"; else ko "th_descend" "$desc"; fi
 check "lfoletti: th_descend on org/secrets, which has no pyramid (refused)" denied "$(mcp "$LF" "" th_descend '{"brain":"org/secrets","knowledge_id":"secret-doc"}')"
 
+# Entities across brains. The operator of the server declares Acme in two
+# collections (a confined key may not declare entities). th_entity asks each
+# brain with the caller's key. Through the key of team/acme alone, the
+# neighbor that only secrets states is never served.
+# opmcp <tool> <args-json>: the CortexDB stdio client with the operator key.
+opmcp() {
+  { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"e2e","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+    printf '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"%s","arguments":%s}}\n' "$1" "$2"; sleep 1.5
+  } | CORTEXDB_REMOTE=$ADDR CORTEXDB_GRPC_TOKEN=op-secret "$S/cortexdb-mcp" 2>&1 | grep '"id":2'
+}
+check "operator: Acme and Ledger in team-acme" ok "$(opmcp knowledge_save '{"knowledge_id":"ent-acme","content":"Acme runs the ledger.","collection":"team-acme","entities":[{"name":"Acme","type":"Company"},{"name":"Ledger","type":"System"}],"relations":[{"from":"Acme","to":"Ledger","type":"runs"}]}')"
+check "operator: Acme and Retainer in secrets" ok "$(opmcp knowledge_save '{"knowledge_id":"ent-secret","content":"Acme pays the retainer.","collection":"secrets","entities":[{"name":"Acme","type":"Company"},{"name":"Retainer","type":"Contract"}],"relations":[{"from":"Acme","to":"Retainer","type":"pays"}]}')"
+ent=$(mcp "$LF" "" th_entity '{"entity":"Acme"}')
+if printf '%s' "$ent" | grep -q 'known_in\\":\[\\"org/secrets\\",\\"team/acme\\"\]' && printf '%s' "$ent" | grep -q 'entity:ledger' && printf '%s' "$ent" | grep -q 'entity:retainer' && ! printf '%s' "$ent" | grep -q 'vector\|isError'; then ok "th_entity: lfoletti finds Acme in both brains, with Ledger and Retainer"; else ko "th_entity lfoletti" "$ent"; fi
+ent=$(mcp "$LF" "" th_entity '{"entity":"Acme","brains":["team/acme"]}')
+if printf '%s' "$ent" | grep -q 'known_in\\":\[\\"team/acme\\"\]' && printf '%s' "$ent" | grep -q 'entity:ledger' && ! printf '%s' "$ent" | grep -q 'retainer\|isError'; then ok "th_entity: the key of team/acme serves Acme and Ledger, without Retainer"; else ko "th_entity team/acme" "$ent"; fi
+
 # The REST face, for a browser extension or a script: same keys, same
 # circuit. GET /v1/brains lists, POST /v1/add proposes, refusals by status.
 rest() { # rest <method> <path> <secret> <body>
