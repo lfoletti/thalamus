@@ -417,9 +417,14 @@ func TestRefusalsHappenBeforeTheBrainIsReached(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode != c.want {
 			t.Fatalf("%s: got %d, want %d", c.name, resp.StatusCode, c.want)
+		}
+		// A request without a key is refused before the key file is read.
+		if c.token == "" && !strings.Contains(string(body), "a key issued by the gateway is required") {
+			t.Fatalf("%s: %s", c.name, body)
 		}
 	}
 	if b.brain.bearer != "" || len(b.brain.calls) != 0 {
