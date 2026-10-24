@@ -56,6 +56,13 @@ jobs:
       - name: tests/e2e_gateway.sh
         run: sh tests/e2e_gateway.sh
 
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python tests of tools/
+        run: for t in tools/test_*.py; do python3 -I "$t" || exit 1; done
+
   secrets:
     runs-on: ubuntu-latest
     steps:
