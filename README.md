@@ -208,6 +208,8 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
 
 ## Development
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before a change, and [SECURITY.md](SECURITY.md) to report a defect.
+
 ```sh
 cd gateway && go test -race ./...           # coverage 100 % outside the two main functions
 python3 -I mutate.py                         # one hand mutation per rule, each must fail a test

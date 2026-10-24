@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache-dependency-path: gateway/go.sum
+      - name: gofmt
+        working-directory: gateway
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: go vet
+        working-directory: gateway
+        run: go vet ./...
+      - name: go test -race
+        working-directory: gateway
+        run: go test -race -count=1 ./...
+
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: node --test
+        working-directory: extension
+        run: node --test
+
+  e2e-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache-dependency-path: gateway/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: CortexDB at the version of gateway/go.mod
+        run: |
+          v=$(awk '$1=="github.com/liliang-cn/cortexdb/v2"{print $2}' gateway/go.mod)
+          git clone --depth 1 --branch "$v" https://github.com/liliang-cn/cortexdb.git cortexdb
+      - name: tests/e2e_gateway.sh
+        run: sh tests/e2e_gateway.sh
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
