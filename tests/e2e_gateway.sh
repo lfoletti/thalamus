@@ -125,7 +125,7 @@ check "operator key on /mcp (401)" denied "$(mcp op-secret "" th_brains '{}')"
 # served. A brain with curators is served through /mcp only: its per-brain
 # endpoint would hand the engine's raw tools to a writer's key.
 check "lfoletti: /mcp/team/review refused (403, review circuit)" denied "$(mcp "$LFR" team/review knowledge_search '{"query":"x","collection":"team-review"}')"
-check "kmlead: /mcp/team/review refused too (403)" denied "$(mcp "$KMR" team/review knowledge_get '{"knowledge_id":"x"}')"
+check "kmlead: /mcp/team/review refused too (403)" denied "$(mcp "$KMR" team/review knowledge_search '{"query":"x","collection":"team-review"}')"
 add=$(mcp "$LF" "" th_add '{"brain":"team/review","document_id":"spec-3","title":"Spec 3","content":"The cutover rehearsal is on Thursday evening with the whole team.","source_url":"smb://share/spec3.docx"}')
 if printf '%s' "$add" | grep -q 'spec-3' && ! printf '%s' "$add" | grep -q isError; then ok "th_add proposes spec-3 into team/review"; else ko "th_add" "$add"; fi
 hid=$(mcp "$LF" "" th_recall '{"query":"cutover rehearsal","top_k":5,"brains":["team/review"]}')
