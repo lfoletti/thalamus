@@ -55,6 +55,7 @@ type fakeGraph struct {
 	Known     bool             // get_nodes serves the entity
 	Neighbors []map[string]any // what knowledge_memory_neighbors serves
 	Fail      bool
+	Deny      bool // the brain refuses the key (PermissionDenied)
 }
 
 type fakeHit struct{ ID, Title, Snippet string }
@@ -124,6 +125,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	if g, ok := b.graph[strings.TrimPrefix(bearer, "Bearer ")]; ok && (req.GetName() == "get_nodes" || req.GetName() == "knowledge_memory_neighbors") {
 		if g.Fail {
 			return nil, errors.New("graph says no")
+		}
+		if g.Deny {
+			return nil, status.Error(codes.PermissionDenied, "not for this key")
 		}
 		var walk struct {
 			EntityName string   `json:"entity_name"`

@@ -1034,3 +1034,25 @@ func TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly(t *testing.T) {
 		t.Fatalf("bad JSON: %+v", res)
 	}
 }
+
+// A brain named twice in brains is searched once, and a brain that refuses
+// the caller's key leaves a named audit line, as any refused read does.
+func TestGcRecallAsksABrainOnceAndAuditsARefusedKey(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	s := b.federated(t, k.Secret)
+	decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "x", "brains": []string{"team/acme", "team/acme"}, "syntheses": 0}))
+	if len(b.brain.calls) != 1 {
+		t.Fatalf("calls: %+v", b.brain.calls)
+	}
+	b.brain.denyTool = "knowledge_search"
+	got := decode[recallOut](t, mustCall(t, s, "th_recall", map[string]any{"query": "x", "brains": []string{"team/acme"}}))
+	if len(got.Skipped) != 1 {
+		t.Fatalf("skipped: %+v", got.Skipped)
+	}
+	lines := b.auditLines(t)
+	l := lines[len(lines)-1]
+	if l["brain"] != "team/acme" || l["tool"] != "th_recall" || l["ok"] != false || !strings.Contains(fmt.Sprint(l["error"]), "not for this key") {
+		t.Fatalf("audit: %+v", lines)
+	}
+}
