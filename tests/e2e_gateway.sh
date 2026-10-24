@@ -123,6 +123,10 @@ rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3}')
 if printf '%s' "$rec" | grep -q 'spec-1' && printf '%s' "$rec" | grep -q '\[team/acme\] Spec migration, spec-1'; then ok "th_recall finds spec-1 in team/acme with its provenance"; else ko "th_recall ledger" "$rec"; fi
 rec=$(mcp "$LF" "" th_recall '{"query":"secret retainer"}')
 if printf '%s' "$rec" | grep -q 'secret-doc' && printf '%s' "$rec" | grep -q '\[org/secrets\]'; then ok "th_recall finds secret-doc in org/secrets with lfoletti's read key"; else ko "th_recall retainer" "$rec"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"deadline_ms":60000}')
+if printf '%s' "$rec" | grep -q 'spec-1' && ! printf '%s' "$rec" | grep -q 'no answer within'; then ok "th_recall with deadline_ms 60000 serves every brain"; else ko "th_recall deadline" "$rec"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","deadline_ms":60001}')
+if printf '%s' "$rec" | grep -q 'deadline_ms must be between 0 (none) and 60000'; then ok "th_recall refuses deadline_ms 60001"; else ko "th_recall deadline bound" "$rec"; fi
 check "operator key on /mcp (401)" denied "$(mcp op-secret "" th_brains '{}')"
 
 # The write circuit, on team/review: a writer proposes, the review gate hides

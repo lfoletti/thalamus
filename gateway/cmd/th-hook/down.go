@@ -15,6 +15,41 @@ import (
 // on one that does not answer.
 const defaultTimeout = 1500 * time.Millisecond
 
+// deadlineMargin is the time the hook keeps, after the deadline it gives
+// th_recall, for the gateway to fuse and send the answers. minDeadline is
+// the shortest deadline worth a call, maxDeadline the longest th_recall
+// accepts.
+const (
+	deadlineMargin = 400 * time.Millisecond
+	minDeadline    = 200 * time.Millisecond
+	maxDeadline    = time.Minute
+)
+
+// sharedDeadline is the deadline the hook gives th_recall from the time
+// left once connected: less deadlineMargin, at most maxDeadline. At the
+// deadline the gateway answers with the brains ready and skips the others.
+// Under minDeadline the answer would come after the hook gives up: it is a
+// tooLate error, and th_recall is not asked.
+func sharedDeadline(left time.Duration) (time.Duration, error) {
+	d := min(left-deadlineMargin, maxDeadline)
+	if d < minDeadline {
+		return 0, tooLate{left}
+	}
+	return d, nil
+}
+
+// tooLate is a connection that left too little time for th_recall. It is a
+// timeout of the network: the hook remembers the gateway as down, because a
+// connection that slow makes each prompt wait without a shared result.
+type tooLate struct{ left time.Duration }
+
+func (e tooLate) Error() string {
+	return fmt.Sprintf("th_recall not asked: %d ms left after the connection, under %d ms", e.left.Milliseconds(), (deadlineMargin + minDeadline).Milliseconds())
+}
+
+func (tooLate) Timeout() bool   { return true }
+func (tooLate) Temporary() bool { return false }
+
 // downFor is how long the hook remembers a gateway that did not answer.
 const downFor = 5 * time.Minute
 

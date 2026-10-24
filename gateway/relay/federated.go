@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
+	"time"
 
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -124,6 +124,64 @@ type recallArgs struct {
 	// Syntheses is how many syntheses of the pyramids to serve first; nil
 	// means defaultSyntheses, 0 none.
 	Syntheses *int `json:"syntheses,omitempty"`
+	// DeadlineMS is how long th_recall waits for the brains, in
+	// milliseconds; 0 means it waits for each one.
+	DeadlineMS int `json:"deadline_ms,omitempty"`
+}
+
+// maxDeadlineMS bounds deadline_ms: a minute.
+const maxDeadlineMS = 60000
+
+// recallDeadline reads deadline_ms: 0 is no deadline, and a value out of
+// 0 to maxDeadlineMS is an error.
+func recallDeadline(ms int) (time.Duration, error) {
+	if ms < 0 || ms > maxDeadlineMS {
+		return 0, fmt.Errorf("th_recall: deadline_ms must be between 0 (none) and %d", maxDeadlineMS)
+	}
+	return time.Duration(ms) * time.Millisecond, nil
+}
+
+// brainAnswer is what one brain of a recall sends: its lists, its skipped
+// lines, and the refusal of its key.
+type brainAnswer struct {
+	i            int
+	name         string
+	mine, theirs []brainHits
+	skips        []skipped
+	refusal      string
+}
+
+// gather reads the answers of n brains, until each one answered or late is
+// closed. Past late, it keeps the answers already sent and waits for no
+// other.
+func gather(answers <-chan brainAnswer, n int, late <-chan struct{}) []brainAnswer {
+	var got []brainAnswer
+	for len(got) < n {
+		select {
+		case a := <-answers:
+			got = append(got, a)
+		case <-late:
+			select {
+			case a := <-answers:
+				got = append(got, a)
+			default:
+				return got
+			}
+		}
+	}
+	return got
+}
+
+// lateBrains is a skipped line for each brain asked that did not answer
+// within the deadline, in the order asked.
+func lateBrains(asked []string, answered map[string]bool, deadline time.Duration) []skipped {
+	var late []skipped
+	for _, n := range asked {
+		if !answered[n] {
+			late = append(late, skipped{Brain: n, Reason: fmt.Sprintf("no answer within %d ms", deadline.Milliseconds())})
+		}
+	}
+	return late
 }
 
 type fused struct {
@@ -182,6 +240,8 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			"syntheses":   map[string]any{"type": "integer", "description": fmt.Sprintf("passages of the brains' pyramids of syntheses to serve first, default %d, 0 for none", defaultSyntheses)},
 			"alternate_queries": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": maxVariants,
 				"description": fmt.Sprintf("the question in other words or other languages of the documents, at most %d; each is searched apart and fused with the query", maxVariants)},
+			"deadline_ms": map[string]any{"type": "integer", "minimum": 0, "maximum": maxDeadlineMS,
+				"description": fmt.Sprintf("how long to wait for the brains, in milliseconds, at most %d; at the deadline the answers received are fused and each brain still asked is skipped; default 0, wait for each brain", maxDeadlineMS)},
 		}, "required": []string{"query"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args recallArgs
@@ -216,28 +276,28 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if args.Syntheses != nil {
 		syntheses = *args.Syntheses
 	}
+	deadline, err := recallDeadline(args.DeadlineMS)
+	if err != nil {
+		return recallResult{}, err
+	}
 	grants, err := s.grantsFor(user, args.Brains, args.Skip, "th_recall")
 	if err != nil {
 		return recallResult{}, err
 	}
 
-	var (
-		mu       sync.Mutex
-		wg       sync.WaitGroup
-		lists    = make([][]brainHits, len(grants))
-		synths   = make([][]brainHits, len(grants))
-		skips    []skipped
-		read     []string
-		brains   []string
-		refusals = map[string]string{}
-	)
+	// Each brain sends its answer on a channel with room for all: a brain
+	// that answers after the deadline writes nothing that is read, and its
+	// call ends with ctx.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	answers := make(chan brainAnswer, len(grants))
+	asked := make([]string, len(grants))
 	for i, g := range grants {
-		wg.Add(1)
+		asked[i] = g.Brain
 		go func(i int, name string) {
-			defer wg.Done()
+			a := brainAnswer{i: i, name: name}
+			defer func() { answers <- a }()
 			b := s.rights().Brains[name]
-			var mine, theirs []brainHits
-			var reasons []string
 			for q, query := range queries {
 				hits, err := s.askBrain(ctx, b, user, name, query, args.TopK, b.Collection)
 				var syn []hit
@@ -251,39 +311,59 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 				}
 				if err != nil {
 					if q == 0 {
-						mu.Lock()
-						skips = append(skips, skipped{Brain: name, Reason: err.Error()})
+						a.skips = []skipped{{Brain: name, Reason: err.Error()}}
 						if denied(err) {
-							refusals[name] = err.Error()
+							a.refusal = err.Error()
 						}
-						mu.Unlock()
 						return
 					}
-					reasons = append(reasons, prefix+err.Error())
+					a.skips = append(a.skips, skipped{Brain: name, Reason: prefix + err.Error()})
 					continue
 				}
 				if synErr != nil {
-					reasons = append(reasons, prefix+"pyramid: "+synErr.Error())
+					a.skips = append(a.skips, skipped{Brain: name, Reason: prefix + "pyramid: " + synErr.Error()})
 				}
-				mine = append(mine, brainHits{Brain: name, Weight: b.Weight(), Hits: hits})
-				theirs = append(theirs, brainHits{Brain: name, Weight: b.Weight(), Hits: syn})
-			}
-			mu.Lock()
-			defer mu.Unlock()
-			for _, r := range reasons {
-				skips = append(skips, skipped{Brain: name, Reason: r})
-			}
-			lists[i], synths[i] = mine, theirs
-			brains = append(brains, name)
-			for _, l := range append(mine, theirs...) {
-				for _, h := range l.Hits {
-					read = append(read, name+":"+h.KnowledgeID)
-				}
+				a.mine = append(a.mine, brainHits{Brain: name, Weight: b.Weight(), Hits: hits})
+				a.theirs = append(a.theirs, brainHits{Brain: name, Weight: b.Weight(), Hits: syn})
 			}
 		}(i, g.Brain)
 	}
-	wg.Wait()
-	sort.Slice(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
+
+	// late is closed at the deadline and stays closed.
+	var late <-chan struct{}
+	if deadline > 0 {
+		lateCtx, stop := context.WithTimeout(context.Background(), deadline)
+		defer stop()
+		late = lateCtx.Done()
+	}
+	var (
+		lists    = make([][]brainHits, len(grants))
+		synths   = make([][]brainHits, len(grants))
+		skips    []skipped
+		read     []string
+		brains   []string
+		refusals = map[string]string{}
+		answered = map[string]bool{}
+	)
+	for _, a := range gather(answers, len(grants), late) {
+		answered[a.name] = true
+		skips = append(skips, a.skips...)
+		if a.refusal != "" {
+			refusals[a.name] = a.refusal
+		}
+		if a.mine == nil {
+			continue
+		}
+		lists[a.i], synths[a.i] = a.mine, a.theirs
+		brains = append(brains, a.name)
+		for _, l := range append(a.mine, a.theirs...) {
+			for _, h := range l.Hits {
+				read = append(read, a.name+":"+h.KnowledgeID)
+			}
+		}
+	}
+	skips = append(skips, lateBrains(asked, answered, deadline)...)
+	sort.SliceStable(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
 	sort.Strings(brains)
 	sort.Strings(read)
 	read = slices.Compact(read)
