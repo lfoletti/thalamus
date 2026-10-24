@@ -140,7 +140,7 @@ The steps start one CortexDB server with two brains, then the gateway, then the 
 1. Clone CortexDB into `cortexdb/`, next to `gateway/`, then build the binaries.
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.138.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.139.0)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -217,12 +217,13 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. These parts go to CortexDB as small pull requests.
 
-- Merged: the allowlist of tools for a confined key (#72 to #74, #78), content hash and duplicate check (#75), expiry dates (#76), review status (#77), and other fixes (#61, #67 to #71, #82, #83). Thalamus uses CortexDB v2.138.0.
-- Proposed, in discussion #86:
+- Merged: the allowlist of tools for a confined key (#72 to #74, #78), content hash and duplicate check (#75), expiry dates (#76), review status (#77), and other fixes (#61, #67 to #71, #82, #83).
+- Merged in v2.139.0, from discussion #86:
   - Keys and signatures: the server reads its key file again when it changes, so a new or revoked key applies without a restart (#87). Each write is signed by the caller's key (#88). A memory is read only when the caller's scope permits it (#89).
-  - Graph tools for a key confined to one collection (#94 to #98). Then Thalamus can merge entities across brains, in addition to passages.
+  - Graph tools for a key confined to one collection (#94 to #98). The next slice of Thalamus uses them to merge entities across brains, in addition to passages.
   - Three tools and an index: the touched ids in the request log (#90), `knowledge_get` on a list of ids (#91), a check of a sentence against its cited sources (#92), and two redundant edge indexes removed (#93).
   - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
+- Thalamus uses CortexDB v2.139.0.
 - Prepared: a tool that lists the documents waiting for review.
 
 ## Principles
