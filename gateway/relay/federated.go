@@ -222,13 +222,14 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	}
 
 	var (
-		mu     sync.Mutex
-		wg     sync.WaitGroup
-		lists  = make([][]brainHits, len(grants))
-		synths = make([][]brainHits, len(grants))
-		skips  []skipped
-		read   []string
-		brains []string
+		mu       sync.Mutex
+		wg       sync.WaitGroup
+		lists    = make([][]brainHits, len(grants))
+		synths   = make([][]brainHits, len(grants))
+		skips    []skipped
+		read     []string
+		brains   []string
+		refusals = map[string]string{}
 	)
 	for i, g := range grants {
 		wg.Add(1)
@@ -252,6 +253,9 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 					if q == 0 {
 						mu.Lock()
 						skips = append(skips, skipped{Brain: name, Reason: err.Error()})
+						if denied(err) {
+							refusals[name] = err.Error()
+						}
 						mu.Unlock()
 						return
 					}
@@ -283,7 +287,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	sort.Strings(brains)
 	sort.Strings(read)
 	read = slices.Compact(read)
-	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read}}
+	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read, "denied": refusals}}
 	s.note(entry)
 	results := append(fuse(slices.Concat(synths...), syntheses, "synthesis"), fuse(slices.Concat(lists...), args.TopK, "")...)
 	return recallResult{Results: results, Skipped: skips}, nil
@@ -291,7 +295,8 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 
 // grantsFor chooses the brains a federated tool asks: every brain the
 // caller may read, or only those named in brains, less those in skip. A
-// named brain the caller may not read is refused.
+// named brain the caller may not read is refused, and a brain named twice
+// is asked once.
 func (s *Server) grantsFor(user string, brains, skip []string, tool string) ([]rights.Grant, error) {
 	grants := s.rights().BrainsOf(user)
 	if len(brains) > 0 {
@@ -304,7 +309,9 @@ func (s *Server) grantsFor(user string, brains, skip []string, tool string) ([]r
 			if !readable[name] {
 				return nil, fmt.Errorf("%s: %s is not a brain %s may read", tool, name, user)
 			}
-			kept = append(kept, rights.Grant{Brain: name})
+			if !slices.ContainsFunc(kept, func(g rights.Grant) bool { return g.Brain == name }) {
+				kept = append(kept, rights.Grant{Brain: name})
+			}
 		}
 		grants = kept
 	}

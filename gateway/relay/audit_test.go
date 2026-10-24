@@ -407,3 +407,22 @@ func TestReadsClassesTheTools(t *testing.T) {
 		}
 	}
 }
+
+// The refusal lines of a federated read come in order of brain, so the
+// audit of one call reads the same each time.
+func TestRefusedLinesComeInOrderOfBrain(t *testing.T) {
+	denied := map[string]string{}
+	for _, b := range []string{"h", "c", "f", "a", "g", "d", "b", "e"} {
+		denied[b] = "no " + b
+	}
+	var got []string
+	for _, l := range refusedLines(Entry{User: "u", Tool: "th_recall", IDs: map[string]any{"denied": denied}}) {
+		if l.Error != "no "+l.Brain || !l.Denied || l.User != "u" || l.Tool != "th_recall" {
+			t.Fatalf("line: %+v", l)
+		}
+		got = append(got, l.Brain)
+	}
+	if strings.Join(got, "") != "abcdefgh" {
+		t.Fatalf("order: %v", got)
+	}
+}

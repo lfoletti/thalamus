@@ -228,3 +228,80 @@ func TestFuseNeighborsNamesABrainOnce(t *testing.T) {
 		t.Fatalf("known %v, out %+v", known, out)
 	}
 }
+
+// A neighbor is an entity: the chunk and document nodes the walk reaches
+// from an entity (the passages that mention it) are left out, so their
+// text is never served as a name, and the audit names entities only.
+func TestThEntityServesEntitiesOnly(t *testing.T) {
+	b, acme, other := entityBench(t, func(y string) string { return y })
+	b.brain.graph[other] = fakeGraph{Known: true, Neighbors: []map[string]any{
+		{"id": "chunk:spec-1:000", "content": "Acme migrates the ledger on Sunday night."},
+		{"id": "doc:spec-1", "content": "spec-1"},
+		{"id": "entity:bob", "content": "Bob"},
+	}}
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/other"}}))
+	if len(got.Neighbors) != 1 || got.Neighbors[0].ID != "entity:bob" {
+		t.Fatalf("neighbors: %+v", got.Neighbors)
+	}
+	ids, _ := b.auditLines(t)[0]["ids"].(map[string]any)
+	if fmt.Sprint(ids["knowledge_ids"]) != "[team/other:entity:bob]" {
+		t.Fatalf("audit: %+v", ids)
+	}
+}
+
+// limit is at most 100: each brain walks up to limit nodes.
+func TestThEntityBoundsTheLimit(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	s := b.federated(t, acme)
+	res := mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "limit": 101})
+	if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "limit is at most 100") {
+		t.Fatalf("limit: %+v", res.Content)
+	}
+	decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "limit": 100}))
+}
+
+// A brain named twice in brains is asked once.
+func TestThEntityAsksABrainNamedTwiceOnce(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme", "team/acme"}}))
+	if fmt.Sprint(got.KnownIn) != "[team/acme]" || len(b.brain.calls) != 2 {
+		t.Fatalf("known_in %v, calls %+v", got.KnownIn, b.brain.calls)
+	}
+}
+
+// A brain that refuses the caller's key is skipped, and the audit names
+// the refusal, brain by brain, as for any refused read: next to the named
+// line of the brains that answered, or alone.
+func TestThEntityAuditsABrainThatRefusedTheKey(t *testing.T) {
+	b0, acme0, other0 := entityBench(t, func(y string) string { return y })
+	g := b0.brain.graph[other0]
+	g.Deny = true
+	b0.brain.graph[other0] = g
+	decode[entityOut](t, mustCall(t, b0.federated(t, acme0), "th_entity", map[string]any{"entity": "Acme"}))
+	l0 := b0.auditLines(t)
+	if len(l0) != 2 || l0[0]["brain"] != "" || l0[0]["ok"] != true || l0[1]["brain"] != "team/other" || l0[1]["ok"] != false {
+		t.Fatalf("audit: %+v", l0)
+	}
+	if ids, _ := l0[0]["ids"].(map[string]any); ids["denied"] != nil || fmt.Sprint(ids["brains"]) != "[team/acme]" {
+		t.Fatalf("named line: %+v", l0[0])
+	}
+
+	b, acme, _ := entityBench(t, func(y string) string {
+		return strings.Replace(y, "    weight: 0.5\n    audit_reads: true\n", "    weight: 0.5\n", 1)
+	})
+	b.brain.denyTool = "knowledge_memory_neighbors"
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme"}))
+	if len(got.Skipped) != 2 {
+		t.Fatalf("skipped: %+v", got.Skipped)
+	}
+	var lines []string
+	for _, l := range b.auditLines(t) {
+		lines = append(lines, fmt.Sprint(l["brain"], " ", l["tool"], " ", l["ok"], " ", strings.Contains(fmt.Sprint(l["error"]), "not for this key")))
+	}
+	if strings.Join(lines, ";") != "team/acme th_entity false true;team/other th_entity false true" {
+		t.Fatalf("audit: %v", lines)
+	}
+}

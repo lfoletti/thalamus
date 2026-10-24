@@ -21,11 +21,12 @@ import (
 // the nodes and edges of the key's collections.
 
 // defaultEntityLimit is how many neighbors th_entity asks of each brain;
-// maxEntityDepth bounds the walk, because each hop multiplies what every
-// brain walks.
+// maxEntityDepth and maxEntityLimit bound the walk, because each hop and
+// each node multiply what every brain walks.
 const (
 	defaultEntityLimit = 20
 	maxEntityDepth     = 3
+	maxEntityLimit     = 100
 )
 
 type entityArgs struct {
@@ -67,7 +68,9 @@ type entityResult struct {
 	Skipped   []skipped  `json:"skipped,omitempty"`
 }
 
-// fuseNeighbors merges the brains' answers by node id. A neighbor names
+// fuseNeighbors merges the brains' answers by node id. A neighbor is an
+// entity: the chunk and document nodes that mention one are left out, so a
+// passage is never served as a name. A neighbor names
 // every brain that serves it, and the neighbors that more brains serve come
 // first, then by id. A type one brain serves is kept.
 func fuseNeighbors(graphs []brainGraph) (known []string, out []neighbor) {
@@ -78,6 +81,9 @@ func fuseNeighbors(graphs []brainGraph) (known []string, out []neighbor) {
 			known = append(known, g.Brain)
 		}
 		for _, n := range g.Neighbors {
+			if !strings.HasPrefix(n.ID, "entity:") {
+				continue
+			}
 			i, seen := at[n.ID]
 			if !seen {
 				i = len(out)
@@ -146,6 +152,9 @@ func (s *Server) entity(ctx context.Context, user string, args entityArgs) (enti
 	if args.MaxDepth <= 0 {
 		args.MaxDepth = 1
 	}
+	if args.Limit > maxEntityLimit {
+		return entityResult{}, fmt.Errorf("th_entity: limit is at most %d", maxEntityLimit)
+	}
 	if args.Limit <= 0 {
 		args.Limit = defaultEntityLimit
 	}
@@ -154,12 +163,13 @@ func (s *Server) entity(ctx context.Context, user string, args entityArgs) (enti
 		return entityResult{}, err
 	}
 	var (
-		mu     sync.Mutex
-		wg     sync.WaitGroup
-		graphs = make([]brainGraph, len(grants))
-		out    = entityResult{Entity: args.Entity}
-		brains []string
-		read   []string
+		mu       sync.Mutex
+		wg       sync.WaitGroup
+		graphs   = make([]brainGraph, len(grants))
+		out      = entityResult{Entity: args.Entity}
+		brains   []string
+		read     []string
+		refusals = map[string]string{}
 	)
 	for i, g := range grants {
 		wg.Add(1)
@@ -170,21 +180,26 @@ func (s *Server) entity(ctx context.Context, user string, args entityArgs) (enti
 			defer mu.Unlock()
 			if err != nil {
 				out.Skipped = append(out.Skipped, skipped{Brain: name, Reason: err.Error()})
+				if denied(err) {
+					refusals[name] = err.Error()
+				}
 				return
 			}
 			out.NodeID, graphs[i] = id, graph
 			brains = append(brains, name)
-			for _, n := range graph.Neighbors {
-				read = append(read, name+":"+n.ID)
-			}
 		}(i, g.Brain)
 	}
 	wg.Wait()
 	sort.Slice(out.Skipped, func(i, j int) bool { return out.Skipped[i].Brain < out.Skipped[j].Brain })
 	sort.Strings(brains)
-	sort.Strings(read)
 	out.KnownIn, out.Neighbors = fuseNeighbors(graphs)
-	s.note(Entry{User: user, Tool: "th_entity", OK: true, IDs: map[string]any{"entity": args.Entity, "brains": brains, "knowledge_ids": slices.Compact(read)}})
+	for _, n := range out.Neighbors {
+		for _, b := range n.Brains {
+			read = append(read, b+":"+n.ID)
+		}
+	}
+	sort.Strings(read)
+	s.note(Entry{User: user, Tool: "th_entity", OK: true, IDs: map[string]any{"entity": args.Entity, "brains": brains, "knowledge_ids": read, "denied": refusals}})
 	return out, nil
 }
 
@@ -195,7 +210,7 @@ func (s *Server) addEntityTools(srv *mcp.Server, user string) {
 			"brains":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"skip_brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"max_depth":   map[string]any{"type": "integer", "description": fmt.Sprintf("hops of the walk, default 1, at most %d", maxEntityDepth)},
-			"limit":       map[string]any{"type": "integer", "description": fmt.Sprintf("neighbors asked of each brain, default %d", defaultEntityLimit)},
+			"limit":       map[string]any{"type": "integer", "description": fmt.Sprintf("nodes each brain walks, default %d, at most %d", defaultEntityLimit, maxEntityLimit)},
 		}, "required": []string{"entity"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args entityArgs
