@@ -192,11 +192,12 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. These parts go to CortexDB as small pull requests.
 
 - Merged: the allowlist of tools for a confined key (#72 to #74, #78), content hash and duplicate check (#75), expiry dates (#76), review status (#77), and other fixes (#61, #67 to #71, #82, #83). Thalamus uses CortexDB v2.138.0.
-- Prepared: the server reads its key file again when it changes. Then a new or revoked key applies without a restart (`docs/upstream/01-key-file-reload.md`).
-- Prepared: graph tools for a key confined to one collection. Then Thalamus can merge entities across brains, in addition to text extracts (`docs/upstream/06-graph-tools-confined.md`).
-- Prepared, smaller: a tool that lists the documents waiting for review, the touched ids in the server's request log, and the author of a document taken from the caller's key.
-
-The prepared proposals go to CortexDB one at a time, when Thalamus needs them.
+- Proposed, in discussion #86:
+  - Keys and signatures: the server reads its key file again when it changes, so a new or revoked key applies without a restart (#87). Each write is signed by the caller's key (#88). A memory is read only when the caller's scope permits it (#89).
+  - Graph tools for a key confined to one collection (#94 to #98). Then Thalamus can merge entities across brains, in addition to passages.
+  - Three tools and an index: the touched ids in the request log (#90), `knowledge_get` on a list of ids (#91), a check of a sentence against its cited sources (#92), and two redundant edge indexes removed (#93).
+  - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
+- Prepared: a tool that lists the documents waiting for review.
 
 ## Principles
 
