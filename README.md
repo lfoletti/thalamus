@@ -2,6 +2,8 @@
 
 # Thalamus
 
+[![CI](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml) [![Licence: MIT](https://img.shields.io/github/license/lfoletti/thalamus)](LICENSE)
+
 Thalamus brings the knowledge of an organisation to each user and to their coding agent within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).
 
 > **Work in progress.** The interfaces change between versions. A short French summary is at the end.
@@ -208,7 +210,7 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
 
 ## Development
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before a change, and [SECURITY.md](SECURITY.md) to report a defect.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before a change, [SECURITY.md](SECURITY.md) to report a defect, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ```sh
 cd gateway && go test -race ./...           # coverage 100 % outside the two main functions
