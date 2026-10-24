@@ -1,0 +1,16 @@
+name: Feature request
+description: A need that Thalamus does not cover yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: The need
+      description: Who needs what, and in which situation. Describe the need before a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: A possible solution
+      description: Optional. Say if the mechanism serves every CortexDB user, because then it belongs in CortexDB.

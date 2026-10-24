@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security defect
+    url: https://github.com/lfoletti/thalamus/security/advisories/new
+    about: Report a security defect privately. Do not open a public issue.
