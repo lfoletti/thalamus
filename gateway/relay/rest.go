@@ -68,6 +68,8 @@ func restResult(w http.ResponseWriter, res *mcp.CallToolResult) {
 		status = http.StatusForbidden
 	case strings.Contains(text, "is required"), strings.Contains(text, "must be"):
 		status = http.StatusBadRequest
+	case strings.Contains(text, "belongs to"):
+		status = http.StatusConflict
 	}
 	restError(w, status, errors.New(text))
 }

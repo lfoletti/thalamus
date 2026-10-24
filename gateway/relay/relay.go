@@ -88,6 +88,11 @@ func (s *Server) admit(r *http.Request) (*mcp.Server, int, error) {
 	if !ok || name == r.URL.Path {
 		return nil, http.StatusNotFound, fmt.Errorf("unknown brain %q", name)
 	}
+	if len(brain.Curators) > 0 {
+		// The review circuit lives in the gateway; the engine's raw tools
+		// would let a writer's key accept, publish, replace or delete.
+		return nil, http.StatusForbidden, fmt.Errorf("brain %s has a review circuit: it is served through /mcp only", name)
+	}
 	secret, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !found || secret == "" {
 		return nil, http.StatusUnauthorized, fmt.Errorf("a key issued by the gateway is required")

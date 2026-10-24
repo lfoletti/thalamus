@@ -28,6 +28,11 @@ brains:
     pyramid: {collection: acme-pyramid, sources: preuves}
     readers: [group:acme]
     writers: [user:lfoletti]
+  team/review:
+    addr: $ADDR
+    keys_file: $S/data/keys.json
+    collection: team-review
+    writers: [user:lfoletti]
     curators: [user:kmlead]
   org/secrets:
     addr: $ADDR
@@ -60,7 +65,8 @@ LF=$("$GW" key issue "$S/data/rights.yaml" lfoletti team/acme) || ko "issue lfol
 LFS=$("$GW" key issue "$S/data/rights.yaml" lfoletti org/secrets) || ko "issue lfoletti on secrets" "$LFS"
 MD=$("$GW" key issue "$S/data/rights.yaml" mdupont team/acme) || ko "issue mdupont" "$MD"
 KM=$("$GW" key issue "$S/data/rights.yaml" kmlead org/secrets) || ko "issue kmlead" "$KM"
-KMA=$("$GW" key issue "$S/data/rights.yaml" kmlead team/acme) || ko "issue kmlead on team/acme" "$KMA"
+LFR=$("$GW" key issue "$S/data/rights.yaml" lfoletti team/review) || ko "issue lfoletti on team/review" "$LFR"
+KMR=$("$GW" key issue "$S/data/rights.yaml" kmlead team/review) || ko "issue kmlead on team/review" "$KMR"
 if "$GW" key issue "$S/data/rights.yaml" mdupont org/secrets >/dev/null 2>&1; then ko "mdupont on secrets issued" ""; else ok "mdupont has no key on org/secrets"; fi
 kill $SERVER; wait $SERVER 2>/dev/null
 CORTEXDB_REVIEW_GATE=1 "$GRPC" -db "$S/data/brain.db" -addr "$ADDR" -keys "$S/data/keys.json" > "$S/data/server.log" 2>&1 &
@@ -114,22 +120,32 @@ rec=$(mcp "$LF" "" th_recall '{"query":"secret retainer"}')
 if printf '%s' "$rec" | grep -q 'secret-doc' && printf '%s' "$rec" | grep -q '\[org/secrets\]'; then ok "th_recall finds secret-doc in org/secrets with lfoletti's read key"; else ko "th_recall retainer" "$rec"; fi
 check "operator key on /mcp (401)" denied "$(mcp op-secret "" th_brains '{}')"
 
-# The write circuit: a writer proposes, the review gate hides the document,
-# the curator lists what waits and accepts, the document is served.
-add=$(mcp "$LF" "" th_add '{"brain":"team/acme","document_id":"spec-3","title":"Spec 3","content":"The cutover rehearsal is on Thursday evening with the whole team.","source_url":"smb://share/spec3.docx"}')
-if printf '%s' "$add" | grep -q 'spec-3' && ! printf '%s' "$add" | grep -q isError; then ok "th_add proposes spec-3 into team/acme"; else ko "th_add" "$add"; fi
-hid=$(mcp "$LF" team/acme knowledge_search '{"query":"cutover rehearsal","collection":"team-acme","top_k":5}')
+# The write circuit, on team/review: a writer proposes, the review gate hides
+# the document, the curator lists what waits and accepts, the document is
+# served. A brain with curators is served through /mcp only: its per-brain
+# endpoint would hand the engine's raw tools to a writer's key.
+check "lfoletti: /mcp/team/review refused (403, review circuit)" denied "$(mcp "$LFR" team/review knowledge_search '{"query":"x","collection":"team-review"}')"
+check "kmlead: /mcp/team/review refused too (403)" denied "$(mcp "$KMR" team/review knowledge_get '{"knowledge_id":"x"}')"
+add=$(mcp "$LF" "" th_add '{"brain":"team/review","document_id":"spec-3","title":"Spec 3","content":"The cutover rehearsal is on Thursday evening with the whole team.","source_url":"smb://share/spec3.docx"}')
+if printf '%s' "$add" | grep -q 'spec-3' && ! printf '%s' "$add" | grep -q isError; then ok "th_add proposes spec-3 into team/review"; else ko "th_add" "$add"; fi
+hid=$(mcp "$LF" "" th_recall '{"query":"cutover rehearsal","top_k":5,"brains":["team/review"]}')
 if printf '%s' "$hid" | grep -q 'spec-3'; then ko "proposed spec-3 served before review" "$hid"; else ok "proposed spec-3 is hidden until review"; fi
 check "mdupont (reader): th_add refused" denied "$(mcp "$MD" "" th_add '{"brain":"team/acme","content":"x"}')"
-pend=$(mcp "$KMA" "" th_pending '{"brain":"team/acme"}')
+pend=$(mcp "$KMR" "" th_pending '{"brain":"team/review"}')
 printf '%s' "$pend" | grep -q 'spec-3' && ok "th_pending lists spec-3 for the curator" || ko "th_pending" "$pend"
-check "lfoletti (writer): th_pending refused" denied "$(mcp "$LF" "" th_pending '{"brain":"team/acme"}')"
-rev=$(mcp "$KMA" "" th_review '{"brain":"team/acme","knowledge_id":"spec-3","decision":"accepted"}')
+check "lfoletti (writer): th_pending refused" denied "$(mcp "$LF" "" th_pending '{"brain":"team/review"}')"
+rev=$(mcp "$KMR" "" th_review '{"brain":"team/review","knowledge_id":"spec-3","decision":"accepted"}')
 if printf '%s' "$rev" | grep -q isError; then ko "th_review" "$rev"; else ok "th_review accepts spec-3"; fi
-srv=$(mcp "$LF" team/acme knowledge_search '{"query":"cutover rehearsal","collection":"team-acme","top_k":5}')
+srv=$(mcp "$LF" "" th_recall '{"query":"cutover rehearsal","top_k":5,"brains":["team/review"]}')
 printf '%s' "$srv" | grep -q 'spec-3' && ok "accepted spec-3 is served" || ko "accepted spec-3 missing" "$srv"
-got=$(mcp "$KMA" team/acme knowledge_get '{"knowledge_id":"spec-3"}')
-printf '%s' "$got" | grep -q '_reviewed_by.*th/kmlead/team/acme' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
+got=$(mcp "$KMR" "" th_get '{"brain":"team/review","knowledge_id":"spec-3"}')
+printf '%s' "$got" | grep -q '_reviewed_by.*th/kmlead/team/review' && ok "the engine recorded the curator's key as reviewer" || ko "reviewer" "$got"
+# A writer does not take over a document of another author: the curator's
+# own note is accepted at once, and lfoletti may not propose under its id.
+add=$(mcp "$KMR" "" th_add '{"brain":"team/review","document_id":"note-km","content":"The note of the curator on the cutover."}')
+if printf '%s' "$add" | grep -q isError; then ko "curator th_add" "$add"; else ok "the curator adds note-km"; fi
+add=$(mcp "$LF" "" th_add '{"brain":"team/review","document_id":"note-km","content":"Taken over."}')
+printf '%s' "$add" | grep -q 'belongs to kmlead' && ok "lfoletti may not replace kmlead's note-km" || ko "take over" "$add"
 
 # The client: the plugin's hook asks th_recall with the user's key and
 # hands the extracts to Claude Code; a prompt too short asks nothing.
@@ -164,7 +180,7 @@ check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme 
 # th_get reads a document whole, under the caller's right on the brain.
 get=$(mcp "$LF" "" th_get '{"brain":"team/acme","knowledge_id":"spec-1"}')
 if printf '%s' "$get" | grep -q '"id\\":\\"spec-1' && ! printf '%s' "$get" | grep -q isError; then ok "th_get reads spec-1 whole"; else ko "th_get" "$get"; fi
-check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMA" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
+check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMR" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
 
 # The pyramid of team/acme: a synthesis in its own collection, citing spec-1.
 # The key of team/acme holds both collections; th_recall serves the synthesis
@@ -217,7 +233,7 @@ wait $LOGIN; lcode=$?
 if [ "$lcode" = 0 ] && grep -q 'Signed in as lfoletti' "$S/data/login.out" && grep -q 'Signed in. You can close this window' "$S/data/browser.out"; then ok "th-gateway login signs lfoletti in through the provider"; else ko "login" "$lcode $(cat "$S/data/login.out") $(cat "$S/data/browser.out")"; fi
 [ "$(cat "$S/data/env")" = "TH_GATEWAY=http://$GWADDR
 TH_KEY=$LFS" ] && ok "the env file holds the gateway and the first brain's key, issued before" || ko "env file" "$(cat "$S/data/env")"
-grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
+grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme","team/review"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
 kill $IDP 2>/dev/null; wait $IDP 2>/dev/null
 sed -i '' '/^identity:/,$d' "$S/data/rights.yaml"
 sleep 0.5
@@ -255,9 +271,9 @@ grep -q '"user":"lfoletti","key":"th/lfoletti/org/secrets","brain":"org/secrets"
 grep -q '"user":"lfoletti","key":"th/lfoletti/team/acme","brain":"team/acme","tool":"ingest_document","ids":{"document_id":"spec-1"},"ok":true' "$A" && ok "ingest audited with its id" || ko "ingest audit line" "$(grep ingest_document "$A" | head -1)"
 grep -q '"user":"lfoletti".*"tool":"graph_statistics","ok":false,"error":.*PermissionDenied' "$A" && ok "a read the brain refuses is named, as an error" || ko "graph_statistics audit line" "$(grep graph_statistics "$A")"
 grep -q '"user":"kmlead".*"brain":"org/secrets".*"knowledge_id":"secret-doc"' "$A" && ok "kmlead's save audited on org/secrets" || ko "kmlead audit line" "$(grep kmlead "$A")"
-grep -q '"user":"kmlead".*"brain":"team/acme","tool":"th_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$A" && ok "the review is audited with its decision" || ko "th_review audit line" "$(grep th_review "$A")"
+grep -q '"user":"kmlead".*"brain":"team/review","tool":"th_review","ids":{"decision":"accepted","knowledge_id":"spec-3"},"ok":true' "$A" && ok "the review is audited with its decision" || ko "th_review audit line" "$(grep th_review "$A")"
 sum=$("$GW" audit "$A")
-if printf '%s' "$sum" | grep -q '^  [0-9-]*  team/acme  [0-9]* calls, [0-9]* failed, counted$' && printf '%s' "$sum" | grep -q '^  kmlead  th_review  team/acme  1$' && printf '%s' "$sum" | grep -q 'graph_statistics  .*PermissionDenied'; then ok "th-gateway audit sums up the audit file"; else ko "audit summary" "$sum"; fi
+if printf '%s' "$sum" | grep -q '^  [0-9-]*  team/acme  [0-9]* calls, [0-9]* failed, counted$' && printf '%s' "$sum" | grep -q '^  kmlead  th_review  team/review  1$' && printf '%s' "$sum" | grep -q 'graph_statistics  .*PermissionDenied'; then ok "th-gateway audit sums up the audit file"; else ko "audit summary" "$sum"; fi
 echo
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]
