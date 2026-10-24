@@ -98,7 +98,7 @@ M = [
  ("relay/write.go", "entry.Error = err.Error()\n\t\tentry.Denied = denied(err)\n\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"%s: %w\", tool, err))", "entry.Error = err.Error()\n\t\treturn errResult(fmt.Errorf(\"%s: %w\", tool, err))", "relay", "TestGcAddIsRefusedWithoutAWriteRight", "a failed write is not audited"),
  ("relay/write.go", "entry.Error = err.Error()\n\t\tentry.Denied = denied(err)\n\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"th_pending: %w\", err))", "entry.Error = err.Error()\n\t\treturn errResult(fmt.Errorf(\"th_pending: %w\", err))", "relay", "TestGcPendingAndGcReviewAreForCurators", "a failed listing is not audited"),
  ("relay/federated.go", "if v, set := req[\"collection\"]; set && v == nil {\n\t\tdelete(req, \"collection\")\n\t} else if !set && b.Collection != \"\" {", "if _, set := req[\"collection\"]; !set && b.Collection != \"\" {", "relay", "TestGcPendingAndGcReviewAreForCurators", "knowledge_get gets a collection"),
- ("relay/write.go", "entry.OK = true\n\ts.note(entry)", "entry.OK = true", "relay", "TestGcAddProposesADocumentForReview", "a write is not audited"),
+ ("relay/write.go", "return errResult(fmt.Errorf(\"%s: %w\", tool, err))\n\t}\n\tentry.OK = true\n\ts.note(entry)", "return errResult(fmt.Errorf(\"%s: %w\", tool, err))\n\t}\n\tentry.OK = true", "relay", "TestGcAddProposesADocumentForReview", "a write is not audited"),
  ("relay/federated.go", "} else if !set && b.Collection != \"\" {\n\t\treq[\"collection\"] = b.Collection\n\t}", "}", "relay", "TestGcAddProposesADocumentForReview", "the collection is not sent"),
  # tranche 6 : rechargement de rights.yaml
  ("rights/source.go", "if err == nil && info.ModTime().Equal(s.mtime) && info.Size() == s.size {", "if err == nil {", "rights", "TestASourceReloadsTheFileWhenItChanges", "a changed file is never read again"),
@@ -121,8 +121,8 @@ M = [
  # tranche 8 : th_get, né de l'essai réel du plugin
  ("relay/write.go", "case need == rights.Read && !access.AllowsRead():\n\t\treturn rights.Brain{}, fmt.Errorf(\"%s: %s may not read %s\", tool, user, name)", "case false:", "relay", "TestThGetReadsADocumentWhole", "a user without a read right reads"),
  ("relay/write.go", "if strings.TrimSpace(args.KnowledgeID) == \"\" {\n\t\treturn errResult(errors.New(\"th_get: knowledge_id is required\"))", "if false {\n\t\treturn errResult(errors.New(\"th_get: knowledge_id is required\"))", "relay", "TestThGetReadsADocumentWhole", "an empty id is sent"),
- ("relay/write.go", "req := map[string]any{\"knowledge_id\": args.KnowledgeID, \"collection\": nil}", "req := map[string]any{\"knowledge_id\": args.KnowledgeID}", "relay", "TestThGetReadsADocumentWhole", "th_get sends a collection"),
- ("relay/write.go", "return s.audited(ctx, b, user, args.Brain, \"th_get\", \"knowledge_get\", req, map[string]any{\"knowledge_id\": args.KnowledgeID})", "return s.audited(ctx, b, user, args.Brain, \"th_get\", \"knowledge_get\", req, nil)", "relay", "TestThGetReadsADocumentWhole", "the read id is not audited"),
+ ("relay/write.go", "map[string]any{\"knowledge_id\": args.KnowledgeID, \"collection\": nil}", "map[string]any{\"knowledge_id\": args.KnowledgeID}", "relay", "TestThGetReadsADocumentWhole", "th_get sends a collection"),
+ ("relay/write.go", "ids := map[string]any{\"knowledge_id\": args.KnowledgeID}", "ids := map[string]any(nil)", "relay", "TestThGetReadsADocumentWhole", "the read id is not audited"),
  ("cmd/th-hook/recall.go", "An extract is a cut: read a document whole with th_get {brain, knowledge_id} from its provenance line. ", "", "cmd/th-hook", "TestTheHookInjectsTheExtractsWithTheirProvenance", "the hook does not name th_get"),
  # tranche 9 : extension Chrome (lib.js, node --test)
  ("../extension/lib.js", "(b.access === \"write\" || b.access === \"curate\") && b.key", "(b.access === \"write\" || b.access === \"curate\")", "extension", "writableBrains keeps the brains one may write to, with a key, sorted", "a brain without a key is offered"),
@@ -236,7 +236,7 @@ M = [
  ("relay/audit.go", "return c == codes.PermissionDenied || c == codes.Unauthenticated", "return c == codes.PermissionDenied", "relay", "TestDeniedKnowsTheRefusalsOfAKey", "an unknown key is not a refusal"),
  ("relay/audit.go", "case r.Brains[e.Brain].AuditReads, e.Denied:", "case r.Brains[e.Brain].AuditReads:", "relay", "TestTheAuditNamesWritesAndCountsReads", "a refused read is counted"),
  ("relay/relay.go", "\t\t\tentry.Denied = denied(err)\n", "", "relay", "TestARefusedReadIsNamed", "a refused relayed read is not marked"),
- ("relay/write.go", "\t\tentry.Denied = denied(err)\n\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"%s: %w\", tool, err))", "\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"%s: %w\", tool, err))", "relay", "TestARefusedReadIsNamed", "a refused th_get is not marked"),
+ ("relay/write.go", "entry.Error, entry.Denied = err.Error(), denied(err)", "entry.Error = err.Error()", "relay", "TestARefusedReadIsNamed", "a refused th_get is not marked"),
  ("relay/write.go", "\t\tentry.Denied = denied(err)\n\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"th_pending: %w\", err))", "\t\ts.note(entry)\n\t\treturn errResult(fmt.Errorf(\"th_pending: %w\", err))", "relay", "TestARefusedReadIsNamed", "a refused th_pending is not marked"),
  # tranche 14 : cerveaux locaux et filtres du rappel
  ("relay/federated.go", "grants = without(grants, args.Skip)", "_ = without", "relay", "TestGcRecallLeavesOutTheSkippedBrains", "skip_brains is ignored"),
@@ -434,6 +434,23 @@ M = [
  ('cmd/th-hook/down.go', 'return filepath.Join(get("HOME"), ".thalamus", "gateway-down")', 'return filepath.Join(get("HOME"), "gateway-down")', 'cmd/th-hook', 'TestTheHookRemembersAGatewayThatDidNotAnswer', 'the memory is not in ~/.thalamus'),
  ('cmd/th-hook/down.go', '[]byte(now().UTC().Format(time.RFC3339)+"\\n")', '[]byte("\\n")', 'cmd/th-hook', 'TestTheHookRemembersAGatewayThatDidNotAnswer', 'the failure has no date'),
  ('cmd/th-hook/down.go', 'since.Add(downFor).UTC().Format(clock)', 'since.UTC().Format(clock)', 'cmd/th-hook', 'TestTheHookRemembersAGatewayThatDidNotAnswer', 'the note gives the wrong time to ask again'),
+ # sécurité du circuit de relecture (24.10.2026)
+ ("relay/relay.go", "if len(brain.Curators) > 0 {\n\t\t// The review circuit", "if false {\n\t\t// The review circuit", "relay", "TestABrainWithCuratorsIsServedThroughTheFederatedEndpointOnly", "a curated brain serves its raw tools"),
+ ("relay/write.go", "} else if access != rights.Curate {\n\t\tif err := s.owns(", "} else if false {\n\t\tif err := s.owns(", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "a writer replaces another author's document"),
+ ("relay/write.go", "} else if access != rights.Curate {\n\t\tif err := s.owns(", "} else if true {\n\t\tif err := s.owns(", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "a curator is held to the authorship"),
+ ("relay/write.go", "if got.Knowledge.Author != user {\n\t\towner", "if false {\n\t\towner", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "any author passes"),
+ ("relay/write.go", "if status.Code(err) == codes.NotFound {\n\t\treturn nil\n\t}", "if err != nil {\n\t\treturn nil\n\t}", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "a failed read lets the write through"),
+ ("relay/write.go", "if status.Code(err) == codes.NotFound {\n\t\treturn nil\n\t}", "", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "a free id is refused"),
+ ("relay/write.go", "return fmt.Errorf(\"decode knowledge_get: %w\", err)\n\t}\n\tif got.Knowledge.Author", "return nil\n\t}\n\tif got.Knowledge.Author", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "an unreadable answer lets the write through"),
+ ("relay/write.go", "s.note(Entry{User: user, Brain: args.Brain, Tool: \"th_add\", IDs: map[string]any{\"document_id\": args.DocumentID}, Error: err.Error(), Denied: true})\n", "", "relay", "TestGcAddDoesNotReplaceAnotherAuthorsDocument", "the refusal is not audited"),
+ ("relay/rest.go", "case strings.Contains(text, \"belongs to\"):\n\t\tstatus = http.StatusConflict\n", "", "relay", "TestRestAddsADocument", "a taken id is a 502"),
+ ("relay/write.go", "st != \"\" && st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "false", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "a proposal is served to every reader"),
+ ("relay/write.go", "st != \"\" && st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "st != \"\" && st != \"accepted\" && access != rights.Curate", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "the author may not read their proposal"),
+ ("relay/write.go", "st != \"\" && st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "st != \"\" && st != \"accepted\" && got.Knowledge.Author != user", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "a curator may not read a proposal"),
+ ("relay/write.go", "st != \"\" && st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "st == \"proposed\" && access != rights.Curate && got.Knowledge.Author != user", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "a rejected document is served"),
+ ("relay/write.go", "st != \"\" && st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "st != \"accepted\" && access != rights.Curate && got.Knowledge.Author != user", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "a document without status is hidden"),
+ ("relay/write.go", "entry.Error, entry.Denied = \"document \"+st+\", not accepted\", true\n\t\ts.note(entry)\n", "", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "a hidden read is not audited"),
+ ("relay/write.go", "return errResult(fmt.Errorf(\"th_get: decode knowledge_get: %w\", err))", "return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}", "relay", "TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly", "an unreadable answer is served"),
 ]
 
 bad = 0
