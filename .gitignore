@@ -7,7 +7,7 @@ cortexdb/
 # Binaires
 gateway/bin/
 plugin/bin/th-hook
-extension/node_modules/
+extension/node_modules
 # Caches Python des outils
 __pycache__/
 # Verrou des tâches planifiées de Claude Code
