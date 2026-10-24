@@ -7,7 +7,8 @@
 #      private term (one extended regular expression per line, case ignored,
 #      in .git/info/private-terms, which git does not track);
 #   3. the pushed commits touch gateway/ and gofmt, go vet or go test -race fail;
-#   4. the pushed commits touch extension/ and node --test fails.
+#   4. the pushed commits touch extension/ and node --test fails;
+#   5. the pushed commits touch tools/ and a tools/test_*.py fails.
 # Never bypass it with --no-verify.
 
 zero=0000000000000000000000000000000000000000
@@ -57,5 +58,13 @@ if echo "$touched" | grep -q 'extension/'; then
 		echo "pre-push: the extension tests failed" >&2
 		exit 1
 	}
+fi
+if echo "$touched" | grep -q 'tools/'; then
+	for t in "$root"/tools/test_*.py; do
+		python3 -I "$t" >/dev/null 2>&1 || {
+			echo "pre-push: $t failed" >&2
+			exit 1
+		}
+	done
 fi
 exit 0
