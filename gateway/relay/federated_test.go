@@ -364,14 +364,15 @@ func withCurator(t *testing.T, b *bench) {
 	b.rights.Brains["team/acme"] = acme
 }
 
-// th_add proposes a document into a brain the caller may write: the
-// brain receives ingest_document with the caller's key, in its collection,
+// th_add proposes a document into a brain the caller may write: after
+// reading the id (free here), the brain receives ingest_document with the caller's key, in its collection,
 // with the caller as author and the explicit field review_status proposed,
 // never a metadata key. A curator's own document is accepted at once. The
 // audit line names the document.
 func TestGcAddProposesADocumentForReview(t *testing.T) {
 	b := start(t)
 	withCurator(t, b)
+	b.brain.missing = true
 	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Write)
 	s := b.federated(t, k.Secret)
 	res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "spec-2", "title": "Spec", "content": "The ledger moves on Sunday.", "source_url": "smb://x/spec.docx", "metadata": map[string]any{"classification": "internal"}})
@@ -379,10 +380,10 @@ func TestGcAddProposesADocumentForReview(t *testing.T) {
 		t.Fatalf("th_add: %s", res.Content[0].(*mcp.TextContent).Text)
 	}
 	var args map[string]any
-	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
+	_ = json.Unmarshal([]byte(b.brain.calls[1].ArgsJson), &args)
 	md, _ := args["metadata"].(map[string]any)
-	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-2" || args["title"] != "Spec" || args["author"] != "mdupont" || args["source_url"] != "smb://x/spec.docx" || args["review_status"] != "proposed" || args["reviewed_by"] != nil || md["classification"] != "internal" || len(md) != 1 {
-		t.Fatalf("args: %s", b.brain.calls[0].ArgsJson)
+	if b.brain.calls[1].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-2" || args["title"] != "Spec" || args["author"] != "mdupont" || args["source_url"] != "smb://x/spec.docx" || args["review_status"] != "proposed" || args["reviewed_by"] != nil || md["classification"] != "internal" || len(md) != 1 {
+		t.Fatalf("args: %s", b.brain.calls[1].ArgsJson)
 	}
 	if b.brain.bearers["team-acme"] != "Bearer "+k.Secret {
 		t.Fatalf("bearer %q", b.brain.bearers["team-acme"])
@@ -398,10 +399,10 @@ func TestGcAddProposesADocumentForReview(t *testing.T) {
 	if res := mustCall(t, sc, "th_add", map[string]any{"brain": "team/acme", "content": "A curated note."}); res.IsError {
 		t.Fatalf("curator add: %s", res.Content[0].(*mcp.TextContent).Text)
 	}
-	_ = json.Unmarshal([]byte(b.brain.calls[1].ArgsJson), &args)
+	_ = json.Unmarshal([]byte(b.brain.calls[2].ArgsJson), &args)
 	md, _ = args["metadata"].(map[string]any)
 	if args["review_status"] != "accepted" || args["reviewed_by"] != nil || len(md) != 0 || args["document_id"] == nil || args["document_id"] == "" {
-		t.Fatalf("curator args: %s", b.brain.calls[1].ArgsJson)
+		t.Fatalf("curator args: %s", b.brain.calls[2].ArgsJson)
 	}
 }
 
@@ -921,5 +922,115 @@ func TestThDescendOpensTheSourcesOfASynthesis(t *testing.T) {
 	}
 	if l := b.auditLines(t); l[len(l)-1]["tool"] != "th_descend" || l[len(l)-1]["ok"] != false {
 		t.Fatalf("a failed descent is audited: %+v", l[len(l)-1])
+	}
+}
+
+// th_add replaces a document of the same id. A writer may replace their own
+// document, never another author's: the proposal would take the accepted
+// text out of the brain until a curator reads it, under the writer's name.
+// The gateway reads the document first (knowledge_get, no collection) and
+// refuses before writing; an id the brain does not have is free, and a
+// curator may replace any document. The refusal is audited; a read that
+// fails or does not decode refuses too.
+func TestGcAddDoesNotReplaceAnotherAuthorsDocument(t *testing.T) {
+	b := start(t)
+	withCurator(t, b)
+	b.brain.missing = true
+	b.brain.docs = map[string]map[string]any{
+		"spec-1": {"id": "spec-1", "author": "kmlead", "metadata": map[string]string{"_review_status": "accepted"}},
+		"spec-2": {"id": "spec-2", "author": "mdupont", "metadata": map[string]string{"_review_status": "accepted"}},
+		"spec-3": {"id": "spec-3"},
+	}
+	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Write)
+	s := b.federated(t, k.Secret)
+	for _, id := range []string{"spec-1", "spec-3"} {
+		res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": id, "content": "Taken over."})
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "belongs to") {
+			t.Fatalf("%s: %+v", id, res)
+		}
+	}
+	if b.brain.named("ingest_document") != nil {
+		t.Fatalf("written: %+v", b.brain.calls)
+	}
+	get := b.brain.named("knowledge_get")
+	if _, has := get["collection"]; get["knowledge_id"] != "spec-1" || has {
+		t.Fatalf("get: %+v", get)
+	}
+	if l := b.auditLines(t)[0]; l["tool"] != "th_add" || l["ok"] != false || l["ids"].(map[string]any)["document_id"] != "spec-1" || !strings.Contains(l["error"].(string), "kmlead") {
+		t.Fatalf("audit: %+v", l)
+	}
+	for _, id := range []string{"spec-2", "spec-new"} {
+		b.brain.calls = nil
+		if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": id, "content": "Mine."}); res.IsError {
+			t.Fatalf("%s: %s", id, res.Content[0].(*mcp.TextContent).Text)
+		}
+		if args := b.brain.named("ingest_document"); args["document_id"] != id || args["review_status"] != "proposed" {
+			t.Fatalf("%s: %+v", id, b.brain.calls)
+		}
+	}
+	kc, _ := keys.Issue(b.keysFile, "kmlead", "team/acme", "team-acme", rights.Curate)
+	b.brain.calls = nil
+	if res := mustCall(t, b.federated(t, kc.Secret), "th_add", map[string]any{"brain": "team/acme", "document_id": "spec-2", "content": "Edited."}); res.IsError || len(b.brain.calls) != 1 || b.brain.calls[0].Name != "ingest_document" {
+		t.Fatalf("curator: %+v %+v", res, b.brain.calls)
+	}
+	for _, c := range []struct{ failTool, badTool, want string }{
+		{"knowledge_get", "", "brain says no to knowledge_get"},
+		{"", "knowledge_get", "decode knowledge_get"},
+	} {
+		b.brain.failTool, b.brain.badTool, b.brain.calls = c.failTool, c.badTool, nil
+		res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "spec-2", "content": "Mine."})
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, c.want) || b.brain.named("ingest_document") != nil {
+			t.Fatalf("%+v: %+v", c, res)
+		}
+	}
+}
+
+// th_get serves a document that waits for review, or was rejected, only to
+// its author and to the curators: the review gate keeps it out of the
+// searches, and a reader who knows its id must not read it whole. The
+// reader is told it is not found; the audit keeps the reason.
+func TestThGetServesAProposalToItsAuthorAndTheCuratorsOnly(t *testing.T) {
+	b := start(t)
+	withCurator(t, b)
+	b.brain.docs = map[string]map[string]any{
+		"p-1": {"id": "p-1", "author": "lfoletti", "content": "Draft MARMOT.", "metadata": map[string]string{"_review_status": "proposed"}},
+		"r-1": {"id": "r-1", "author": "lfoletti", "content": "Refused MARMOT.", "metadata": map[string]string{"_review_status": "rejected"}},
+		"a-1": {"id": "a-1", "author": "lfoletti", "content": "Accepted MARMOT.", "metadata": map[string]string{"_review_status": "accepted"}},
+		"n-1": {"id": "n-1", "content": "Loaded MARMOT."},
+	}
+	who := map[string]rights.Access{"mdupont": rights.Write, "lfoletti": rights.Write, "kmlead": rights.Curate}
+	sessions := map[string]*mcp.ClientSession{}
+	for u, a := range who {
+		k, _ := keys.Issue(b.keysFile, u, "team/acme", "team-acme", a)
+		sessions[u] = b.federated(t, k.Secret)
+	}
+	for _, c := range []struct {
+		user, id string
+		served   bool
+	}{
+		{"mdupont", "p-1", false}, {"mdupont", "r-1", false}, {"mdupont", "a-1", true}, {"mdupont", "n-1", true},
+		{"lfoletti", "p-1", true}, {"lfoletti", "r-1", true}, {"kmlead", "p-1", true}, {"kmlead", "r-1", true},
+	} {
+		res := mustCall(t, sessions[c.user], "th_get", map[string]any{"brain": "team/acme", "knowledge_id": c.id})
+		text := res.Content[0].(*mcp.TextContent).Text
+		if c.served != !res.IsError || c.served != strings.Contains(text, "MARMOT") {
+			t.Fatalf("%s %s: %+v", c.user, c.id, res)
+		}
+		if !c.served && !strings.Contains(text, "not found") {
+			t.Fatalf("%s %s: %s", c.user, c.id, text)
+		}
+	}
+	var refused []map[string]any
+	for _, l := range b.auditLines(t) {
+		if l["ok"] == false {
+			refused = append(refused, l)
+		}
+	}
+	if len(refused) != 2 || refused[0]["user"] != "mdupont" || !strings.Contains(refused[0]["error"].(string), "proposed") {
+		t.Fatalf("audit: %+v", refused)
+	}
+	b.brain.badTool = "knowledge_get"
+	if res := mustCall(t, sessions["mdupont"], "th_get", map[string]any{"brain": "team/acme", "knowledge_id": "a-1"}); !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "decode knowledge_get") {
+		t.Fatalf("bad JSON: %+v", res)
 	}
 }

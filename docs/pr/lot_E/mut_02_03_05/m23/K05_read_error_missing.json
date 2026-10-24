@@ -1,0 +1,1 @@
+[{"file": "pkg/cortexdb/knowledge_api.go", "old": "\t\t\tif errors.Is(err, core.ErrNotFound) {\n\t\t\t\tresp.Missing = append(resp.Missing, id)", "new": "\t\t\tif err != nil {\n\t\t\t\tresp.Missing = append(resp.Missing, id)"}]

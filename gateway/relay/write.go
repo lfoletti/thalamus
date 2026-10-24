@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
@@ -145,15 +147,20 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	if err != nil {
 		return errResult(err)
 	}
+	access, _ := s.rights().Access(user, args.Brain)
 	if args.DocumentID == "" {
 		args.DocumentID = user + "-" + time.Now().UTC().Format("20060102T150405.000000000Z")
+	} else if access != rights.Curate {
+		if err := s.owns(ctx, b, user, args.Brain, args.DocumentID); err != nil {
+			s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error(), Denied: true})
+			return errResult(fmt.Errorf("th_add: %w", err))
+		}
 	}
 	md := map[string]string{}
 	for k, v := range args.Metadata {
 		md[k] = v
 	}
 	req := map[string]any{"document_id": args.DocumentID, "content": args.Content, "author": user, "metadata": md}
-	access, _ := s.rights().Access(user, args.Brain)
 	if access == rights.Curate {
 		// The engine names the calling key as reviewer and refuses another
 		// name, so the gateway sends none.
@@ -168,6 +175,36 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 		req["source_url"] = args.SourceURL
 	}
 	return s.audited(ctx, b, user, args.Brain, "th_add", "ingest_document", req, map[string]any{"document_id": args.DocumentID})
+}
+
+// owns checks that a writer who names a document_id does not take over
+// another author's document: th_add replaces the document of that id, and the
+// proposal would take the accepted text out of the brain until review, under
+// the writer's name. An id the brain does not have is free.
+func (s *Server) owns(ctx context.Context, b rights.Brain, user, name, id string) error {
+	result, err := s.callBrain(ctx, b, user, name, "knowledge_get", map[string]any{"knowledge_id": id, "collection": nil})
+	if status.Code(err) == codes.NotFound {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var got struct {
+		Knowledge struct {
+			Author string `json:"author"`
+		} `json:"knowledge"`
+	}
+	if err := json.Unmarshal([]byte(result), &got); err != nil {
+		return fmt.Errorf("decode knowledge_get: %w", err)
+	}
+	if got.Knowledge.Author != user {
+		owner := got.Knowledge.Author
+		if owner == "" {
+			owner = "no author"
+		}
+		return fmt.Errorf("document %q belongs to %s: propose it under another document_id", id, owner)
+	}
+	return nil
 }
 
 // pendingHit is one document that waits for review.
@@ -193,8 +230,39 @@ func (s *Server) get(ctx context.Context, user string, args getArgs) *mcp.CallTo
 	if err != nil {
 		return errResult(err)
 	}
-	req := map[string]any{"knowledge_id": args.KnowledgeID, "collection": nil}
-	return s.audited(ctx, b, user, args.Brain, "th_get", "knowledge_get", req, map[string]any{"knowledge_id": args.KnowledgeID})
+	ids := map[string]any{"knowledge_id": args.KnowledgeID}
+	result, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_get", map[string]any{"knowledge_id": args.KnowledgeID, "collection": nil})
+	entry := Entry{User: user, Brain: args.Brain, Tool: "th_get", IDs: ids}
+	if err != nil {
+		entry.Error, entry.Denied = err.Error(), denied(err)
+		s.note(entry)
+		return errResult(fmt.Errorf("th_get: %w", err))
+	}
+	var got struct {
+		Knowledge struct {
+			Author   string `json:"author"`
+			Metadata struct {
+				ReviewStatus string `json:"_review_status"`
+			} `json:"metadata"`
+		} `json:"knowledge"`
+	}
+	if err := json.Unmarshal([]byte(result), &got); err != nil {
+		entry.Error = err.Error()
+		s.note(entry)
+		return errResult(fmt.Errorf("th_get: decode knowledge_get: %w", err))
+	}
+	// The review gate keeps a proposal, or a rejected document, out of the
+	// searches; read whole by its id, it is served to its author and the
+	// curators only. The others are told it is not found.
+	access, _ := s.rights().Access(user, args.Brain)
+	if st := got.Knowledge.Metadata.ReviewStatus; st != "" && st != "accepted" && access != rights.Curate && got.Knowledge.Author != user {
+		entry.Error, entry.Denied = "document "+st+", not accepted", true
+		s.note(entry)
+		return errResult(fmt.Errorf("th_get: document %q not found in %s", args.KnowledgeID, args.Brain))
+	}
+	entry.OK = true
+	s.note(entry)
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}
 }
 
 func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mcp.CallToolResult {

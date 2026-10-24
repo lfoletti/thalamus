@@ -74,15 +74,17 @@ func TestRestListsTheBrains(t *testing.T) {
 // brain, 502 the brain refused.
 func TestRestAddsADocument(t *testing.T) {
 	b := start(t)
+	b.brain.missing = true
+	b.brain.docs = map[string]map[string]any{"taken": {"id": "taken", "author": "mdupont"}}
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	status, body := b.rest(t, http.MethodPost, "/v1/add", k.Secret, `{"brain":"team/acme","document_id":"spec-9","title":"Spec","content":"The ledger moves on Sunday.","source_url":"smb://x/spec.docx"}`)
 	if status != http.StatusOK || !strings.Contains(body, `"echo"`) {
 		t.Fatalf("%d %s", status, body)
 	}
 	var args map[string]any
-	_ = json.Unmarshal([]byte(b.brain.calls[0].ArgsJson), &args)
-	if b.brain.calls[0].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-9" || args["author"] != "lfoletti" || args["review_status"] != "proposed" {
-		t.Fatalf("args: %s", b.brain.calls[0].ArgsJson)
+	_ = json.Unmarshal([]byte(b.brain.calls[1].ArgsJson), &args)
+	if b.brain.calls[1].Name != "ingest_document" || args["collection"] != "team-acme" || args["document_id"] != "spec-9" || args["author"] != "lfoletti" || args["review_status"] != "proposed" {
+		t.Fatalf("args: %s", b.brain.calls[1].ArgsJson)
 	}
 	if l := b.auditLines(t)[0]; l["tool"] != "th_add" || l["ids"].(map[string]any)["document_id"] != "spec-9" || l["ok"] != true {
 		t.Fatalf("audit: %+v", l)
@@ -97,6 +99,7 @@ func TestRestAddsADocument(t *testing.T) {
 		{k.Secret, `{"brain":"team/acme"}`, http.StatusBadRequest, "content is required"},
 		{km.Secret, `{"brain":"team/acme","content":"x"}`, http.StatusForbidden, "may not write"},
 		{k.Secret, `{"brain":"org/none","content":"x"}`, http.StatusNotFound, "unknown brain"},
+		{k.Secret, `{"brain":"team/acme","document_id":"taken","content":"x"}`, http.StatusConflict, "belongs to mdupont"},
 		{"", `{"brain":"team/acme","content":"x"}`, http.StatusUnauthorized, "required"},
 	} {
 		if status, body := b.rest(t, http.MethodPost, "/v1/add", c.secret, c.body); status != c.status || !strings.Contains(body, c.want) {
@@ -110,7 +113,7 @@ func TestRestAddsADocument(t *testing.T) {
 	if status, body := b.rest(t, http.MethodPost, "/v1/add", k.Secret, `{"brain":"team/acme","content":"x"}`); status != http.StatusBadGateway || !strings.Contains(body, "brain says no") {
 		t.Fatalf("brain failure: %d %s", status, body)
 	}
-	if len(b.brain.calls) != 2 {
+	if len(b.brain.calls) != 4 {
 		t.Fatalf("calls: %d", len(b.brain.calls))
 	}
 }
