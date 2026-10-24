@@ -1,0 +1,3 @@
+# The Swiss bench keeps the Federal Constitution as HTML sources (about 2 MB).
+# They are test data, not code, so the language statistics of GitHub skip them.
+tests/eval_ch/sources/** linguist-vendored
