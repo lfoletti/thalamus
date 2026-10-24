@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thalamus",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Propose the page you read, or your selection, into a shared brain of the organisation, for the curators' review.",
   "icons": {
     "16": "icons/icon16.png",
