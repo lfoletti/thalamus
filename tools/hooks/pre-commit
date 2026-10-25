@@ -1,0 +1,18 @@
+#!/bin/sh
+# pre-commit hook of the Thalamus repository. Installed with the pre-push hook:
+#   git config core.hooksPath tools/hooks
+# (a relative path: it resolves inside every working copy, worktrees included;
+# an absolute path breaks when the folder moves).
+# It refuses a commit on `main`. `main` is protected on GitHub and changes only
+# by a pull request; a local commit on it can only end up in someone else's
+# pull request. Each session works in its own copy on its own branch:
+#   git worktree add -b <branch> ../thalamus_wt/<branch> origin/main
+# Never bypass it with --no-verify.
+
+branch=$(git symbolic-ref --quiet --short HEAD) || exit 0 # detached HEAD: a rebase or a bisect
+if [ "$branch" = "main" ]; then
+	echo "pre-commit: no commit on main; work on a branch in a worktree:" >&2
+	echo "  git worktree add -b <branch> ../thalamus_wt/<branch> origin/main" >&2
+	exit 1
+fi
+exit 0
