@@ -26,4 +26,4 @@ Une clé confinée à une collection ne doit atteindre que la connaissance de ce
 
 ## Références
 
-- PR amont #72, #73, #74 ; branche `gc-10-cortex-query-prefetch` (dossier `docs/pr/lot_D/`).
+- PR amont #72, #73, #74 ; branche `gc-10-cortex-query-prefetch` (dossier `../thalamus_local/docs/pr/lot_D/`).

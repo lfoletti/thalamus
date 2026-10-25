@@ -21,4 +21,4 @@ Rien : ses clés sont confinées par collection, et la liste blanche refuse `ext
 
 ## Après la fusion
 
-Rien à retirer de Thalamus. La fiche existe parce que le trou est connu et documenté dans `docs/pr/` ; le signaler sans correctif serait moins utile qu'une PR de 60 lignes.
+Rien à retirer de Thalamus. La fiche existe parce que le trou est connu et documenté dans `../thalamus_local/docs/pr/` ; le signaler sans correctif serait moins utile qu'une PR de 60 lignes.

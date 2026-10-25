@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "\trule, ok := confinedTools[tool]\n\tif !ok {\n\t\treturn nil\n\t}", "new": "\trule, ok := confinedTools[tool]\n\tif !ok {\n\t\trule = toolRule{ids: []idField{{\"document_id\", idKnowledge}}}\n\t}"}]

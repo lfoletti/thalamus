@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "slices.Contains(r.rewritten(), key)", "new": "slices.Contains(r.rewritten(), strings.ToLower(key))"}]

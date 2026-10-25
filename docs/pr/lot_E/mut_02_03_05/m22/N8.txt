@@ -1,6 +1,0 @@
-ok  	github.com/liliang-cn/cortexdb/v2/pkg/authz	0.418s
---- FAIL: TestTheRecordNamesTheRowsTheCallNames (0.00s)
-FAIL
-FAIL	github.com/liliang-cn/cortexdb/v2/pkg/rpcserver	0.387s
-FAIL
-KILLED

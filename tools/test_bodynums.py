@@ -24,6 +24,13 @@ SETS = {
 '''
 
 
+class Defaults(unittest.TestCase):
+    def test_mutations_default_is_the_local_archive(self):
+        repo = Path(__file__).resolve().parent.parent
+        self.assertEqual(Path(bn.DEFAULT_MUTATIONS),
+                         repo.parent / "thalamus_local/docs/pr/round2/mutate_round2.py")
+
+
 class Words(unittest.TestCase):
     def test_words(self):
         self.assertEqual([bn.words(n) for n in (0, 7, 15, 20, 41, 57, 100, 236)],

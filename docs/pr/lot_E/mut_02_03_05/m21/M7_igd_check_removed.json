@@ -1,1 +1,0 @@
-[{"file": "pkg/rpcserver/ownership.go", "old": "\t\tfor _, k := range cortexdb.WriterKeys() {\n\t\t\tif _, ok := r.GetMetadata()[k]; ok {", "new": "\t\tfor _, k := range []string{} {\n\t\t\tif _, ok := r.GetMetadata()[k]; ok {"}]

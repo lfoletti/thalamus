@@ -1,1 +1,0 @@
-[{"file": "pkg/cortexdb/written_by.go", "old": "\tname := writerOf(ctx)\n\tif name == \"\" {\n\t\treturn\n\t}\n\tmetadata[metadataWrittenBy] = as(name)", "new": "\tname := writerOf(ctx)\n\tmetadata[metadataWrittenBy] = as(name)"}]

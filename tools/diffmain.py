@@ -6,7 +6,7 @@ compare. Cet outil fait la même chose avant la poussée (docs/pipeline_pr.md,
 section 1, niveau 2).
 
 Un scénario est un fichier `*_test.go` posé sous `<scenarios>/<paquet>/`, par
-exemple `docs/pr/lot_C/scenarios/pkg/cortexdb/reingest_scenario_test.go`. Il
+exemple `../thalamus_local/docs/pr/lot_C/scenarios/pkg/cortexdb/reingest_scenario_test.go`. Il
 n'affirme rien : il écrit une ligne `SCENARIO …` par observation avec
 `t.Logf`, et n'utilise que l'API de la base, pour compiler sur les deux arbres.
 
@@ -18,7 +18,7 @@ disent la même chose, 1 s'ils diffèrent, 2 si un arbre ne compile pas.
 
 Usage :
     python3 -I tools/diffmain.py --repo <copie> --base origin/main \
-        --scenarios docs/pr/lot_C/scenarios [--run Scenario]
+        --scenarios ../thalamus_local/docs/pr/lot_C/scenarios [--run Scenario]
 """
 
 from __future__ import annotations

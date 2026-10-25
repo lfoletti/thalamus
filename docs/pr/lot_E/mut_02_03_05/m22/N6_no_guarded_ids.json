@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "\tfor _, id := range r.ids {\n\t\tout = append(out, id.path)", "new": "\tfor _, id := range r.ids[:0] {\n\t\tout = append(out, id.path)"}]

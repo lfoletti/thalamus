@@ -31,4 +31,4 @@ Sur un cerveau partagé, un fait extrait par un modèle ne doit pas être servi 
 ## Références
 
 - PR amont #77 (`gc-06-review-status`), discussion #66 (réponse du 18 octobre 2026 sur l'opt-in).
-- `docs/pr/lot_C/GC-06.body.md`, `docs/pr/lot_C/failing_first.md`.
+- `../thalamus_local/docs/pr/lot_C/GC-06.body.md`, `../thalamus_local/docs/pr/lot_C/failing_first.md`.

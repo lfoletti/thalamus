@@ -20,7 +20,7 @@ Sortie 1 si une phrase ne correspond pas à la mesure, ou si un repère reste.
 
 Usage :
   python3 -I tools/bodynums.py --repo <copie> --base <sha> --sets 77 \\
-      --body docs/pr/round2/GC-06.body.md --body docs/pr/round2/review_replies.md#77 \\
+      --body ../thalamus_local/docs/pr/round2/GC-06.body.md --body ../thalamus_local/docs/pr/round2/review_replies.md#77 \\
       [--pr 77 [--fill]]
 Un --body de la forme <fichier>#<pr> lit seulement la section « ## #<pr> ».
 """
@@ -183,12 +183,16 @@ def fetch_codecov(repo_slug, pr, head):
     return uncovered
 
 
+# Les notes de lot vivent dans l'archive locale, à côté du dépôt.
+DEFAULT_MUTATIONS = str(Path(__file__).resolve().parent.parent.parent / "thalamus_local/docs/pr/round2/mutate_round2.py")
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--repo", required=True)
     ap.add_argument("--base", required=True)
     ap.add_argument("--sets", help="préfixe des jeux de mutations de la PR")
-    ap.add_argument("--mutations", default=str(Path(__file__).resolve().parent.parent / "docs/pr/round2/mutate_round2.py"))
+    ap.add_argument("--mutations", default=DEFAULT_MUTATIONS)
     ap.add_argument("--body", action="append", default=[])
     ap.add_argument("--pr", type=int)
     ap.add_argument("--slug", default="liliang-cn/cortexdb")
