@@ -38,7 +38,7 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 - Le produit final se teste en entier avant toute soumission.
 - **Tests « failing first »** (exigence du propriétaire amont) : chaque test d'une PR échoue sans son code. Vérifier avec les fichiers de test posés sur l'arbre sans le correctif, ou par une mutation de chaque règle si les tests ne compilent pas sans elle. Preuve dans le corps de la PR, section « Failing first ». Méthode et exemple : `docs/pr/lot_B/failing_first.md`.
 - **PR en brouillon d'abord** : une PR s'ouvre en brouillon et passe à la relecture seulement après un rapport Codecov à zéro ligne non couverte sur sa tête (ou les seules lignes de `main` déclarées). Voir le pipeline.
-- Auteur des commits : `git -c user.name="Lauro Foletti" -c user.email="25608942+lfoletti@users.noreply.github.com" commit`, message en style conventional-commit, **sans** ligne `Co-Authored-By` (tous les commits de ce dépôt et des PR amont).
+- Auteur des commits : `git -c user.name="Lauro Foletti" -c user.email="25608942+lfoletti@users.noreply.github.com" commit` (identité GitHub, jamais l'adresse personnelle, ni dans un commit ni dans une PR), message en style conventional-commit, **sans** ligne `Co-Authored-By` (tous les commits de ce dépôt et des PR amont).
 - Dans les textes publics, ne jamais juger CortexDB ni écrire ce qui lui manque. Dire ce que Thalamus ajoute, et décrire une PR amont comme une fonction proposée.
 
 ## Pipeline avant toute PR (procédure complète : `docs/pipeline_pr.md`)
