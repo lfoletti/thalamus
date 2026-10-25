@@ -5,12 +5,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/th-recall",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/th-recall\"",
             "timeout": 10,
             "statusMessage": "Recalling from the shared brains..."
           }
         ]
       }
     ]
-  }
+  },
+  "modules": [
+    "./panel.tsx"
+  ]
 }
