@@ -121,6 +121,8 @@ Each release has these files:
 - `thalamus-extension_<version>.zip`: the Chrome extension. Unzip it, open `chrome://extensions`, turn on the developer mode, then click **Load unpacked**.
 - `checksums.txt`: the SHA-256 of each file.
 
+`th-gateway version` and `th-hook version` print the release of a binary, and `GET /v1/version` on a gateway answers it without a key: a deployment is checked against the release it expects.
+
 With Go, install the binaries from the source:
 
 ```sh
@@ -238,7 +240,6 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
 **Next**
 
 - Entities for the brains filled through `th_add`: the gateway has no extractor yet.
-- A `--version` option for `th-gateway` and `th-hook`.
 - A simple install channel for `th-hook`, and the extension in the Chrome Web Store.
 - A short demonstration in the README.
 

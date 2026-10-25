@@ -6,8 +6,12 @@
 //	th-gateway rights of <rights.yaml> <user>
 //	th-gateway key issue <rights.yaml> <user> <brain>
 //	th-gateway key revoke <rights.yaml> <user> <brain>
+//	th-gateway key list <rights.yaml>
+//	th-gateway key sync <rights.yaml> [--dry-run]
 //	th-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]
 //	th-gateway login <gateway> [--env ~/.thalamus/env] [--no-browser]
+//	th-gateway audit <audit.jsonl> [--since YYYY-MM-DD] [--user login] [--brain brain]
+//	th-gateway version | --version
 package main
 
 import (

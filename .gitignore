@@ -4,7 +4,8 @@ cortexdb/
 .cortexdb/
 # Réglages locaux de session
 .claude/settings.local.json
-# Binaires
+# Binaires (bin/ : le « Try it » du README construit là ; un binaire dans l'arbre rendrait le build « modified »)
+bin/
 gateway/bin/
 plugin/bin/th-hook
 extension/node_modules

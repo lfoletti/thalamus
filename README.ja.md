@@ -121,6 +121,8 @@ Claude Code 用の Thalamus プラグインは、ゲートウェイのツール�
 - `thalamus-extension_<version>.zip`：Chrome 拡張機能。展開し、`chrome://extensions` を開き、デベロッパーモードをオンにしてから、**パッケージ化されていない拡張機能を読み込む**（Load unpacked）をクリックします。
 - `checksums.txt`：各ファイルの SHA-256。
 
+`th-gateway version` と `th-hook version` はバイナリのリリースを表示し、ゲートウェイの `GET /v1/version` は鍵なしでそれを返します。デプロイは期待するリリースと照合して確認します。
+
 Go がある場合は、ソースからバイナリをインストールします。
 
 ```sh
@@ -238,7 +240,6 @@ Thalamus は、すべての CortexDB ユーザーに役立つ仕組みについ�
 **次の予定**
 
 - `th_add` で内容を追加したブレインのエンティティ：ゲートウェイにはまだ抽出器がありません。
-- `th-gateway` と `th-hook` の `--version` オプション。
 - `th-hook` の簡単なインストール手段と、Chrome ウェブストアでの拡張機能の公開。
 - README での短いデモ。
 

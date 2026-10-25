@@ -121,6 +121,8 @@ Claude Code 的 Thalamus 插件在网关的工具之外增加了一个钩子。�
 - `thalamus-extension_<version>.zip`：Chrome 扩展。解压后打开 `chrome://extensions`，开启开发者模式，然后点击 **Load unpacked**（加载已解压的扩展程序）。
 - `checksums.txt`：每个文件的 SHA-256。
 
+`th-gateway version` 和 `th-hook version` 打印二进制文件的发行版本，网关上的 `GET /v1/version` 无需 key 即可应答：部署据此与预期的发行版本核对。
+
 如果有 Go，可从源码安装二进制文件：
 
 ```sh
@@ -238,7 +240,6 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 **下一步**
 
 - 为通过 `th_add` 填充的大脑提供实体：网关目前还没有抽取器。
-- 为 `th-gateway` 和 `th-hook` 增加 `--version` 选项。
 - 为 `th-hook` 提供简单的安装渠道，并把扩展上架 Chrome Web Store。
 - 在 README 中加入简短演示。
 

@@ -8,12 +8,15 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/lfoletti/thalamus/gateway/version"
 )
 
 // The REST face of the federated endpoint, for clients without MCP: a
 // browser extension, a script, curl. Same keys, same rights, same circuit
 // and same audit as the tools. GET /v1/brains lists the caller's brains;
-// POST /v1/add proposes a document, as th_add does.
+// POST /v1/add proposes a document, as th_add does. GET /v1/version names
+// the build, without a key, for a deployment check.
 
 // serveREST answers the /v1/ routes. It returns false when the path is
 // not one of them.
@@ -24,6 +27,9 @@ func (s *Server) serveREST(w http.ResponseWriter, r *http.Request) {
 		return
 	case "/v1/identity":
 		s.serveIdentity(w, r)
+		return
+	case "/v1/version":
+		s.serveVersion(w, r)
 		return
 	}
 	user, status, err := s.holderOf(r)
@@ -48,6 +54,19 @@ func (s *Server) serveREST(w http.ResponseWriter, r *http.Request) {
 	default:
 		restError(w, http.StatusNotFound, fmt.Errorf("no such route %s", r.URL.Path))
 	}
+}
+
+// serveVersion answers GET /v1/version, and HEAD for a probe, with the
+// release of the gateway. No key is needed and nothing is audited: the
+// releases are public, and a deployment compares the answer with the
+// release it expects. A development build says "dev" without its commit
+// (version.Public): the route tells the world no more than the release.
+func (s *Server) serveVersion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		restError(w, http.StatusMethodNotAllowed, errors.New("use GET"))
+		return
+	}
+	restJSON(w, http.StatusOK, map[string]string{"version": version.Public()})
 }
 
 // restResult writes a tool result: the engine's JSON on success, or the
