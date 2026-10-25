@@ -118,5 +118,5 @@ diffmain:
 hooks:
 	@H=$$(cd $(REPO) && git rev-parse --path-format=absolute --git-common-dir)/hooks; mkdir -p "$$H"; \
 	printf '%s\n' '#!/bin/sh' '# Installé par `make hooks` de Thalamus : rien ne part sans precommit.' \
-	  'exec make -C /Users/mini/Documents/granular_cortex precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
+	  'exec make -C /Users/mini/Documents/thalamus precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
 	chmod +x "$$H/pre-push"; echo "hook installé : $$H/pre-push"
