@@ -10,7 +10,7 @@ With arguments:
 1. Run `"${CLAUDE_PLUGIN_ROOT}/bin/th-recall" $ARGUMENTS`.
 2. Run `"${CLAUDE_PLUGIN_ROOT}/bin/th-recall" brains` and show the list.
 
-Without arguments, show a checklist. The `/th-brains` command shows the same list in a pane, where Enter turns a brain on or off; mention it once.
+Without arguments, show a checklist. The `/brains` command shows the same list in a pane, where Enter turns a brain on or off; mention it once.
 
 1. Run `"${CLAUDE_PLUGIN_ROOT}/bin/th-recall" brains --json`. Each brain has `access`, `on`, and `ok` with a `reason` when it does not answer.
 2. Ask the person with the AskUserQuestion tool, with `multiSelect: true`. Put 4 brains at most in one question, and use more questions for more brains. Group the brains by the part of the name before `/`, and give each question a short header from that group. The label of each option is the name of a brain. Its description is "now on" or "now off", and the reason when the brain does not answer.
