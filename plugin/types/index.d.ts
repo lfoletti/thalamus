@@ -3,6 +3,6 @@ export type Listing = { gateway: string; brains: Brain[]; error: string; busy: b
 
 declare module 'claude-code' {
   interface PluginState {
-    thalamus: { listing: Shaped<Listing> }
+    thalamus: { listing: Shaped<Listing>; cursor: string }
   }
 }

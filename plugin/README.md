@@ -5,7 +5,7 @@ Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 - le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
 - une commande `/th-add [cerveau] <fichier ou texte>` qui propose un document à la relecture des curateurs, par défaut dans le cerveau d'écriture que le `CLAUDE.md` du projet nomme ;
 - une commande `/th-recall [brains | on <cerveau> | off <cerveau> | only <cerveau>… | only --clear]` qui choisit les cerveaux du rappel automatique ; sans argument, elle montre une liste à cocher ;
-- une commande `/th-brains` qui ouvre un panneau des cerveaux (`hooks/panel.tsx`, un module de hooks de Claude Code) : une ligne par cerveau, ✔ en vert s'il répond, ✘ en rouge sinon avec la raison, `on` ou `off`, et l'accès ; Entrée change `on` ou `off` ;
+- une commande `/th-brains` qui ouvre un dialogue des cerveaux, mis en page comme `/mcp` (`hooks/panel.tsx`, un module de hooks de Claude Code) : il prend le clavier, Échap le ferme, sa hauteur suit la liste ; une ligne par cerveau, le curseur `❯` sur la ligne qui a le focus, ✔ en vert s'il répond, ✘ en rouge sinon avec la raison, `on` ou `off`, et l'accès ; Entrée change `on` ou `off` ;
 - un hook `UserPromptSubmit` (`bin/th-recall` → `th-hook recall`) qui injecte dans chaque prompt les passages des cerveaux lisibles (10 passages par défaut, `TH_RECALL_TOPK`, et jusqu'à 4 passages de synthèses en tête quand un cerveau a une pyramide), avec leur provenance, et les cerveaux sautés, puis une section par cerveau local ;
 - une compétence (`skills/thalamus`) qui dit à l'agent comment citer la provenance et quand appeler `th_recall`.
 
