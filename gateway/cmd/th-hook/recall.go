@@ -16,6 +16,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/lfoletti/thalamus/gateway/version"
 )
 
 // contextBudget bounds what the hook hands Claude Code: past about ten
@@ -27,7 +29,8 @@ const usage = `usage: th-hook recall               (hook payload on stdin; TH_GA
        th-hook brains [--json]      (the brains of the automatic recall, on or off; --json adds whether each answers)
        th-hook on|off <brain>...    (local brains are local:<name>)
        th-hook only <brain>... | --clear
-       th-hook install              (TH_LOCAL_RECALL from the CortexDB binary of this machine)`
+       th-hook install              (TH_LOCAL_RECALL from the CortexDB binary of this machine)
+       th-hook version | --version`
 
 // listDeadline bounds th-hook brains, a command typed by the person.
 const listDeadline = 8 * time.Second
@@ -62,6 +65,10 @@ type recallOut struct {
 // run dispatches: 0 done or silent, 1 a command failed, 2 wrong command
 // line. The recall never fails: its problems go to stderr.
 func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && (args[0] == "version" || args[0] == "--version") {
+		fmt.Fprintln(stdout, "th-hook "+version.String()) // before source: no key file is read for a version
+		return 0
+	}
 	get := source(env)
 	switch {
 	case len(args) == 1 && args[0] == "recall":

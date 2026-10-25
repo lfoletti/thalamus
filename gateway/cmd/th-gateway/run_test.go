@@ -16,6 +16,7 @@ import (
 
 	"github.com/lfoletti/thalamus/gateway/keys"
 	"github.com/lfoletti/thalamus/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/version"
 )
 
 func writeRights(t *testing.T, dir string) (rightsPath, keysPath string) {
@@ -48,6 +49,21 @@ func TestTheCommandLineIsChecked(t *testing.T) {
 	}
 	if code, _, stderr := call(t, "rights", "check", filepath.Join(dir, "absent.yaml")); code != 1 || !strings.Contains(stderr, "absent.yaml") {
 		t.Fatalf("absent file: code %d, stderr %q", code, stderr)
+	}
+}
+
+// version, or --version, prints the build of the binary, so a deployment
+// can be checked against the release it expects. With an argument it is a
+// wrong command line.
+func TestVersionIsPrinted(t *testing.T) {
+	t.Cleanup(version.SetForTest("v9.9.9", nil))
+	for _, arg := range []string{"version", "--version"} {
+		if code, out, stderr := call(t, arg); code != 0 || out != "th-gateway v9.9.9\n" || stderr != "" {
+			t.Fatalf("%s: %d %q %q", arg, code, out, stderr)
+		}
+	}
+	if code, _, stderr := call(t, "version", "now"); code != 2 || !strings.Contains(stderr, "usage:") {
+		t.Fatalf("version now: %d %q", code, stderr)
 	}
 }
 

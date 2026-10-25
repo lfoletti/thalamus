@@ -5,11 +5,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"testing"
 
 	"github.com/lfoletti/thalamus/gateway/keys"
 	"github.com/lfoletti/thalamus/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/version"
 )
 
 // rest sends one request to the bench with a bearer and returns the
@@ -30,6 +32,36 @@ func (b *bench) rest(t *testing.T, method, path, secret, body string) (int, stri
 	defer func() { _ = res.Body.Close() }()
 	data, _ := io.ReadAll(res.Body)
 	return res.StatusCode, string(data)
+}
+
+// GET /v1/version names the build without a key, so a deployment compares
+// it with the release it expects; another method is refused, and nothing is
+// audited.
+func TestRestNamesTheVersion(t *testing.T) {
+	b := start(t)
+	t.Cleanup(version.SetForTest("v9.9.9", nil))
+	status, body := b.rest(t, http.MethodGet, "/v1/version", "", "")
+	if status != http.StatusOK || body != "{\"version\":\"v9.9.9\"}\n" {
+		t.Fatalf("%d %s", status, body)
+	}
+	if status, _ := b.rest(t, http.MethodHead, "/v1/version", "", ""); status != http.StatusOK {
+		t.Fatalf("HEAD: %d", status)
+	}
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete} {
+		if status, body := b.rest(t, method, "/v1/version", "", ""); status != http.StatusMethodNotAllowed || !strings.Contains(body, "use GET") {
+			t.Fatalf("%s: %d %s", method, status, body)
+		}
+	}
+	// A development build is "dev" on the route, its commit stays in the binary.
+	t.Cleanup(version.SetForTest("", func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "0123456789abcdef"}}}, true
+	}))
+	if status, body := b.rest(t, http.MethodGet, "/v1/version", "", ""); status != http.StatusOK || body != "{\"version\":\"dev\"}\n" {
+		t.Fatalf("dev: %d %s", status, body)
+	}
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("audit: %+v", lines)
+	}
 }
 
 // GET /v1/brains lists the brains of the caller, the same list as

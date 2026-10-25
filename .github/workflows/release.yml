@@ -33,6 +33,16 @@ jobs:
         env:
           VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.0.0-pr{0}', github.event.number) }}
         run: sh tools/release/build.sh "$VERSION" dist
+      - name: the binaries name the release
+        # -X ignores a symbol it does not find: a wrong import path would ship a release that says dev.
+        env:
+          VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.0.0-pr{0}', github.event.number) }}
+        run: |
+          tar -xzf "dist/thalamus_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP"
+          for cmd in th-gateway th-hook; do
+            got=$("$RUNNER_TEMP/thalamus_${VERSION}_linux_amd64/$cmd" version)
+            [ "$got" = "$cmd $VERSION" ] || { echo "$cmd version printed '$got', expected '$cmd $VERSION'" >&2; exit 1; }
+          done
       - name: draft release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -66,5 +76,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          build-args: |
+            VERSION=${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.0.0-pr{0}', github.event.number) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -16,6 +16,7 @@ import (
 	"github.com/lfoletti/thalamus/gateway/keys"
 	"github.com/lfoletti/thalamus/gateway/relay"
 	"github.com/lfoletti/thalamus/gateway/rights"
+	"github.com/lfoletti/thalamus/gateway/version"
 )
 
 const usage = `usage:
@@ -27,7 +28,8 @@ const usage = `usage:
   th-gateway key sync <rights.yaml> [--dry-run]
   th-gateway serve <rights.yaml> [--listen 127.0.0.1:8787] [--audit audit.jsonl]
   th-gateway login <gateway> [--env ~/.thalamus/env] [--no-browser]
-  th-gateway audit <audit.jsonl> [--since YYYY-MM-DD] [--user login] [--brain brain]`
+  th-gateway audit <audit.jsonl> [--since YYYY-MM-DD] [--user login] [--brain brain]
+  th-gateway version | --version`
 
 // run dispatches the subcommand and returns the exit code: 0 done, 1 the
 // command failed, 2 the command line is wrong.
@@ -52,6 +54,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = withRights(args[2:], 1, func(r *rights.Rights, a []string) error { return keyList(r, stdout) })
 	case len(args) >= 2 && args[0] == "key" && args[1] == "sync":
 		err = keySync(args[2:], stdout)
+	case len(args) == 1 && (args[0] == "version" || args[0] == "--version"):
+		fmt.Fprintln(stdout, "th-gateway "+version.String())
 	default:
 		fmt.Fprintln(stderr, usage)
 		return 2

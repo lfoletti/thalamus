@@ -544,6 +544,24 @@ M = [
  ('cmd/th-hook/recall.go', '\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\targs := map', '\t\tif err != nil && false {\n\t\t\treturn nil, err\n\t\t}\n\t\targs := map', 'cmd/th-hook', 'TestTheHookDoesNotAskUnderTheFloor', 'the hook asks under the floor'),
  ('cmd/th-hook/recall.go', '\targuments, err := args()\n\tif err != nil {\n\t\treturn "", err\n\t}', '\targuments, _ := args()', 'cmd/th-hook', 'TestTheHookDoesNotAskUnderTheFloor', 'a call not asked is silent'),
  ('cmd/th-hook/down.go', 'func (tooLate) Timeout() bool   { return true }', 'func (tooLate) timeout() bool   { return true }', 'cmd/th-hook', 'TestTheHookDoesNotAskUnderTheFloor', 'a gateway under the floor is not remembered as down'),
+ # tranche 22 : la version du binaire
+ ("version/version.go", "if tag != \"\" {\n\t\treturn tag\n\t}", "if tag != \"\" && false {\n\t\treturn tag\n\t}", "version", "TestTheTagNamesTheBuild", "the tag is ignored"),
+ ("version/version.go", "bi.Main.Version != \"\" && bi.Main.Version != \"(devel)\"", "false", "version", "TestTheModuleVersionNamesAGoInstallBuild", "the module version of go install is ignored"),
+ ("version/version.go", "bi.Main.Version != \"\" && bi.Main.Version != \"(devel)\"", "bi.Main.Version != \"\"", "version", "TestTheModuleVersionNamesAGoInstallBuild", "(devel) is taken for a release"),
+ ("version/version.go", "if len(rev) > 12 {\n\t\trev = rev[:12]\n\t}", "", "version", "TestWithoutATagTheCommitNamesTheBuild", "the commit is not shortened"),
+ ("version/version.go", "if modified == \"true\" {", "if modified == \"never\" {", "version", "TestWithoutATagTheCommitNamesTheBuild", "a modified tree is not said"),
+ ("version/version.go", "if rev == \"\" {\n\t\treturn \"dev\"\n\t}", "", "version", "TestWithoutATagTheCommitNamesTheBuild", "no commit gives a trailing space"),
+ ("version/version.go", "func String() string { return describe(Tag, readBuildInfo) }", "func String() string { return describe(\"\", readBuildInfo) }", "version", "TestStringNamesThisBuild", "String ignores the tag"),
+ ("version/version.go", "func String() string { return describe(Tag, readBuildInfo) }", "func String() string { return describe(Tag, func() (*debug.BuildInfo, bool) { return nil, false }) }", "version", "TestStringNamesThisBuild", "String drops the build info"),
+ ("version/version.go", "\treturn \"dev\"\n}\n\n// release", "\treturn describe(Tag, readBuildInfo)\n}\n\n// release", "version", "TestPublicNamesTheReleaseAndHidesTheCommit", "Public tells the commit"),
+ ("version/version.go", "if v := release(Tag, readBuildInfo); v != \"\" {\n\t\treturn v\n\t}\n\treturn \"dev\"", "return \"dev\"", "version", "TestPublicNamesTheReleaseAndHidesTheCommit", "Public never names the release"),
+ ("cmd/th-gateway/run.go", "fmt.Fprintln(stdout, \"th-gateway \"+version.String())", "fmt.Fprintln(stdout, \"th-gateway \"+version.String()[:0])", "cmd/th-gateway", "TestVersionIsPrinted", "th-gateway version says nothing"),
+ ("cmd/th-hook/recall.go", "fmt.Fprintln(stdout, \"th-hook \"+version.String())", "fmt.Fprintln(stdout, \"th-hook \"+version.String()[:0])", "cmd/th-hook", "TestVersionIsPrinted", "th-hook version says nothing"),
+ ("relay/rest.go", "case \"/v1/version\":\n\t\ts.serveVersion(w, r)\n\t\treturn\n", "", "relay", "TestRestNamesTheVersion", "/v1/version needs a key"),
+ ("relay/rest.go", "restJSON(w, http.StatusOK, map[string]string{\"version\": version.Public()})", "restJSON(w, http.StatusOK, map[string]string{\"version\": version.String()})", "relay", "TestRestNamesTheVersion", "/v1/version tells the commit"),
+ ("relay/rest.go", "if r.Method != http.MethodGet && r.Method != http.MethodHead {", "if r.Method != http.MethodGet {", "relay", "TestRestNamesTheVersion", "HEAD /v1/version is refused"),
+ ("relay/rest.go", "if r.Method != http.MethodGet && r.Method != http.MethodHead {", "if r.Method == http.MethodPost {", "relay", "TestRestNamesTheVersion", "PUT /v1/version answers"),
+ ("relay/rest.go", "if r.Method != http.MethodGet && r.Method != http.MethodHead {\n\t\trestError(w, http.StatusMethodNotAllowed, errors.New(\"use GET\"))", "if r.Method != http.MethodGet && r.Method != http.MethodHead {\n\t\trestError(w, http.StatusOK, errors.New(\"use GET\"))", "relay", "TestRestNamesTheVersion", "a refused method answers 200"),
 ]
 
 bad = 0

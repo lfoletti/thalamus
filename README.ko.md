@@ -121,6 +121,8 @@ Claude Code용 Thalamus 플러그인은 게이트웨이의 도구에 훅을 더�
 - `thalamus-extension_<version>.zip`: Chrome 확장 프로그램. 압축을 풀고 `chrome://extensions`를 연 다음, 개발자 모드를 켜고 **압축해제된 확장 프로그램을 로드합니다**를 클릭합니다.
 - `checksums.txt`: 각 파일의 SHA-256.
 
+`th-gateway version`과 `th-hook version`은 바이너리의 릴리스를 출력하고, 게이트웨이의 `GET /v1/version`은 키 없이 그것을 답합니다. 배포는 기대하는 릴리스와 대조하여 확인합니다.
+
 Go가 있으면 소스에서 바이너리를 설치합니다.
 
 ```sh
@@ -238,7 +240,6 @@ Thalamus는 모든 CortexDB 사용자에게 도움이 되는 각 메커니즘을
 **다음**
 
 - `th_add`로 채워진 브레인의 엔티티: 게이트웨이에는 아직 추출기가 없습니다.
-- `th-gateway`와 `th-hook`의 `--version` 옵션.
 - `th-hook`의 간단한 설치 경로, 그리고 Chrome 웹 스토어의 확장 프로그램.
 - README의 짧은 시연.
 

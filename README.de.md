@@ -121,6 +121,8 @@ Jedes Release enthält diese Dateien:
 - `thalamus-extension_<version>.zip`: die Chrome-Erweiterung. Entpacken Sie sie, öffnen Sie `chrome://extensions`, schalten Sie den Entwicklermodus ein und klicken Sie dann auf **Entpackte Erweiterung laden**.
 - `checksums.txt`: der SHA-256 jeder Datei.
 
+`th-gateway version` und `th-hook version` geben die Release einer Binärdatei aus, und `GET /v1/version` auf einem Gateway antwortet ohne Schlüssel: Ein Deployment wird gegen die erwartete Release geprüft.
+
 Mit Go installieren Sie die Binärdateien aus dem Quellcode:
 
 ```sh
@@ -238,7 +240,6 @@ Thalamus stützt sich für jeden Mechanismus, der allen CortexDB-Benutzern dient
 **Als Nächstes**
 
 - Entitäten für die über `th_add` gefüllten Gehirne: Das Gateway hat noch keinen Extraktor.
-- Eine Option `--version` für `th-gateway` und `th-hook`.
 - Ein einfacher Installationsweg für `th-hook` und die Erweiterung im Chrome Web Store.
 - Eine kurze Demonstration im README.
 
