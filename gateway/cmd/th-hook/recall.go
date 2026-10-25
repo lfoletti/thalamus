@@ -24,7 +24,7 @@ import (
 const contextBudget = 9000
 
 const usage = `usage: th-hook recall               (hook payload on stdin; TH_GATEWAY, TH_KEY, TH_RECALL_TOPK, TH_RECALL_TIMEOUT, TH_LOCAL_RECALL, TH_LOCAL_BRAINS)
-       th-hook brains               (the brains of the automatic recall, on or off)
+       th-hook brains [--json]      (the brains of the automatic recall, on or off; --json adds whether each answers)
        th-hook on|off <brain>...    (local brains are local:<name>)
        th-hook only <brain>... | --clear
        th-hook install              (TH_LOCAL_RECALL from the CortexDB binary of this machine)`
@@ -73,6 +73,8 @@ func run(args []string, stdin io.Reader, env func(string) string, stdout, stderr
 		return 0
 	case len(args) == 1 && args[0] == "brains":
 		return listBrains(get, stdout, stderr)
+	case len(args) == 2 && args[0] == "brains" && args[1] == "--json":
+		return brainsJSON(get, stdout, stderr)
 	case len(args) > 1 && (args[0] == "on" || args[0] == "off" || args[0] == "only"):
 		path := recallFile(get)
 		if err := writeFilter(path, readFilter(path).with(args[0], args[1:])); err != nil {
@@ -234,20 +236,9 @@ func askShared(ctx context.Context, get func(string) string, prompt string, topK
 func listBrains(get func(string) string, stdout, stderr io.Writer) int {
 	choice := readFilter(recallFile(get))
 	code := 0
-	var server []struct {
-		Brain string `json:"brain"`
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), listDeadline)
-	defer cancel()
-	gateway, key, err := settings(get)
-	if err == nil {
-		var text string
-		if text, err = callTool(ctx, gateway, key, "th_brains", noArgs); err == nil {
-			err = json.Unmarshal([]byte(text), &server)
-		}
-	}
+	server, err := serverBrains(get)
 	if err != nil {
-		fmt.Fprintf(stderr, "th-hook: th_brains: %v\n", err)
+		fmt.Fprintf(stderr, "th-hook: %v\n", err)
 		code = 1
 	}
 	var names []string

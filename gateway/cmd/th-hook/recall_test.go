@@ -61,6 +61,9 @@ func (g *fakeGateway) start(t *testing.T) string {
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(out)}}}, nil
 	})
 	srv.AddTool(&mcp.Tool{Name: "th_brains", InputSchema: map[string]any{"type": "object"}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if g.badJSON {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "nope"}}}, nil
+		}
 		out, _ := json.Marshal(g.listing)
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(out)}}}, nil
 	})
