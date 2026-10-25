@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "\t\toneOf: []string{\"knowledge_id\", \"knowledge_ids\"}},", "new": "\t},"}]

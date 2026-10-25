@@ -6,7 +6,7 @@ REPO ?= cortexdb
 BASE ?= origin/main
 # DECLARED : blocs hors main incouvrables en local, déclarés dans la PR (ex. pkg/core/store_postgres.go), séparés par des espaces.
 DECLARED ?=
-# SCENARIOS : dossier des scénarios différentiels de `make diffmain` (ex. docs/pr/lot_C/scenarios).
+# SCENARIOS : dossier des scénarios différentiels de `make diffmain` (ex. ../thalamus_local/docs/pr/lot_C/scenarios).
 SCENARIOS ?=
 GOBIN := $(shell go env GOPATH)/bin
 # CANARY : aucun test n'atteint un serveur ni le cerveau de la machine. Un test qui lit

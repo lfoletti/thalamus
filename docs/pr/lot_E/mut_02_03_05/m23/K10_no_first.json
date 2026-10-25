@@ -1,1 +1,0 @@
-[{"file": "pkg/cortexdb/knowledge_api.go", "old": "\t\t\tresp.Knowledge = resp.Knowledges[0]", "new": "\t\t\t_ = resp.Knowledges[0]"}]

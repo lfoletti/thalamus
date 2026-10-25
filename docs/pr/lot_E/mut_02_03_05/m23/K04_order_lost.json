@@ -1,1 +1,0 @@
-[{"file": "pkg/cortexdb/knowledge_api.go", "old": "\t\tfor _, id := range req.KnowledgeIDs {", "new": "\t\tfor _, id := range slices.Sorted(slices.Values(req.KnowledgeIDs)) {"}, {"file": "pkg/cortexdb/knowledge_api.go", "old": "\t\"fmt\"\n", "new": "\t\"fmt\"\n\t\"slices\"\n"}]

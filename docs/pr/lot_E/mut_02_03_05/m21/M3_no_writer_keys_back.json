@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "return append(cortexdb.EngineDocumentKeys(), cortexdb.WriterKeys()...)", "new": "return cortexdb.EngineDocumentKeys()"}]

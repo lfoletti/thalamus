@@ -27,4 +27,4 @@ Une règle de rétention (« cette source est gardée cinq ans ») devait s'appl
 
 ## Références
 
-- PR amont #76 (`gc-05-expires-at`), `docs/pr/lot_C/GC-05.body.md`, `docs/pr/lot_C/failing_first.md`.
+- PR amont #76 (`gc-05-expires-at`), `../thalamus_local/docs/pr/lot_C/GC-05.body.md`, `../thalamus_local/docs/pr/lot_C/failing_first.md`.

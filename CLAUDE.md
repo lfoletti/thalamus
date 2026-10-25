@@ -36,7 +36,7 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 - Avant de lire `origin/main`, faire `git fetch`.
 - Tous les correctifs se développent **localement**, **un commit par correctif**. Une PR ne touche pas `CHANGELOG.md` : le propriétaire amont l'écrit seul à la release (`docs/plan_publication.md`, section 0 bis).
 - Le produit final se teste en entier avant toute soumission.
-- **Tests « failing first »** (exigence du propriétaire amont) : chaque test d'une PR échoue sans son code. Vérifier avec les fichiers de test posés sur l'arbre sans le correctif, ou par une mutation de chaque règle si les tests ne compilent pas sans elle. Preuve dans le corps de la PR, section « Failing first ». Méthode et exemple : `docs/pr/lot_B/failing_first.md`.
+- **Tests « failing first »** (exigence du propriétaire amont) : chaque test d'une PR échoue sans son code. Vérifier avec les fichiers de test posés sur l'arbre sans le correctif, ou par une mutation de chaque règle si les tests ne compilent pas sans elle. Preuve dans le corps de la PR, section « Failing first ». Méthode et exemple : `../thalamus_local/docs/pr/lot_B/failing_first.md`.
 - **PR en brouillon d'abord** : une PR s'ouvre en brouillon et passe à la relecture seulement après un rapport Codecov à zéro ligne non couverte sur sa tête (ou les seules lignes de `main` déclarées). Voir le pipeline.
 - Auteur des commits : `git -c user.name="Lauro Foletti" -c user.email="25608942+lfoletti@users.noreply.github.com" commit` (identité GitHub, jamais l'adresse personnelle, ni dans un commit ni dans une PR), message en style conventional-commit, **sans** ligne `Co-Authored-By` (tous les commits de ce dépôt et des PR amont).
 - Dans les textes publics, ne jamais juger CortexDB ni écrire ce qui lui manque. Dire ce que Thalamus ajoute, et décrire une PR amont comme une fonction proposée.
@@ -79,7 +79,7 @@ Dans `gateway/` : `go test -race ./...` et `python3 -I mutate.py`. Depuis la rac
 - `docs/pipeline_pr.md` : pipeline interne avant toute PR. À lire avant d'ouvrir une PR.
 - `docs/plan_publication.md` : plan de publication vers l'amont.
 - `docs/upstream/` : fiches des PR amont potentielles. Rien n'est envoyé sans commande explicite.
-- Notes de travail d'un lot (plans, corps, preuves « failing first », scénarios, relectures adverses) : dans l'archive locale hors du dépôt, `../thalamus_local/docs/pr/<lot>/`, jamais publiée (règle de Lauro, 25 octobre 2026). `docs/pr/` garde les lots plus anciens, déjà suivis.
+- Notes de travail d'un lot (plans, corps, preuves « failing first », scénarios, relectures adverses) : dans l'archive locale hors du dépôt, `../thalamus_local/docs/pr/<lot>/`, jamais publiée (règle de Lauro, 25 octobre 2026). `../thalamus_local/docs/pr/` garde les lots plus anciens, déjà suivis.
 - `docs/revision_graphes_entreprise.md` : architecture (CortexDB comme moteur, couche mince Thalamus). Section 3.9 : granularité par collection et liens logiques entre cerveaux.
 
 ## Mémoire du projet : le cerveau partagé `coding`

@@ -12,3 +12,5 @@ extension/node_modules
 __pycache__/
 # Verrou des tâches planifiées de Claude Code
 .claude/scheduled_tasks.lock
+# Notes de lot : archive locale ../thalamus_local, jamais dans le dépôt
+docs/pr/

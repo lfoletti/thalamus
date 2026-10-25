@@ -1,1 +1,0 @@
-[{"file": "pkg/authz/allowlist.go", "old": "var rowData = []string{\"memory_ids\", \"plan.filters.document_ids\"}", "new": "var rowData = []string{\"plan.filters.document_ids\"}"}]

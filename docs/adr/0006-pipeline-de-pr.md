@@ -9,7 +9,7 @@ Le propriétaire de CortexDB demande que chaque PR porte des tests qui échouent
 
 ## Décision
 
-1. Le test s'écrit avant le code et tombe sans lui. La preuve est une mutation à la main par règle, qui compile, et un test nommé qui tombe. Elle est consignée dans `docs/pr/<lot>/failing_first.md` et dans le corps de la PR.
+1. Le test s'écrit avant le code et tombe sans lui. La preuve est une mutation à la main par règle, qui compile, et un test nommé qui tombe. Elle est consignée dans `../thalamus_local/docs/pr/<lot>/failing_first.md` et dans le corps de la PR.
 2. Le patch est couvert à 100 % de ses lignes atteignables avant le premier push, mesuré en local (`make precommit`). Les lignes du corps de `main()` et les blocs qu'aucun test ne peut lancer (liste DDL PostgreSQL) sont déclarés dans une section `## Codecov` du corps.
 3. `make mutate` en plus, chaque survivant lu et classé ; ceux des paquets `main` rejoués à la main.
 4. Une PR s'ouvre en brouillon et passe en relecture quand le rapport de couverture montre zéro ligne non couverte hors celles déclarées. Une PR à amender repasse en brouillon.

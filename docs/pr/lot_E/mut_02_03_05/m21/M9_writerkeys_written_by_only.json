@@ -1,1 +1,0 @@
-[{"file": "pkg/cortexdb/written_by.go", "old": "return []string{metadataWrittenBy, metadataUpdatedBy}", "new": "return []string{metadataWrittenBy}"}]
