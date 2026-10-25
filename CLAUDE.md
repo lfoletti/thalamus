@@ -19,7 +19,7 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 - `plugin/` : plugin Claude Code `thalamus` (hook de rappel, serveur MCP du gateway, compétence). Lire `plugin/README.md`.
 - `extension/` : extension Chrome (Manifest V3, sans bibliothèque) qui propose la page ou la sélection par `POST /v1/add`. Règles dans `lib.js` (tests `node --test`, mutations dans `gateway/mutate.py` sous le paquet `extension`), pilote Playwright `e2e_driver.mjs`, `node_modules/` ignoré (`npm install` une fois, Playwright 1.58.2 = Chromium 1208 en cache). Lire `extension/README.md`.
 - `.github/workflows/ci.yml` : la CI (gateway, extension, banc du gateway, scan des secrets, tests Python de `tools/`), sur chaque PR et sur `main`.
-- `tools/hooks/pre-push` : le hook du dépôt (termes privés, tests des parties touchées). `CONTRIBUTING.md` et `SECURITY.md` : règles publiques de contribution et de signalement.
+- `tools/hooks/` : les hooks du dépôt, `pre-commit` (aucun commit sur `main`) et `pre-push` (termes privés, tests des parties touchées), testés par `tools/test_hooks.py`. `CONTRIBUTING.md` et `SECURITY.md` : règles publiques de contribution et de signalement.
 - `tests/` : bancs de bout en bout.
   - `tests/e2e_gateway.sh` : le gateway devant un serveur gRPC construit depuis `cortexdb/` (environ 1 min).
   - `tests/e2e_plugin.sh [modèle]` : une session Claude Code réelle avec le plugin. Ce banc coûte des appels au modèle et reste hors chaîne.
@@ -32,7 +32,8 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 
 - **Aucun push, aucune pull request, aucune issue** vers l'amont, le fork ou ce dépôt sans demande explicite de Lauro. La soumission se fait par petits lots.
 - **Rien de privé dans un dépôt public.** Une faille signalée en privé à un tiers ne paraît dans aucun commit, corps de PR ou fichier suivi, avant que le propriétaire le permette. Avant un push de ce dépôt, relire les commits non poussés pour cette règle.
-- **Ce dépôt** : `main` est protégée (PR obligatoire, les 5 jobs CI verts, 1 approbation, pas de force push). Une PR de Lauro se fusionne avec `gh pr merge --admin` après une CI verte. Hook : `git config core.hooksPath tools/hooks`, termes privés dans `.git/info/private-terms` (jamais suivi). Bonne pratique pour tout dépôt public : `practice:github:public-repo-basics` dans `coding`.
+- **Ce dépôt** : `main` est protégée (PR obligatoire, les 5 jobs CI verts, 1 approbation, pas de force push). Une PR de Lauro se fusionne avec `gh pr merge --admin` après une CI verte. Hooks : `git config core.hooksPath tools/hooks`, chemin **relatif**, jamais absolu (il se résout dans chaque copie de travail et survit à un déplacement du dossier) ; termes privés dans `.git/info/private-terms` (jamais suivi). Bonne pratique pour tout dépôt public : `practice:github:public-repo-basics` dans `coding`.
+- **Une copie de travail par session.** La copie principale reste sur `main` et ne reçoit aucun commit : le hook `pre-commit` le refuse. Chaque session travaille dans son propre `git worktree`, sur sa propre branche créée depuis `origin/main` : `git worktree add -b <branche> ../thalamus_wt/<branche> origin/main`. Jamais dans la copie d'une autre session. Un commit n'entre dans `main` que par sa propre PR. Après la fusion : `git worktree remove ../thalamus_wt/<branche>`, puis `gh pr merge --delete-branch`.
 - Avant de lire `origin/main`, faire `git fetch`.
 - Tous les correctifs se développent **localement**, **un commit par correctif**. Une PR ne touche pas `CHANGELOG.md` : le propriétaire amont l'écrit seul à la release (`docs/plan_publication.md`, section 0 bis).
 - Le produit final se teste en entier avant toute soumission.

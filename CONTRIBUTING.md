@@ -12,8 +12,9 @@ Thank you for your interest in Thalamus. This file gives the rules for a change 
 
 1. Install Go (the version in `gateway/go.mod`) and Node.js 22.
 2. Clone CortexDB at the version in `gateway/go.mod` into `cortexdb/`. The end-to-end benches build its server from there.
-3. Install the hook: `git config core.hooksPath tools/hooks`.
+3. Install the hooks: `git config core.hooksPath tools/hooks`. The path is relative, so the hooks run in every worktree of the clone. `pre-commit` refuses a commit on `main`; `pre-push` checks the private terms and runs the tests of the parts you touch.
 4. Write your private terms in `.git/info/private-terms`, one extended regular expression per line. The hook refuses a push without this file. Git does not track it.
+5. Work on a branch in its own worktree: `git worktree add -b <branch> ../thalamus_wt/<branch> origin/main`. `main` changes only by a pull request.
 
 ## Rules for a change
 
