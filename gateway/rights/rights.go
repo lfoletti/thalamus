@@ -75,6 +75,11 @@ type Brain struct {
 	// Pyramid is the collection of the brain's syntheses on the same
 	// server, when a producer writes them; nil when there is none.
 	Pyramid *Pyramid `yaml:"pyramid"`
+	// ExcerptWords bounds what th_get and th_descend serve of a source
+	// document: its first words, and the address of the original. A
+	// publisher sets it when the sources are not its to hand out whole. 0
+	// serves them whole.
+	ExcerptWords int `yaml:"excerpt_words"`
 }
 
 // Pyramid names the collection of a brain's syntheses and the metadata key
@@ -205,6 +210,9 @@ func Parse(data []byte) (*Rights, error) {
 		}
 		if p := b.Pyramid; p != nil && strings.TrimSpace(p.Collection) == "" {
 			return nil, fmt.Errorf("parse rights file: brain %q: the pyramid needs a collection", name)
+		}
+		if b.ExcerptWords < 0 {
+			return nil, fmt.Errorf("parse rights file: brain %q: excerpt_words must not be negative", name)
 		}
 		if p := b.Pyramid; p != nil && p.Collection == b.Collection {
 			return nil, fmt.Errorf("parse rights file: brain %q: the pyramid's collection must differ from the brain's", name)

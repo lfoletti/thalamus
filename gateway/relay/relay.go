@@ -93,6 +93,10 @@ func (s *Server) admit(r *http.Request) (*mcp.Server, int, error) {
 		// would let a writer's key accept, publish, replace or delete.
 		return nil, http.StatusForbidden, fmt.Errorf("brain %s has a review circuit: it is served through /mcp only", name)
 	}
+	if brain.ExcerptWords > 0 {
+		// The engine's raw tools would serve a source document whole.
+		return nil, http.StatusForbidden, fmt.Errorf("brain %s is served in excerpts: it is served through /mcp only", name)
+	}
 	secret, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !found || secret == "" {
 		return nil, http.StatusUnauthorized, fmt.Errorf("a key issued by the gateway is required")
