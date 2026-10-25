@@ -4,7 +4,7 @@ Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 
 - le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
 - une commande `/th-add <cerveau> <fichier ou texte>` qui propose un document à la relecture des curateurs ;
-- une commande `/th-recall [brains | on <cerveau> | off <cerveau> | only <cerveau>… | only --clear]` qui choisit les cerveaux du rappel automatique ;
+- une commande `/th-recall [brains | on <cerveau> | off <cerveau> | only <cerveau>… | only --clear]` qui choisit les cerveaux du rappel automatique ; sans argument, elle montre une liste à cocher ;
 - un hook `UserPromptSubmit` (`bin/th-recall` → `th-hook recall`) qui injecte dans chaque prompt les passages des cerveaux lisibles (10 passages par défaut, `TH_RECALL_TOPK`, et jusqu'à 4 passages de synthèses en tête quand un cerveau a une pyramide), avec leur provenance, et les cerveaux sautés, puis une section par cerveau local ;
 - une compétence (`skills/thalamus`) qui dit à l'agent comment citer la provenance et quand appeler `th_recall`.
 
@@ -44,4 +44,4 @@ only=team/acme,local:projet      # filtre d'entrée : seulement ces cerveaux (vi
 skip=org/archive,local:racine    # filtre de sortie : jamais ces cerveaux
 ```
 
-Les commandes l'écrivent : `th-hook brains` (la liste, `on` ou `off`), `th-hook on <cerveau>…`, `th-hook off <cerveau>…`, `th-hook only <cerveau>…`, `th-hook only --clear`. Dans Claude Code : `/th-recall`. Un nouveau cerveau est actif d'office quand `only` est vide. Le choix vaut pour le rappel automatique seulement : l'outil `th_recall` et les droits de `rights.yaml` ne changent pas. Côté gateway, les cerveaux partagés écartés partent dans `skip_brains` de `th_recall`, et ne sont ni interrogés ni comptés dans l'audit.
+Les commandes l'écrivent : `th-hook brains` (la liste, `on` ou `off`), `th-hook on <cerveau>…`, `th-hook off <cerveau>…`, `th-hook only <cerveau>…`, `th-hook only --clear`. Dans Claude Code : `/th-recall`. Sans argument, Claude montre les cerveaux dans une liste à cocher (4 par question, 16 au plus), puis écrit le choix par `only` et `on`. Un nouveau cerveau est actif d'office quand `only` est vide. Le choix vaut pour le rappel automatique seulement : l'outil `th_recall` et les droits de `rights.yaml` ne changent pas. Côté gateway, les cerveaux partagés écartés partent dans `skip_brains` de `th_recall`, et ne sont ni interrogés ni comptés dans l'audit.
