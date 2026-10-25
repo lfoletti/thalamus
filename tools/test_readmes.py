@@ -15,6 +15,9 @@ TRANSLATIONS = {
     "README.de.md": "Bei Abweichungen gilt die englische Fassung. Bitte schreiben Sie Issues auf Englisch.",
 }
 READMES = ["README.md", *TRANSLATIONS]
+# Les mots de CortexDB (README_CN.md, docs/GUIDE_CN.md) : « agent » et « key »
+# restent en caractères latins.
+NOT_CORTEXDB = {"README.zh-CN.md": {"智能体": "agent", "密钥": "key"}}
 FENCE = re.compile(r"^```.*?^```", re.M | re.S)
 
 
@@ -74,6 +77,11 @@ class Readmes(unittest.TestCase):
             s = text(name)
             for anchor in re.findall(r"\]\(#([^)]+)\)", s):
                 self.assertTrue(f'<a id="{anchor}"></a>' in s, f"{name}: #{anchor}")
+
+    def test_the_words_are_those_of_cortexdb(self):
+        for name, words in NOT_CORTEXDB.items():
+            for word, theirs in words.items():
+                self.assertNotIn(word, text(name), f"{name}: CortexDB writes {theirs}")
 
     def test_each_translation_says_that_english_prevails(self):
         for name, sentence in TRANSLATIONS.items():
