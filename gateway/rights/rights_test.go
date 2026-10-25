@@ -398,3 +398,17 @@ func TestABrainMayDeclareItsPyramid(t *testing.T) {
 		}
 	}
 }
+
+// A brain may be served in excerpts: excerpt_words bounds what th_get and
+// th_descend return of a source document. 0, or nothing, serves it whole; a
+// negative count is refused.
+func TestABrainMayBeServedInExcerpts(t *testing.T) {
+	r := parse(t, strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n    excerpt_words: 120\n", 1))
+	if r.Brains["team/acme"].ExcerptWords != 120 || r.Brains["org/reference"].ExcerptWords != 0 {
+		t.Fatalf("excerpt_words: %d %d", r.Brains["team/acme"].ExcerptWords, r.Brains["org/reference"].ExcerptWords)
+	}
+	_, err := Parse([]byte(strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n    excerpt_words: -1\n", 1)))
+	if err == nil || !strings.Contains(err.Error(), "excerpt_words must not be negative") || !strings.Contains(err.Error(), "team/acme") {
+		t.Fatalf("negative: %v", err)
+	}
+}

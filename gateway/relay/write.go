@@ -67,7 +67,7 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 			}
 			return s.add(ctx, user, args), nil
 		})
-	srv.AddTool(&mcp.Tool{Name: "th_get", Description: "Reads one document whole, by brain and knowledge_id (both are on the provenance line of a th_recall result or of the hook's extract), in a brain the caller may read.",
+	srv.AddTool(&mcp.Tool{Name: "th_get", Description: "Reads one document, by brain and knowledge_id (both are on the provenance line of a th_recall result or of the hook's extract), in a brain the caller may read. In a brain served in excerpts, a source document is cut to its first words, with the address of the original.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":        map[string]any{"type": "string"},
 			"knowledge_id": map[string]any{"type": "string"},
@@ -220,8 +220,9 @@ type pendingHit struct {
 // _review_status, which lifts the review gate for that status (a search
 // needs a text, a listing does not), then knowledge_get reads each
 // document. One audit line names them all.
-// get reads one document whole. knowledge_get takes no collection: the
-// brain's row guard checks the document against the key.
+// get reads one document, whole or as the brain's excerpt. knowledge_get
+// takes no collection: the brain's row guard checks the document against
+// the key.
 func (s *Server) get(ctx context.Context, user string, args getArgs) *mcp.CallToolResult {
 	if strings.TrimSpace(args.KnowledgeID) == "" {
 		return errResult(errors.New("th_get: knowledge_id is required"))
@@ -260,9 +261,31 @@ func (s *Server) get(ctx context.Context, user string, args getArgs) *mcp.CallTo
 		s.note(entry)
 		return errResult(fmt.Errorf("th_get: document %q not found in %s", args.KnowledgeID, args.Brain))
 	}
+	if b.ExcerptWords > 0 {
+		result = excerptOf(b, result)
+	}
 	entry.OK = true
 	s.note(entry)
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}
+}
+
+// excerptOf rewrites a knowledge_get result with the brain's excerpt of its
+// content; the other fields pass as the engine wrote them. get decoded the
+// result once already, so it decodes here.
+func excerptOf(b rights.Brain, result string) string {
+	var doc struct {
+		Knowledge map[string]any `json:"knowledge"`
+	}
+	_ = json.Unmarshal([]byte(result), &doc)
+	k := doc.Knowledge
+	str := func(key string) string { v, _ := k[key].(string); return v }
+	content, note := bound(b, str("collection"), str("content"), str("source_url"))
+	if note == nil {
+		return result
+	}
+	k["content"], k["excerpt"] = content, note
+	out, _ := json.Marshal(doc)
+	return string(out)
 }
 
 func (s *Server) pending(ctx context.Context, user string, args pendingArgs) *mcp.CallToolResult {

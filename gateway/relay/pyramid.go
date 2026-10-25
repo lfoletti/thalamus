@@ -37,6 +37,7 @@ type record struct {
 	SourceURL   string            `json:"source_url,omitempty"`
 	Author      string            `json:"author,omitempty"`
 	Content     string            `json:"content,omitempty"`
+	Excerpt     *excerpt          `json:"excerpt,omitempty"`
 	Metadata    map[string]string `json:"-"`
 }
 
@@ -139,6 +140,7 @@ func (s *Server) descend(ctx context.Context, user string, args descendArgs) *mc
 			out.Missing = append(out.Missing, missingSource{KnowledgeID: id, Reason: err.Error()})
 			continue
 		}
+		doc.Content, doc.Excerpt = bound(b, "", doc.Content, doc.SourceURL)
 		out.Sources = append(out.Sources, doc)
 		read = append(read, id)
 	}
@@ -149,7 +151,7 @@ func (s *Server) descend(ctx context.Context, user string, args descendArgs) *mc
 }
 
 func (s *Server) addPyramidTools(srv *mcp.Server, user string) {
-	srv.AddTool(&mcp.Tool{Name: "th_descend", Description: "Opens the sources a synthesis cites: give the brain and the knowledge_id of a th_recall result marked level synthesis. Returns the synthesis, each cited document whole (up to limit, 5 by default), and the sources that could not be read.",
+	srv.AddTool(&mcp.Tool{Name: "th_descend", Description: "Opens the sources a synthesis cites: give the brain and the knowledge_id of a th_recall result marked level synthesis. Returns the synthesis, each cited document (up to limit, 5 by default), and the sources that could not be read. In a brain served in excerpts, a document is cut to its first words, with the address of the original.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":        map[string]any{"type": "string"},
 			"knowledge_id": map[string]any{"type": "string"},
