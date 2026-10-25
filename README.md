@@ -2,6 +2,8 @@
 
 # Thalamus
 
+English | [简体中文](https://github.com/lfoletti/thalamus/blob/main/README.zh-CN.md) | [日本語](https://github.com/lfoletti/thalamus/blob/main/README.ja.md) | [한국어](https://github.com/lfoletti/thalamus/blob/main/README.ko.md) | [Deutsch](https://github.com/lfoletti/thalamus/blob/main/README.de.md)
+
 [![CI](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lfoletti/thalamus/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/lfoletti/thalamus)](https://github.com/lfoletti/thalamus/releases) [![Licence: MIT](https://img.shields.io/github/license/lfoletti/thalamus)](LICENSE)
 
 Thalamus brings the knowledge of an organisation to each user and to their coding agent within the rights of each person. It is built on [CortexDB](https://github.com/liliang-cn/cortexdb).

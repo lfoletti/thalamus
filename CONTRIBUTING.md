@@ -24,6 +24,7 @@ Thank you for your interest in Thalamus. This file gives the rules for a change 
 5. **One change per pull request,** about 400 lines outside tests.
 6. **Commit messages** use the conventional-commit style: `feat(gateway): …`, `fix(relay): …`, `docs(readme): …`. The subject says what the code does now.
 7. **Plain text.** Short sentences, one idea per sentence. A text about CortexDB says what Thalamus adds. It does not judge the engine.
+8. **The README comes in five languages.** A change to `README.md` changes `README.zh-CN.md`, `README.ja.md`, `README.ko.md` and `README.de.md` in the same pull request. `python3 -I tools/test_readmes.py` checks that each translation keeps the code, the links and the versions of the English one.
 
 ## Checks
 
