@@ -1,7 +1,7 @@
 {
   "name": "thalamus",
   "description": "Enterprise shared brains behind the Thalamus gateway: federated recall across the brains a user may read, with provenance and audit, plus the gateway's MCP tools (th_brains, th_recall, th_get, th_add, th_pending, th_review).",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Lauro Foletti",

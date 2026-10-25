@@ -199,7 +199,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 ## Roadmap
 
-**Done** (25 October 2026, release 0.3.0)
+**Done** (25 October 2026, release 0.4.0)
 
 - Rights, keys and one MCP endpoint per brain.
 - Federated recall over the brains that a person may read, with the source of each extract.
@@ -216,6 +216,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - An audit line for each key that a brain refuses during `th_recall` or `th_entity`.
 - Questions in several languages: `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart. A Swiss bench measures the recall from one language to another (French, German, Italian, Romansh) in `tests/eval_ch/`.
 - A deadline for the recall: `th_recall` takes `deadline_ms` and fuses the answers of the brains that are ready. The hook uses it, so a slow brain no longer stops the recall of the others.
+- The brains in Claude Code: `/brains` opens a dialog of the brains, with whether each one answers, and Enter turns a brain on or off for the automatic recall. `/th-recall` without arguments asks with a checklist. The project's `CLAUDE.md` names the brain where `th_add` writes.
 - Releases: archives of `th-gateway`, `th-hook`, the plugin and the extension for macOS and Linux, a Docker image `ghcr.io/lfoletti/thalamus`, and `go install`. See the [releases](https://github.com/lfoletti/thalamus/releases).
 
 **With CortexDB**
