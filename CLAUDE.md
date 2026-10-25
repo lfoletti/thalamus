@@ -45,13 +45,13 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 
 **Trois niveaux** (`docs/pipeline_pr.md`, section 1) :
 - Niveau 1, à chaque changement : `make precommit` et la mutation à la main de la règle changée.
-- Niveau 2, **avant** la chaîne lourde : analyse, relecture, tout ce qui peut révéler un trou. Cinq contrôles par classe : canari dans `precommit` (aucun test n'atteint un serveur, un embedder ni le cerveau de la machine) ; `make inventory` et `make invcheck FF=<inventaire>` ; `make diffmain SCENARIOS=docs/pr/<lot>/scenarios` ; chaque promesse d'un schéma ou d'un corps tenue par un test nommé ; relecture adverse par un agent neuf sur les têtes gelées (invite fixe, `docs/pipeline_pr.md`, section 1 bis). Ensuite, les têtes sont gelées et aucune copie de travail de la chaîne n'est touchée.
+- Niveau 2, **avant** la chaîne lourde : analyse, relecture, tout ce qui peut révéler un trou. Cinq contrôles par classe : canari dans `precommit` (aucun test n'atteint un serveur, un embedder ni le cerveau de la machine) ; `make inventory` et `make invcheck FF=<inventaire>` ; `make diffmain SCENARIOS=../granular_cortex_local/docs/pr/<lot>/scenarios` ; chaque promesse d'un schéma ou d'un corps tenue par un test nommé ; relecture adverse par un agent neuf sur les têtes gelées (invite fixe, `docs/pipeline_pr.md`, section 1 bis). Ensuite, les têtes sont gelées et aucune copie de travail de la chaîne n'est touchée.
 - Niveau 3, juste avant la poussée : `make prepr` par tête (avec `make clock`), puis `make benches` une fois par lot sur `proto` (`make level3` enchaîne les deux). Relancer seulement si le code change. Un trou trouvé pendant la chaîne va dans une liste, et la chaîne repart une fois, à la fin.
 - Mutation à la main par `make handmut` (restauration depuis une copie, refus d'un fichier non commis), jamais par `git checkout`.
 
 Règles :
 1. Le patch est couvert à 100 % de ses lignes atteignables **avant le premier push**, mesuré en local : `make precommit REPO=<copie> BASE=<base>` (gofmt, vet, `-race` des paquets touchés, `patchcov`). Les blocs de `func main()` sont affichés à part : les déclarer dans une section `## Codecov` du corps, après `## Breaking Changes` et de même rang. Une PR empilée vise `main` : mesurer contre `main`, sans `CORTEXDB_TEST_POSTGRES`.
-2. **Le test s'écrit avant le code** et tombe sans lui. Preuve : une mutation à la main par règle qui fait tomber un test nommé, dans `docs/pr/<lot>/failing_first.md`. `make mutate` en plus, survivants lus un à un ; ceux des paquets `main` se rejouent à la main.
+2. **Le test s'écrit avant le code** et tombe sans lui. Preuve : une mutation à la main par règle qui fait tomber un test nommé, dans `../granular_cortex_local/docs/pr/<lot>/failing_first.md`. `make mutate` en plus, survivants lus un à un ; ceux des paquets `main` se rejouent à la main.
 3. Avant la PR : `make prepr REPO=… BASE=…` (precommit, mutate, suite complète `-race`, éval lexicale), environ 25 min.
 4. Le hook `pre-push` du clone (`make hooks`) exécute `precommit` à chaque push. Jamais de `--no-verify`.
 5. **Toute PR s'ouvre en brouillon** (`gh pr create --draft`) et passe « ready for review » (`gh pr ready`) seulement quand Codecov montre zéro ligne non couverte, ou exactement les lignes de `main` déclarées. Une PR à amender repasse en brouillon pendant la vérification.
@@ -79,7 +79,7 @@ Dans `gateway/` : `go test -race ./...` et `python3 -I mutate.py`. Depuis la rac
 - `docs/pipeline_pr.md` : pipeline interne avant toute PR. À lire avant d'ouvrir une PR.
 - `docs/plan_publication.md` : plan de publication vers l'amont.
 - `docs/upstream/` : fiches des PR amont potentielles. Rien n'est envoyé sans commande explicite.
-- `docs/pr/<lot>/` : plans, corps, preuves « failing first » et relectures adverses de chaque lot.
+- Notes de travail d'un lot (plans, corps, preuves « failing first », scénarios, relectures adverses) : dans l'archive locale hors du dépôt, `../granular_cortex_local/docs/pr/<lot>/`, jamais publiée (règle de Lauro, 25 octobre 2026). `docs/pr/` garde les lots plus anciens, déjà suivis.
 - `docs/revision_graphes_entreprise.md` : architecture (CortexDB comme moteur, couche mince Thalamus). Section 3.9 : granularité par collection et liens logiques entre cerveaux.
 
 ## Mémoire du projet : le cerveau partagé `coding`
