@@ -61,7 +61,7 @@ async function toggle($: EngineInterface, name: string, isOn: boolean): Promise<
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'brains', description: 'Show the Thalamus brains and turn each one on or off for the automatic recall' })
+    await $.command.register({ name: 'brains', description: 'Show the Cortex collections and turn each one on or off for the automatic recall' })
     return next(e)
   })
 
