@@ -199,7 +199,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 ## Roadmap
 
-**Done** (23 October 2026)
+**Done** (25 October 2026, release 0.3.0)
 
 - Rights, keys and one MCP endpoint per brain.
 - Federated recall over the brains that a person may read, with the source of each extract.
@@ -213,7 +213,10 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - Recall on the passages of the documents, not on short extracts.
 - A pyramid of syntheses per brain: `th_recall` serves the syntheses first, and `th_descend` opens the documents that a synthesis cites.
 - Entities across brains: `th_entity` asks each brain for one entity and its neighbors, with the user's key for that brain, and merges the nodes by id.
+- An audit line for each key that a brain refuses during `th_recall` or `th_entity`.
 - Questions in several languages: `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart. A Swiss bench measures the recall from one language to another (French, German, Italian, Romansh) in `tests/eval_ch/`.
+- A deadline for the recall: `th_recall` takes `deadline_ms` and fuses the answers of the brains that are ready. The hook uses it, so a slow brain no longer stops the recall of the others.
+- Releases: archives of `th-gateway`, `th-hook`, the plugin and the extension for macOS and Linux, a Docker image `ghcr.io/lfoletti/thalamus`, and `go install`. See the [releases](https://github.com/lfoletti/thalamus/releases).
 
 **With CortexDB**
 
@@ -225,8 +228,16 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
   - Graph tools for a key confined to one collection (#94 to #98). `th_entity` uses them to merge entities across brains, in addition to passages.
   - Three tools and an index: the touched ids in the request log (#90), `knowledge_get` on a list of ids (#91), a check of a sentence against its cited sources (#92), and two redundant edge indexes removed (#93).
   - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
+- Proposed: `upsert_entities` records the collections of the chunks that it names (#105), so that `th_entity` serves the entities of a brain built outside Thalamus.
 - Thalamus uses CortexDB v2.139.0.
 - Prepared: a tool that lists the documents waiting for review.
+
+**Next**
+
+- Entities for the brains filled through `th_add`: the gateway has no extractor yet.
+- A `--version` option for `th-gateway` and `th-hook`.
+- A simple install channel for `th-hook`, and the extension in the Chrome Web Store.
+- A short demonstration in the README.
 
 ## Principles
 
