@@ -24,14 +24,15 @@ const LISTING = {
 
 // th-hook stands behind $.process.run: brains --json answers the listing
 // (a string as is), on and off answer an exit code, and each call is kept.
-function fakeHook(on: any, calls: string[][], listing: object | string, exitCode = 0, opens: object[] = [], names: string[] = []) {
+function fakeHook(on: any, calls: string[][], listing: object | string, exitCode = 0, opens: object[] = [], names: string[] = [], descriptions: string[] = []) {
   on('process.run', (_: unknown, e: { argv: readonly string[] }) => {
     calls.push([...e.argv.slice(1)])
     const json = e.argv[1] === 'brains'
     return { value: { exitCode: json ? 0 : exitCode, stdout: !json ? '' : typeof listing === 'string' ? listing : JSON.stringify(listing), stderr: exitCode ? 'th-hook: recall file: denied' : '' } }
   })
-  on('command.register', (_: unknown, e: { name: string }) => {
+  on('command.register', (_: unknown, e: { name: string, description: string }) => {
     names.push(e.name)
+    descriptions.push(e.description)
     return { value: { command: e.name } }
   })
   on('ui.open', (_: unknown, e: object) => {
@@ -41,13 +42,16 @@ function fakeHook(on: any, calls: string[][], listing: object | string, exitCode
   on('ui.focus', () => ({ value: {} }))
 }
 
-// The session registers one command, /brains, and that command opens the pane.
+// The session registers one command, /brains, which says it shows the Cortex
+// collections, and that command opens the pane.
 test('the session registers /brains', async ($, on) => {
   const names: string[] = []
-  fakeHook(on, [], LISTING, 0, [], names)
+  const descriptions: string[] = []
+  fakeHook(on, [], LISTING, 0, [], names, descriptions)
   on('session.start', (_: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
   expect(names).toEqual(['brains'])
+  expect(descriptions).toEqual(['Show the Cortex collections and turn each one on or off for the automatic recall'])
 })
 
 // The pane draws one row per brain: the cursor, a green check or a red
