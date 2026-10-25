@@ -241,12 +241,15 @@ code=$(rest POST /v1/add "$LF" '{"brain":"org/none","content":"x"}')
 # into the env file: the key the gateway issued before.
 code=$(rest GET /v1/identity "" "")
 [ "$code" = 404 ] && ok "GET /v1/identity without an identity block is 404" || ko "identity 404" "$code $(cat "$S/rest.out")"
-IDPPORT=$((50000 + $$ % 10000))
-node "$ROOT/tests/fake_idp.mjs" --port "$IDPPORT" --client-id thalamus-cli --audience thalamus > "$S/data/idp.log" 2>&1 &
+# Port 0: the system gives a free port, and the provider prints it once it
+# listens. A port chosen here can be in use: 50000 to 59999 is in the
+# ephemeral range of Linux, and the login failed in the CI on 52172.
+node "$ROOT/tests/fake_idp.mjs" --port 0 --client-id thalamus-cli --audience thalamus > "$S/data/idp.log" 2>&1 &
 IDP=$!
+IDPPORT=
+for i in $(seq 1 100); do IDPPORT=$(sed -n 's|^fake idp at http://127.0.0.1:||p' "$S/data/idp.log"); [ -n "$IDPPORT" ] && break; sleep 0.2; done
+[ -n "$IDPPORT" ] && ok "the fake provider listens on a free port" || ko "fake provider" "$(cat "$S/data/idp.log")"
 printf 'identity:\n  issuer: http://127.0.0.1:%s\n  audience: thalamus\n  client_id: thalamus-cli\n  strip_domain: true\n' "$IDPPORT" >> "$S/data/rights.yaml"
-# Node can take more than a second to start: wait for the discovery document.
-for i in $(seq 1 50); do curl -sf "http://127.0.0.1:$IDPPORT/.well-known/openid-configuration" >/dev/null && break; sleep 0.2; done
 code=$(rest POST /v1/login "not-a-token" "")
 [ "$code" = 401 ] && grep -q 'three parts' "$S/rest.out" && ok "POST /v1/login with a bad token is 401" || ko "login 401" "$code $(cat "$S/rest.out")"
 code=$(rest GET /v1/identity "" "")
