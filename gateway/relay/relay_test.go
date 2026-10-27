@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -57,7 +58,8 @@ type brain struct {
 type fakeGraph struct {
 	Known     bool             // get_nodes serves the entity, and expand_graph returns it with its neighbors
 	Neighbors []map[string]any // what expand_graph serves around the entity
-	Walked    []map[string]any // what knowledge_memory_neighbors serves: th_entity reads only its resolved id
+	Walked    []map[string]any // what knowledge_memory_neighbors serves, which follows the mentions
+	Resolved  string           // the node id the brain resolves the name to, if not the one derived from it
 	Fail      bool
 	Deny      bool // the brain refuses the key (PermissionDenied)
 }
@@ -152,13 +154,19 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &walk)
 		id := "entity:" + strings.ToLower(walk.EntityName)
+		if g.Resolved != "" {
+			id = g.Resolved
+		}
 		reply := map[string]any{"resolved_node_id": id, "neighbors": g.Walked}
 		if req.GetName() == "expand_graph" {
 			nodes := []map[string]any{}
 			if g.Known {
 				nodes = append(nodes, map[string]any{"id": walk.NodeIDs[0], "vector": nil, "content": walk.NodeIDs[0]})
 			}
-			reply = map[string]any{"nodes": append(nodes, g.Neighbors...), "edges": []any{}, "scores": map[string]float64{}}
+			// The engine returns the subgraph in order of node id, the seed among it.
+			nodes = append(nodes, g.Neighbors...)
+			sort.SliceStable(nodes, func(i, j int) bool { return fmt.Sprint(nodes[i]["id"]) < fmt.Sprint(nodes[j]["id"]) })
+			reply = map[string]any{"nodes": nodes, "edges": []any{}, "scores": map[string]float64{}}
 		}
 		if req.GetName() == "get_nodes" {
 			nodes := []map[string]any{}

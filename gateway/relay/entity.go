@@ -20,10 +20,13 @@ import (
 // id. Each key's scope decides what its brain serves: the engine walks only
 // the nodes and edges of the key's collections.
 //
-// The walk is expand_graph without the mentions edges (chunk to entity): the
-// engine's limit counts every node of a walk, and an entity mentioned by more
-// chunks than the limit came back with passages only, which are never
-// neighbors (fuseNeighbors), so with none at all.
+// Each brain is walked twice. The engine's limit counts every node of a
+// walk, and an entity mentioned by more chunks than the limit came back
+// from knowledge_memory_neighbors with passages only, which are never
+// neighbors, so with none at all. expand_graph without the mentions edges
+// (chunk to entity) reaches the entities the relations name. The walk of
+// knowledge_memory_neighbors, which follows the mentions, still serves the
+// entities named in the same passage (entity, chunk, entity, from depth 2).
 
 // defaultEntityLimit is how many neighbors th_entity asks of each brain;
 // maxEntityDepth and maxEntityLimit bound the walk, because each hop and
@@ -77,9 +80,30 @@ type entityResult struct {
 	Skipped   []skipped  `json:"skipped,omitempty"`
 }
 
-// fuseNeighbors merges the brains' answers by node id. A neighbor is an
-// entity: the chunk and document nodes that mention one are left out, so a
-// passage is never served as a name. A neighbor names
+// entityNeighbors is one brain's neighbors: the entities of the walks, in
+// the order of the walks, each once, at most limit. A neighbor is an
+// entity: the chunk, document and decision nodes a walk reaches are left
+// out, so a passage is never served as a name, and the entity itself is
+// not its own neighbor.
+func entityNeighbors(seed string, limit int, walks ...[]node) []node {
+	out := []node{}
+	seen := map[string]bool{seed: true}
+	for _, walk := range walks {
+		for _, n := range walk {
+			if len(out) == limit {
+				return out
+			}
+			if !strings.HasPrefix(n.ID, "entity:") || seen[n.ID] {
+				continue
+			}
+			seen[n.ID] = true
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// fuseNeighbors merges the brains' answers by node id. A neighbor names
 // every brain that serves it, and the neighbors that more brains serve come
 // first, then by id. A type one brain serves is kept.
 func fuseNeighbors(graphs []brainGraph) (known []string, out []neighbor) {
@@ -90,9 +114,6 @@ func fuseNeighbors(graphs []brainGraph) (known []string, out []neighbor) {
 			known = append(known, g.Brain)
 		}
 		for _, n := range g.Neighbors {
-			if !strings.HasPrefix(n.ID, "entity:") {
-				continue
-			}
 			i, seen := at[n.ID]
 			if !seen {
 				i = len(out)
@@ -120,19 +141,21 @@ func fuseNeighbors(graphs []brainGraph) (known []string, out []neighbor) {
 	return known, out
 }
 
-// askEntity asks one brain for the node id of the entity's name, then for
-// its neighbors, then whether it serves the entity itself. The graph tools
-// take no collection. The name is resolved by the engine, as it derives
-// entity ids; that call walks one node, and only its id is read.
+// askEntity asks one brain to walk from the entity's name, then to walk
+// from its node id without the mentions, then whether it serves the entity
+// itself. The graph tools take no collection. The engine resolves the name,
+// as it derives entity ids: the gateway walks from the id it answers. The
+// entities the relations reach come first.
 func (s *Server) askEntity(ctx context.Context, user, name string, args entityArgs) (string, brainGraph, error) {
 	b := s.rights().Brains[name]
 	raw, err := s.callBrain(ctx, b, user, name, "knowledge_memory_neighbors", map[string]any{
-		"entity_name": args.Entity, "limit": 1, "collection": nil})
+		"entity_name": args.Entity, "max_depth": args.MaxDepth, "limit": args.Limit, "collection": nil})
 	if err != nil {
 		return "", brainGraph{}, err
 	}
 	var walk struct {
-		NodeID string `json:"resolved_node_id"`
+		NodeID    string `json:"resolved_node_id"`
+		Neighbors []node `json:"neighbors"`
 	}
 	if err := json.Unmarshal([]byte(raw), &walk); err != nil {
 		return "", brainGraph{}, fmt.Errorf("decode knowledge_memory_neighbors: %w", err)
@@ -148,7 +171,7 @@ func (s *Server) askEntity(ctx context.Context, user, name string, args entityAr
 	if err := json.Unmarshal([]byte(raw), &sub); err != nil {
 		return "", brainGraph{}, fmt.Errorf("decode expand_graph: %w", err)
 	}
-	neighbors := slices.DeleteFunc(sub.Nodes, func(n node) bool { return n.ID == walk.NodeID })
+	neighbors := entityNeighbors(walk.NodeID, args.Limit, sub.Nodes, walk.Neighbors)
 	raw, err = s.callBrain(ctx, b, user, name, "get_nodes", map[string]any{"node_ids": []string{walk.NodeID}, "collection": nil})
 	if err != nil {
 		return "", brainGraph{}, err
