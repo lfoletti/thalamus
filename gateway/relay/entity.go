@@ -29,8 +29,10 @@ import (
 // entities named in the same passage (entity, chunk, entity, from depth 2).
 
 // defaultEntityLimit is how many neighbors th_entity asks of each brain;
-// maxEntityDepth and maxEntityLimit bound the walk, because each hop and
-// each node multiply what every brain walks.
+// maxEntityDepth and maxEntityLimit bound the walks. The walk with the
+// mentions stops at the limit; the walk without them scores every node
+// within max_depth hops before it keeps the limit, so the depth bounds its
+// cost.
 const (
 	defaultEntityLimit = 20
 	maxEntityDepth     = 3
@@ -255,7 +257,7 @@ func (s *Server) addEntityTools(srv *mcp.Server, user string) {
 			"brains":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"skip_brains": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"max_depth":   map[string]any{"type": "integer", "description": fmt.Sprintf("hops of the walk, default 1, at most %d", maxEntityDepth)},
-			"limit":       map[string]any{"type": "integer", "description": fmt.Sprintf("nodes each brain walks, default %d, at most %d", defaultEntityLimit, maxEntityLimit)},
+			"limit":       map[string]any{"type": "integer", "description": fmt.Sprintf("neighbors each brain serves at most, default %d, at most %d", defaultEntityLimit, maxEntityLimit)},
 		}, "required": []string{"entity"}}},
 		func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			var args entityArgs

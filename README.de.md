@@ -233,7 +233,7 @@ Thalamus stützt sich für jeden Mechanismus, der allen CortexDB-Benutzern dient
   - Graph-Werkzeuge für einen auf eine Collection beschränkten Schlüssel (#94 bis #98). `th_entity` nutzt sie, um Entitäten über Gehirne hinweg zusammenzuführen, zusätzlich zu den Passagen.
   - Drei Werkzeuge und ein Index: die berührten IDs im Request-Log (#90), `knowledge_get` auf einer Liste von IDs (#91), eine Prüfung eines Satzes gegen seine zitierten Quellen (#92), und zwei redundante Kanten-Indizes entfernt (#93).
   - Suche in europäischen Sprachen: ein Schweizer Evaluationsdatensatz (#99), Akzente in der Abdeckungsuntergrenze (#100), und die Wörter und Läufe alternativer Anfragen (#101, #102).
-- Vorgeschlagen: `upsert_entities` erfasst die Collections der Chunks, die es nennt (#105), damit `th_entity` die Entitäten eines ausserhalb von Thalamus gebauten Gehirns liefert.
+- Gemergt in v2.139.1: `upsert_entities` erfasst die Collections der Chunks, die es nennt (#105), damit `th_entity` die Entitäten eines ausserhalb von Thalamus gebauten Gehirns liefert.
 - Thalamus verwendet CortexDB v2.139.1.
 - Vorbereitet: ein Werkzeug, das die Dokumente auflistet, die auf eine Prüfung warten.
 

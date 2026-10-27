@@ -233,7 +233,7 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
   - Graph tools for a key confined to one collection (#94 to #98). `th_entity` uses them to merge entities across brains, in addition to passages.
   - Three tools and an index: the touched ids in the request log (#90), `knowledge_get` on a list of ids (#91), a check of a sentence against its cited sources (#92), and two redundant edge indexes removed (#93).
   - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
-- Proposed: `upsert_entities` records the collections of the chunks that it names (#105), so that `th_entity` serves the entities of a brain built outside Thalamus.
+- Merged in v2.139.1: `upsert_entities` records the collections of the chunks that it names (#105), so that `th_entity` serves the entities of a brain built outside Thalamus.
 - Thalamus uses CortexDB v2.139.1.
 - Prepared: a tool that lists the documents waiting for review.
 

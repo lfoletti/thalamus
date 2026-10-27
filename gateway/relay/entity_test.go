@@ -248,6 +248,7 @@ func TestThEntityServesEntitiesOnly(t *testing.T) {
 	b.brain.graph[other] = fakeGraph{Known: true, Neighbors: []map[string]any{
 		{"id": "chunk:spec-1:000", "content": "Acme migrates the ledger on Sunday night."},
 		{"id": "doc:spec-1", "content": "spec-1"},
+		{"id": "decision:dec-1", "content": "Move the ledger"},
 		{"id": "entity:bob", "content": "Bob"},
 	}}
 	s := b.federated(t, acme)
@@ -261,7 +262,7 @@ func TestThEntityServesEntitiesOnly(t *testing.T) {
 	}
 }
 
-// limit is at most 100: each brain walks up to limit nodes.
+// limit is at most 100: each brain serves up to limit neighbors.
 func TestThEntityBoundsTheLimit(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
@@ -347,9 +348,10 @@ func TestThEntityWalksWithoutTheMentions(t *testing.T) {
 
 // The walk that follows the mentions still serves the entities a passage
 // names with this one (entity, chunk, entity), as before the walk without
-// them: a brain built by extraction alone, with no relation, keeps them.
-// The entities the relations reach come first, each once, and the limit
-// bounds what a brain serves.
+// them: a brain built by extraction alone, with no relation, keeps them,
+// while the passages of the entity do not fill its limit. The entities the
+// relations reach come first, then those of the walk in its order, each
+// once, and the limit bounds what a brain serves.
 func TestThEntityKeepsTheEntitiesNamedInTheSamePassage(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	g := b.brain.graph[acme]
@@ -357,6 +359,7 @@ func TestThEntityKeepsTheEntitiesNamedInTheSamePassage(t *testing.T) {
 		{"id": "chunk:spec-1:000", "content": "Acme and Walked migrate the ledger."},
 		{"id": "entity:walked", "content": "Walked"},
 		{"id": "entity:zeta", "content": "Zeta"},
+		{"id": "entity:yak", "content": "Yak"},
 	}
 	b.brain.graph[acme] = g
 	s := b.federated(t, acme)
@@ -364,7 +367,7 @@ func TestThEntityKeepsTheEntitiesNamedInTheSamePassage(t *testing.T) {
 		limit int
 		want  string
 	}{
-		{20, "entity:ledger entity:walked entity:zeta"},
+		{20, "entity:ledger entity:walked entity:yak entity:zeta"},
 		{3, "entity:ledger entity:walked entity:zeta"},
 		{2, "entity:ledger entity:zeta"},
 	} {

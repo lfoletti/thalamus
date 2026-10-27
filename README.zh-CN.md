@@ -233,7 +233,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
   - 适用于限定在单个集合内的 key 的图工具（#94 至 #98）。`th_entity` 用它们在段落之外跨大脑合并实体。
   - 三个工具和一个索引：请求日志中记录被触及的 id（#90），对 id 列表执行 `knowledge_get`（#91），对照所引用来源核查一个句子（#92），并删除了两个冗余的边索引（#93）。
   - 欧洲语言检索：一个瑞士评测集（#99），覆盖率下限中的重音处理（#100），以及备选查询的词和运行（#101、#102）。
-- 已提议：`upsert_entities` 记录它所指名的分块所属的集合（#105），使 `th_entity` 能提供在 Thalamus 之外构建的大脑中的实体。
+- 已在 v2.139.1 中合并：`upsert_entities` 记录它所指名的分块所属的集合（#105），使 `th_entity` 能提供在 Thalamus 之外构建的大脑中的实体。
 - Thalamus 使用 CortexDB v2.139.1。
 - 已准备：一个列出待审核文档的工具。
 

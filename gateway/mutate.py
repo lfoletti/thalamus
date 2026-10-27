@@ -492,6 +492,8 @@ M = [
  ('relay/entity.go', '!strings.HasPrefix(n.ID, "entity:") || seen[n.ID] {', '!strings.HasPrefix(n.ID, "entity:") {', 'relay', 'TestThEntityKeepsTheEntitiesNamedInTheSamePassage', 'an entity both walks reach is served twice'),
  ('relay/entity.go', 'entityNeighbors(walk.NodeID, args.Limit, sub.Nodes, walk.Neighbors)', 'entityNeighbors(walk.NodeID, args.Limit, sub.Nodes)', 'relay', 'TestThEntityKeepsTheEntitiesNamedInTheSamePassage', 'the entities named in the same passage are lost'),
  ('relay/entity.go', 'entityNeighbors(walk.NodeID, args.Limit, sub.Nodes, walk.Neighbors)', 'entityNeighbors(walk.NodeID, args.Limit, walk.Neighbors, sub.Nodes)', 'relay', 'TestThEntityKeepsTheEntitiesNamedInTheSamePassage', 'the co-mentions come before the relations'),
+ ('relay/entity.go', 'for _, n := range walk {', 'for i := range walk {\n\t\t\tn := walk[len(walk)-1-i]', 'relay', 'TestThEntityKeepsTheEntitiesNamedInTheSamePassage', 'a walk is read backwards'),
+ ('relay/entity.go', '!strings.HasPrefix(n.ID, "entity:") || seen[n.ID] {', '(strings.HasPrefix(n.ID, "chunk:") || strings.HasPrefix(n.ID, "doc:")) || seen[n.ID] {', 'relay', 'TestThEntityServesEntitiesOnly', 'a decision is served as a neighbor'),
  ('relay/entity.go', '"node_ids": []string{walk.NodeID}, "collection": nil})', '"node_ids": []string{walk.NodeID}})', 'relay', 'TestThEntityFusesTheNeighborsAcrossBrains', "get_nodes gets the brain's collection"),
  ('relay/entity.go', 'Known: len(got.Nodes) > 0,', 'Known: true,', 'relay', 'TestThEntitySaysWhereTheEntityIsUnknownOrTheBrainFailed', 'every brain that answers knows the entity'),
  ('relay/entity.go', 'if args.MaxDepth > maxEntityDepth {', 'if false {', 'relay', 'TestThEntityTakesTheDepthAndTheLimit', 'a deep walk is relayed'),
