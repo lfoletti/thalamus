@@ -220,6 +220,21 @@ ent=$(mcp "$LF" "" th_entity '{"entity":"Acme"}')
 if printf '%s' "$ent" | grep -q 'known_in\\":\[\\"org/secrets\\",\\"team/acme\\"\]' && printf '%s' "$ent" | grep -q 'entity:ledger' && printf '%s' "$ent" | grep -q 'entity:retainer' && ! printf '%s' "$ent" | grep -q 'vector\|isError'; then ok "th_entity: lfoletti finds Acme in both brains, with Ledger and Retainer"; else ko "th_entity lfoletti" "$ent"; fi
 ent=$(mcp "$LF" "" th_entity '{"entity":"Acme","brains":["team/acme"]}')
 if printf '%s' "$ent" | grep -q 'known_in\\":\[\\"team/acme\\"\]' && printf '%s' "$ent" | grep -q 'entity:ledger' && ! printf '%s' "$ent" | grep -q 'retainer\|isError'; then ok "th_entity: the key of team/acme serves Acme and Ledger, without Retainer"; else ko "th_entity team/acme" "$ent"; fi
+# An entity mentioned by more chunks than the limit keeps its neighbors: the
+# walk does not follow the mentions, which would fill the limit with passages.
+# The mentions are written as a graph builder writes them: a document, then
+# its entities tied to its chunk (upsert_entities, chunk_ids). The last note
+# names Zeta with Acme, with no relation between them: from depth 2, the
+# walk that follows the mentions still serves Zeta.
+for n in 1 2 3; do
+  zeta=''; [ $n = 3 ] && zeta=',{"name":"Zeta","type":"Company","chunk_ids":["chunk:note-3:000"]}'
+  check "operator: note $n in team-acme" ok "$(opmcp ingest_document '{"document_id":"note-'$n'","content":"Acme note '$n'.","collection":"team-acme"}')"
+  check "operator: note $n mentions Acme" ok "$(opmcp upsert_entities '{"document_id":"note-'$n'","entities":[{"name":"Acme","type":"Company","chunk_ids":["chunk:note-'$n':000"]}'"$zeta"']}')"
+done
+ent=$(mcp "$LF" "" th_entity '{"entity":"Acme","brains":["team/acme"],"limit":2}')
+if printf '%s' "$ent" | grep -q 'entity:ledger' && ! printf '%s' "$ent" | grep -q isError; then ok "th_entity: Acme, mentioned by three chunks, keeps Ledger at limit 2"; else ko "th_entity past the mentions" "$ent"; fi
+ent=$(mcp "$LF" "" th_entity '{"entity":"Acme","brains":["team/acme"],"max_depth":2}')
+if printf '%s' "$ent" | grep -q 'entity:ledger' && printf '%s' "$ent" | grep -q 'entity:zeta' && ! printf '%s' "$ent" | grep -q isError; then ok "th_entity: at depth 2, Acme also has Zeta, named in the same passage"; else ko "th_entity co-mention" "$ent"; fi
 
 # The REST face, for a browser extension or a script: same keys, same
 # circuit. GET /v1/brains lists, POST /v1/add proposes, refusals by status.

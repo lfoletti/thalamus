@@ -90,8 +90,13 @@ func TestThEntityFusesTheNeighborsAcrossBrains(t *testing.T) {
 		}
 		switch c.Name {
 		case "knowledge_memory_neighbors":
-			if args["entity_name"] != "Acme" || args["max_depth"] != 1.0 || args["limit"] != 20.0 {
+			if args["entity_name"] != "Acme" || args["max_depth"] != 1.0 || args["limit"] != 20.0 || len(args) != 3 {
 				t.Fatalf("neighbors call: %+v", args)
+			}
+		case "expand_graph":
+			if fmt.Sprint(args["node_ids"]) != "[entity:acme]" || args["max_hops"] != 1.0 || args["limit"] != 20.0 ||
+				fmt.Sprint(args["relation_policies"]) != "map[mentions:map[weight:-1]]" || len(args) != 4 {
+				t.Fatalf("expand_graph call: %+v", args)
 			}
 		case "get_nodes":
 			if fmt.Sprint(args["node_ids"]) != "[entity:acme]" {
@@ -101,7 +106,7 @@ func TestThEntityFusesTheNeighborsAcrossBrains(t *testing.T) {
 			t.Fatalf("call: %+v", c)
 		}
 	}
-	if len(b.brain.calls) != 4 {
+	if len(b.brain.calls) != 6 {
 		t.Fatalf("calls: %+v", b.brain.calls)
 	}
 	l := b.auditLines(t)[0]
@@ -118,9 +123,12 @@ func TestThEntityTakesTheDepthAndTheLimit(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
 	decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "max_depth": 2, "limit": 5}))
-	args := b.brain.named("knowledge_memory_neighbors")
-	if args["max_depth"] != 2.0 || args["limit"] != 5.0 {
+	args := b.brain.named("expand_graph")
+	if args["max_hops"] != 2.0 || args["limit"] != 5.0 {
 		t.Fatalf("args: %+v", args)
+	}
+	if args := b.brain.named("knowledge_memory_neighbors"); args["max_depth"] != 2.0 || args["limit"] != 5.0 {
+		t.Fatalf("neighbors args: %+v", args)
 	}
 	for _, c := range []struct {
 		args map[string]any
@@ -205,6 +213,9 @@ func TestThEntitySkipsABrainItCannotRead(t *testing.T) {
 	s := b.federated(t, acme)
 	for _, c := range []struct{ bad, fail, want string }{
 		{bad: "knowledge_memory_neighbors", want: "decode knowledge_memory_neighbors"},
+		{fail: "knowledge_memory_neighbors", want: "brain says no to knowledge_memory_neighbors"},
+		{bad: "expand_graph", want: "decode expand_graph"},
+		{fail: "expand_graph", want: "brain says no to expand_graph"},
 		{bad: "get_nodes", want: "decode get_nodes"},
 		{fail: "get_nodes", want: "brain says no to get_nodes"},
 	} {
@@ -237,6 +248,7 @@ func TestThEntityServesEntitiesOnly(t *testing.T) {
 	b.brain.graph[other] = fakeGraph{Known: true, Neighbors: []map[string]any{
 		{"id": "chunk:spec-1:000", "content": "Acme migrates the ledger on Sunday night."},
 		{"id": "doc:spec-1", "content": "spec-1"},
+		{"id": "decision:dec-1", "content": "Move the ledger"},
 		{"id": "entity:bob", "content": "Bob"},
 	}}
 	s := b.federated(t, acme)
@@ -250,7 +262,7 @@ func TestThEntityServesEntitiesOnly(t *testing.T) {
 	}
 }
 
-// limit is at most 100: each brain walks up to limit nodes.
+// limit is at most 100: each brain serves up to limit neighbors.
 func TestThEntityBoundsTheLimit(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
@@ -266,7 +278,7 @@ func TestThEntityAsksABrainNamedTwiceOnce(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
 	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme", "team/acme"}}))
-	if fmt.Sprint(got.KnownIn) != "[team/acme]" || len(b.brain.calls) != 2 {
+	if fmt.Sprint(got.KnownIn) != "[team/acme]" || len(b.brain.calls) != 3 {
 		t.Fatalf("known_in %v, calls %+v", got.KnownIn, b.brain.calls)
 	}
 }
@@ -291,17 +303,101 @@ func TestThEntityAuditsABrainThatRefusedTheKey(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string {
 		return strings.Replace(y, "    weight: 0.5\n    audit_reads: true\n", "    weight: 0.5\n", 1)
 	})
-	b.brain.denyTool = "knowledge_memory_neighbors"
 	s := b.federated(t, acme)
-	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme"}))
-	if len(got.Skipped) != 2 {
-		t.Fatalf("skipped: %+v", got.Skipped)
+	for i, tool := range []string{"knowledge_memory_neighbors", "expand_graph", "get_nodes"} {
+		b.brain.denyTool = tool
+		got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme"}))
+		if len(got.Skipped) != 2 {
+			t.Fatalf("%s skipped: %+v", tool, got.Skipped)
+		}
+		var lines []string
+		for _, l := range b.auditLines(t)[2*i:] {
+			lines = append(lines, fmt.Sprint(l["brain"], " ", l["tool"], " ", l["ok"], " ", strings.Contains(fmt.Sprint(l["error"]), "not for this key")))
+		}
+		if strings.Join(lines, ";") != "team/acme th_entity false true;team/other th_entity false true" {
+			t.Fatalf("%s audit: %v", tool, lines)
+		}
 	}
-	var lines []string
-	for _, l := range b.auditLines(t) {
-		lines = append(lines, fmt.Sprint(l["brain"], " ", l["tool"], " ", l["ok"], " ", strings.Contains(fmt.Sprint(l["error"]), "not for this key")))
+}
+
+// The walk leaves out the edges from a chunk to the entities it mentions
+// (relation_policies, mentions excluded): the engine's limit counts the
+// nodes of the walk, and an entity mentioned by more chunks than the limit
+// came back with passages only, which a neighbor never is, so with no
+// neighbor at all ("Suno", 194 mentions, none at limit 100, 27.10.2026).
+// The entity itself, which expand_graph returns among its subgraph, is not
+// its own neighbor.
+func TestThEntityWalksWithoutTheMentions(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	g := b.brain.graph[acme]
+	g.Neighbors = append(g.Neighbors, map[string]any{"id": "entity:aaa", "content": "Aaa"})
+	b.brain.graph[acme] = g
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme"}}))
+	var ids []string
+	for _, n := range got.Neighbors {
+		ids = append(ids, n.ID)
 	}
-	if strings.Join(lines, ";") != "team/acme th_entity false true;team/other th_entity false true" {
-		t.Fatalf("audit: %v", lines)
+	if strings.Join(ids, " ") != "entity:aaa entity:ledger entity:zeta" {
+		t.Fatalf("neighbors: %s", ids)
+	}
+	if args := b.brain.named("expand_graph"); fmt.Sprint(args["relation_policies"]) != "map[mentions:map[weight:-1]]" {
+		t.Fatalf("expand_graph: %+v", args)
+	}
+}
+
+// The walk that follows the mentions still serves the entities a passage
+// names with this one (entity, chunk, entity), as before the walk without
+// them: a brain built by extraction alone, with no relation, keeps them,
+// while the passages of the entity do not fill its limit. The entities the
+// relations reach come first, then those of the walk in its order, each
+// once, and the limit bounds what a brain serves.
+func TestThEntityKeepsTheEntitiesNamedInTheSamePassage(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	g := b.brain.graph[acme]
+	g.Walked = []map[string]any{
+		{"id": "chunk:spec-1:000", "content": "Acme and Walked migrate the ledger."},
+		{"id": "entity:walked", "content": "Walked"},
+		{"id": "entity:zeta", "content": "Zeta"},
+		{"id": "entity:yak", "content": "Yak"},
+	}
+	b.brain.graph[acme] = g
+	s := b.federated(t, acme)
+	for _, c := range []struct {
+		limit int
+		want  string
+	}{
+		{20, "entity:ledger entity:walked entity:yak entity:zeta"},
+		{3, "entity:ledger entity:walked entity:zeta"},
+		{2, "entity:ledger entity:zeta"},
+	} {
+		got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme"}, "limit": c.limit}))
+		var ids []string
+		for _, n := range got.Neighbors {
+			ids = append(ids, n.ID+"="+strings.Join(n.Brains, "+"))
+		}
+		if want := strings.ReplaceAll(c.want, " ", "=team/acme ") + "=team/acme"; strings.Join(ids, " ") != want {
+			t.Fatalf("limit %d: %s", c.limit, ids)
+		}
+	}
+}
+
+// The gateway walks from the node id the brain resolves the name to, and
+// asks for that node: it does not derive the id from the name itself.
+func TestThEntityWalksFromTheIdTheBrainResolves(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	g := b.brain.graph[acme]
+	g.Resolved = "entity:acme_corp"
+	b.brain.graph[acme] = g
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme"}}))
+	if got.NodeID != "entity:acme_corp" || fmt.Sprint(got.KnownIn) != "[team/acme]" || len(got.Neighbors) != 2 {
+		t.Fatalf("entity: %+v", got)
+	}
+	if args := b.brain.named("expand_graph"); fmt.Sprint(args["node_ids"]) != "[entity:acme_corp]" {
+		t.Fatalf("expand_graph: %+v", args)
+	}
+	if args := b.brain.named("get_nodes"); fmt.Sprint(args["node_ids"]) != "[entity:acme_corp]" {
+		t.Fatalf("get_nodes: %+v", args)
 	}
 }

@@ -145,7 +145,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 1. CortexDB を `gateway/` の隣の `cortexdb/` にクローンし、バイナリをビルドします。
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.139.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.139.1)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -233,8 +233,8 @@ Thalamus は、すべての CortexDB ユーザーに役立つ仕組みについ�
   - 一つのコレクションに限定されたキー向けのグラフツール（#94〜#98）。`th_entity` はこれを使い、パッセージに加えてブレインをまたいでエンティティを統合します。
   - 三つのツールと一つのインデックス：リクエストログ内の操作対象 ID（#90）、ID のリストに対する `knowledge_get`（#91）、文とその引用元との照合（#92）、そして冗長な二つのエッジインデックスの削除（#93）。
   - ヨーロッパの言語での検索：スイスの評価セット（#99）、カバレッジ下限でのアクセント記号の扱い（#100）、代替クエリの語と実行（#101、#102）。
-- 提案中：`upsert_entities` が、自身が指す名前を持つチャンクのコレクションを記録します（#105）。これにより `th_entity` は、Thalamus の外で構築されたブレインのエンティティも提供できます。
-- Thalamus は CortexDB v2.139.0 を使用しています。
+- v2.139.1 でマージ済み：`upsert_entities` が、自身が指す名前を持つチャンクのコレクションを記録します（#105）。これにより `th_entity` は、Thalamus の外で構築されたブレインのエンティティも提供できます。
+- Thalamus は CortexDB v2.139.1 を使用しています。
 - 準備中：レビュー待ちの文書を一覧表示するツール。
 
 **次の予定**
