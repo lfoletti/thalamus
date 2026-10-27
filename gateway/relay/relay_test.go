@@ -48,15 +48,16 @@ type brain struct {
 	docs              map[string]map[string]any // what knowledge_get serves by id, in any collection
 	failID            string                    // a knowledge_get id whose call fails
 	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
-	graph             map[string]fakeGraph      // what get_nodes and knowledge_memory_neighbors serve, by the caller's secret
+	graph             map[string]fakeGraph      // what get_nodes, knowledge_memory_neighbors and expand_graph serve, by the caller's secret
 	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
 	cut               atomic.Bool               // a slow call saw its caller go away
 }
 
 // fakeGraph is one key's part of the graph around one entity.
 type fakeGraph struct {
-	Known     bool             // get_nodes serves the entity
-	Neighbors []map[string]any // what knowledge_memory_neighbors serves
+	Known     bool             // get_nodes serves the entity, and expand_graph returns it with its neighbors
+	Neighbors []map[string]any // what expand_graph serves around the entity
+	Walked    []map[string]any // what knowledge_memory_neighbors serves: th_entity reads only its resolved id
 	Fail      bool
 	Deny      bool // the brain refuses the key (PermissionDenied)
 }
@@ -138,7 +139,7 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	if b.denyTool == req.GetName() {
 		return nil, status.Error(codes.PermissionDenied, "not for this key")
 	}
-	if g, ok := b.graph[strings.TrimPrefix(bearer, "Bearer ")]; ok && (req.GetName() == "get_nodes" || req.GetName() == "knowledge_memory_neighbors") {
+	if g, ok := b.graph[strings.TrimPrefix(bearer, "Bearer ")]; ok && (req.GetName() == "get_nodes" || req.GetName() == "knowledge_memory_neighbors" || req.GetName() == "expand_graph") {
 		if g.Fail {
 			return nil, errors.New("graph says no")
 		}
@@ -151,7 +152,14 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &walk)
 		id := "entity:" + strings.ToLower(walk.EntityName)
-		reply := map[string]any{"resolved_node_id": id, "neighbors": g.Neighbors}
+		reply := map[string]any{"resolved_node_id": id, "neighbors": g.Walked}
+		if req.GetName() == "expand_graph" {
+			nodes := []map[string]any{}
+			if g.Known {
+				nodes = append(nodes, map[string]any{"id": walk.NodeIDs[0], "vector": nil, "content": walk.NodeIDs[0]})
+			}
+			reply = map[string]any{"nodes": append(nodes, g.Neighbors...), "edges": []any{}, "scores": map[string]float64{}}
+		}
 		if req.GetName() == "get_nodes" {
 			nodes := []map[string]any{}
 			if g.Known {

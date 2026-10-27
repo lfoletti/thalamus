@@ -46,16 +46,24 @@ func entityBench(t *testing.T, edit func(string) string) (*bench, string, string
 		t.Fatal(err)
 	}
 	b.brain.graph = map[string]fakeGraph{
-		acme.Secret: {Known: true, Neighbors: []map[string]any{
+		acme.Secret: {Known: true, Walked: walkedDecoy, Neighbors: []map[string]any{
 			{"id": "entity:zeta", "vector": nil, "content": "Zeta", "properties": map[string]any{"name": "Zeta"}},
 			{"id": "entity:ledger", "vector": []float64{0, 1}, "content": "Ledger", "node_type": "System", "properties": map[string]any{"name": "Ledger", "collections": []string{"team-acme"}}},
 		}},
-		other.Secret: {Known: true, Neighbors: []map[string]any{
+		other.Secret: {Known: true, Walked: walkedDecoy, Neighbors: []map[string]any{
 			{"id": "entity:bob", "vector": nil, "content": "Bob"},
 			{"id": "entity:ledger", "vector": nil, "content": "Ledger"},
 		}},
 	}
 	return b, acme.Secret, other.Secret
+}
+
+// walkedDecoy is what knowledge_memory_neighbors walks around Acme: the
+// passages that mention it fill the limit, and an entity they would hide.
+// th_entity reads only the resolved id from that call, never its neighbors.
+var walkedDecoy = []map[string]any{
+	{"id": "chunk:spec-1:000", "content": "Acme migrates the ledger on Sunday night."},
+	{"id": "entity:walked", "content": "Walked"},
 }
 
 // th_entity asks every readable brain for the neighbors of one entity with
@@ -90,8 +98,13 @@ func TestThEntityFusesTheNeighborsAcrossBrains(t *testing.T) {
 		}
 		switch c.Name {
 		case "knowledge_memory_neighbors":
-			if args["entity_name"] != "Acme" || args["max_depth"] != 1.0 || args["limit"] != 20.0 {
+			if args["entity_name"] != "Acme" || args["limit"] != 1.0 || len(args) != 2 {
 				t.Fatalf("neighbors call: %+v", args)
+			}
+		case "expand_graph":
+			if fmt.Sprint(args["node_ids"]) != "[entity:acme]" || args["max_hops"] != 1.0 || args["limit"] != 20.0 ||
+				fmt.Sprint(args["relation_policies"]) != "map[mentions:map[weight:-1]]" || len(args) != 4 {
+				t.Fatalf("expand_graph call: %+v", args)
 			}
 		case "get_nodes":
 			if fmt.Sprint(args["node_ids"]) != "[entity:acme]" {
@@ -101,7 +114,7 @@ func TestThEntityFusesTheNeighborsAcrossBrains(t *testing.T) {
 			t.Fatalf("call: %+v", c)
 		}
 	}
-	if len(b.brain.calls) != 4 {
+	if len(b.brain.calls) != 6 {
 		t.Fatalf("calls: %+v", b.brain.calls)
 	}
 	l := b.auditLines(t)[0]
@@ -118,8 +131,8 @@ func TestThEntityTakesTheDepthAndTheLimit(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
 	decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "max_depth": 2, "limit": 5}))
-	args := b.brain.named("knowledge_memory_neighbors")
-	if args["max_depth"] != 2.0 || args["limit"] != 5.0 {
+	args := b.brain.named("expand_graph")
+	if args["max_hops"] != 2.0 || args["limit"] != 5.0 {
 		t.Fatalf("args: %+v", args)
 	}
 	for _, c := range []struct {
@@ -205,6 +218,9 @@ func TestThEntitySkipsABrainItCannotRead(t *testing.T) {
 	s := b.federated(t, acme)
 	for _, c := range []struct{ bad, fail, want string }{
 		{bad: "knowledge_memory_neighbors", want: "decode knowledge_memory_neighbors"},
+		{fail: "knowledge_memory_neighbors", want: "brain says no to knowledge_memory_neighbors"},
+		{bad: "expand_graph", want: "decode expand_graph"},
+		{fail: "expand_graph", want: "brain says no to expand_graph"},
 		{bad: "get_nodes", want: "decode get_nodes"},
 		{fail: "get_nodes", want: "brain says no to get_nodes"},
 	} {
@@ -266,7 +282,7 @@ func TestThEntityAsksABrainNamedTwiceOnce(t *testing.T) {
 	b, acme, _ := entityBench(t, func(y string) string { return y })
 	s := b.federated(t, acme)
 	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme", "team/acme"}}))
-	if fmt.Sprint(got.KnownIn) != "[team/acme]" || len(b.brain.calls) != 2 {
+	if fmt.Sprint(got.KnownIn) != "[team/acme]" || len(b.brain.calls) != 3 {
 		t.Fatalf("known_in %v, calls %+v", got.KnownIn, b.brain.calls)
 	}
 }
@@ -303,5 +319,28 @@ func TestThEntityAuditsABrainThatRefusedTheKey(t *testing.T) {
 	}
 	if strings.Join(lines, ";") != "team/acme th_entity false true;team/other th_entity false true" {
 		t.Fatalf("audit: %v", lines)
+	}
+}
+
+// The walk leaves out the edges from a chunk to the entities it mentions
+// (relation_policies, mentions excluded): the engine's limit counts the
+// nodes of the walk, and an entity mentioned by more chunks than the limit
+// came back with passages only, which a neighbor never is, so with no
+// neighbor at all ("Suno", 194 mentions, none at limit 100, 27.10.2026).
+// The neighbors are those of expand_graph, less the entity itself; the
+// call that resolves the name serves its id only.
+func TestThEntityWalksWithoutTheMentions(t *testing.T) {
+	b, acme, _ := entityBench(t, func(y string) string { return y })
+	s := b.federated(t, acme)
+	got := decode[entityOut](t, mustCall(t, s, "th_entity", map[string]any{"entity": "Acme", "brains": []string{"team/acme"}}))
+	var ids []string
+	for _, n := range got.Neighbors {
+		ids = append(ids, n.ID)
+	}
+	if strings.Join(ids, " ") != "entity:ledger entity:zeta" {
+		t.Fatalf("neighbors: %s", ids)
+	}
+	if args := b.brain.named("expand_graph"); fmt.Sprint(args["relation_policies"]) != "map[mentions:map[weight:-1]]" {
+		t.Fatalf("expand_graph: %+v", args)
 	}
 }
