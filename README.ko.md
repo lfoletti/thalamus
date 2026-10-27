@@ -145,7 +145,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 1. CortexDB를 `gateway/` 옆의 `cortexdb/`에 클론한 다음 바이너리를 빌드합니다.
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.139.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.139.1)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -234,7 +234,7 @@ Thalamus는 모든 CortexDB 사용자에게 도움이 되는 각 메커니즘을
   - 도구 세 개와 인덱스 하나: 요청 로그의 접근된 id(#90), id 목록에 대한 `knowledge_get`(#91), 문장을 인용된 출처와 대조하는 검사(#92), 중복된 엣지 인덱스 두 개의 제거(#93).
   - 유럽 언어 검색: 스위스 평가 세트(#99), 커버리지 하한에서의 악센트 처리(#100), 대체 질의의 단어와 실행(#101, #102).
 - 제안됨: `upsert_entities`가 자신이 지정하는 청크의 컬렉션을 기록하여(#105), `th_entity`가 Thalamus 밖에서 만들어진 브레인의 엔티티를 제공할 수 있게 합니다.
-- Thalamus는 CortexDB v2.139.0을 사용합니다.
+- Thalamus는 CortexDB v2.139.1을 사용합니다.
 - 준비됨: 검토를 기다리는 문서를 나열하는 도구.
 
 **다음**
