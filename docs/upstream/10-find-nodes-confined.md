@@ -1,23 +1,23 @@
 # 10. `find_nodes` pour une clé confinée
 
-**Statut** : en réserve, ne pas envoyer sans la demande de Lauro. **Taille** : 2 lignes de code hors tests (essayée le 28 octobre 2026 sur `origin/main` 86131b2) ; tests : 10 lignes ajoutées ou changées, 16 retirées. **Dépend de** : rien. Le filtre que la liste blanche attend est déjà dans v2.139.0 (ef87828).
+**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `th-10-find-nodes-confined` du fork. **Taille** : 2 lignes de code hors tests (essayée le 28 octobre 2026 sur `origin/main` 86131b2) ; tests : 10 lignes ajoutées ou changées, 16 retirées. **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
 
-Chantier D4 du projet d'alignement. La fiche 06 a fait ouvrir les autres outils de graphe (#95 à #97, v2.139.0). `find_nodes` est resté seul de côté.
+La fiche 06 a proposé les autres outils de graphe pour une clé confinée (#95 à #97, v2.139.0). La liste blanche annonçait `find_nodes` pour un changement à part : cette fiche le propose.
 
 ## Le besoin de Thalamus
 
-kg-mcp disparaît (F1 du projet d'alignement). Son outil `chercher` passe à CortexDB par `find_nodes` : une personne a un nom et veut entrer dans le graphe. Pour un cerveau confiné à une collection, il n'y a pas d'autre porte d'entrée. `expand_graph`, `get_nodes` et `search_paths` sont déjà ouverts, mais ils partent d'un identifiant. `knowledge_memory_neighbors` et `search_paths` acceptent un nom, mais seulement le nom exact d'une entité, et ils ne disent pas comment il a été trouvé.
+Le serveur de graphes de contaixt (kg-mcp) passe à Thalamus. Son outil `chercher` se relaie par `find_nodes` : une personne a un nom et veut entrer dans le graphe. C'est l'outil qui entre dans le graphe par un nom, sans tenir compte de la casse ni de la ponctuation, ou par inclusion, et qui dit comment il a trouvé. Les outils de parcours déjà ouverts à une clé confinée (`expand_graph`, `get_nodes`, `search_paths`) partent ensuite de l'identifiant qu'il rend.
 
-Sans `find_nodes`, `chercher` passe aujourd'hui par `th_recall` (des passages) et par le document des sommets calculé à la construction. Ce repli marche, mais il perd la recherche sans tenir compte de la casse, la recherche par inclusion et le filtre par type.
+Sans `find_nodes`, `chercher` passe aujourd'hui par `th_recall` (des passages) et par le document des sommets calculé à la construction. Avec `find_nodes`, `chercher` garde la recherche sans tenir compte de la casse, la recherche par inclusion et le filtre par type.
 
-## Ce que le moteur a déjà
+## Ce que le moteur fournit
 
 1. **Le refus et sa condition.** La liste blanche (`pkg/authz/allowlist.go`, v2.139.1) refuse l'outil « matches the content of every node, chunks of every collection included; it opens in a change of its own, once its matches pass the hidden-node filter ».
 2. **La condition est remplie depuis v2.139.0.** `ef87828` (« find_nodes leaves out the nodes of hidden documents and memories ») fait passer chaque fenêtre de résultats par `withoutExpiredDocuments` avant la limite (`graphrag_tool_find_nodes.go`). Ce filtre applique aussi le périmètre de l'appelant :
    - `hiddenAmong` → `outOfScopeDocuments` cache les nœuds `chunk` et `document` d'une autre collection, et cache tout si la lecture échoue ;
    - `hiddenMemoryNodes` cache les mémoires hors de la règle de mémoire ;
    - `scopedNode` cache une entité que seule une autre collection connaît et rend les autres réduites (nom et type).
-3. **Les tests existent, mais ils sont sautés.** `graph_caller_scope_test.go` et `graph_scoped_entities_test.go` portent une ligne `find_nodes` dans la table des outils de graphe. Ces lignes sont sautées par `const findNodesNeedsTheHiddenFilter = true`, qui annonce le changement de ef87828. Le changement est arrivé, mais la constante est restée.
+3. **Les tests sont prêts.** `graph_caller_scope_test.go` et `graph_scoped_entities_test.go` portent une ligne `find_nodes` dans la table des outils de graphe, mise en attente par `const findNodesNeedsTheHiddenFilter = true` jusqu'au changement qui ouvre l'outil. Cette PR lève l'attente.
 
 ## Essai du 28 octobre 2026 (copie jetable de `origin/main` 86131b2)
 
@@ -41,7 +41,6 @@ Code (`pkg/authz/allowlist.go`) :
 
 - `find_nodes` entre dans `confinedTools` avec `stores: storeKnowledge | storeMemory, facade: true, args: names, node_types, limit`. Il n'a aucun champ d'identifiant : `RowIDsOf` ne journalise rien pour lui, comme pour `search_chunks_by_entities`.
 - Sa ligne sort de `refusedTools`.
-- `CHANGELOG.md` : une entrée sous « Unreleased ».
 
 Tests (écrits avant le code ; avec les tests seuls, `pkg/authz` et `graphWalks` des deux ports tombent sur le refus) :
 
@@ -68,11 +67,10 @@ Table outil par outil (règle du propriétaire du 20 octobre 2026) :
    | 4 | 388 ms | 390 ms |
    | 8 | | 800 ms |
 
-   Le filtre ajoute environ 2 ms. Le coût vient du rapprochement : environ 25 ms pour lire les nœuds, puis environ 95 ms par nom, parce que `foldName` replie le contenu de chaque nœud une fois par nom. Une clé confinée ne coûte donc pas plus qu'une clé ouverte. Si le propriétaire veut une borne, elle porte sur le nombre de noms par appel, pas sur la liste blanche. Hors de cette PR, la fiche 11 normalise chaque contenu une seule fois par appel : 8 noms en 156 ms au lieu de 798 ms.
+   Le filtre ajoute environ 2 ms. Le temps se partage entre la lecture des nœuds (environ 25 ms) et le rapprochement de chaque nom (environ 95 ms par nom, `foldName` sur le contenu de chaque nœud). Une clé confinée ne coûte donc pas plus qu'une clé ouverte. La fiche 11 propose, dans une PR à part, de normaliser chaque contenu une fois par appel : 8 noms en 156 ms au lieu de 798 ms.
 2. **L'ordre des résultats.** Les nœuds cachés sortent fenêtre par fenêtre, avant la limite, et `match` vient du premier nœud servi. La réponse d'alpha ne dépend donc pas de ce que beta écrit : le banc « before / after » le vérifie.
 3. **`node_types`** passe par `expandOntologyTypeFilter`. L'ontologie est commune au serveur, mais l'argument ne rend que des nœuds, et ces nœuds sont filtrés.
 
 ## Ce que Thalamus fait après la fusion
 
-- K3 du projet d'alignement : `chercher` relaie `find_nodes` avec la clé de la personne, sur la liste fermée des outils de graphe.
-- Le repli du 15 novembre 2026 (binaire compilé depuis le fork) n'a plus d'objet. Ce repli est inscrit dans `AMONT.md` du projet d'alignement.
+- `chercher` relaie `find_nodes` avec la clé de la personne, sur la liste fermée des outils de graphe que Thalamus relaie.

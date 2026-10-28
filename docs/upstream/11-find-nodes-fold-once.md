@@ -1,10 +1,10 @@
 # 11. `find_nodes` normalise chaque nœud une fois par appel
 
-**Statut** : en réserve, envoyée avec la fiche 10 sur demande de Lauro (28 octobre 2026). **Taille** : 4 lignes de code hors tests, un test de 30 lignes (essayée le 28 octobre 2026 sur `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
+**Statut** : envoyée avec la fiche 10 le 28 octobre 2026 sur demande de Lauro, branche `th-11-find-nodes-fold-once` du fork. **Taille** : 4 lignes de code hors tests, un test de 30 lignes (essayée le 28 octobre 2026 sur `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
 
-## Le constat
+## Le besoin de Thalamus
 
-La mesure de la fiche 10 montre que le coût de `find_nodes` croît avec le nombre de noms demandés. La cause est dans la boucle de rapprochement (`graphrag_tool_find_nodes.go`). Pour chaque nom et pour chaque nœud, `foldName(c.content)` est appelé, et même deux fois quand le nœud n'est pas égal au nom : une fois pour la comparaison normalisée, une fois pour l'inclusion. `foldName` construit une chaîne neuve à chaque appel. Un appel à k noms sur n nœuds normalise donc jusqu'à 2·k·n fois le même contenu. Or la description de l'outil demande de grouper les noms (« Batch them: one scan serves all »).
+Le relais de `chercher` envoie les noms par lots, comme la description de l'outil le demande (« Batch them: one scan serves all »). La mesure de la fiche 10 montre que le temps d'un appel suit le nombre de noms : la boucle de rapprochement (`graphrag_tool_find_nodes.go`) appelle `foldName(c.content)` pour chaque nom et chaque nœud, une fois pour la comparaison normalisée et une fois pour l'inclusion. La lecture des nœuds, elle, se fait une fois par appel. Cette fiche propose de faire de même pour la normalisation.
 
 ## La proposition (une PR, une règle)
 
@@ -37,4 +37,4 @@ Le patch est gardé hors du dépôt, dans `thalamus_local/docs/pr/d4_find_nodes/
 
 ## Ce que Thalamus y gagne
 
-Le relais de `chercher` (K3) envoie les noms par lots. Avec ce changement, un lot de 8 noms coûte environ 160 ms au lieu de 800 ms sur un cerveau de la taille d'ai-audio.
+Avec ce changement, un lot de 8 noms coûte environ 160 ms au lieu de 800 ms sur un cerveau de la taille d'ai-audio.
