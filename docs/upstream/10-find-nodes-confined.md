@@ -1,6 +1,6 @@
 # 10. `find_nodes` pour une clé confinée
 
-**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `co-10-find-nodes-confined` du fork. **Taille** : 2 lignes de code hors tests (essayée le 28 octobre 2026 sur `origin/main` 86131b2) ; tests : 10 lignes ajoutées ou changées, 16 retirées. **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
+**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `co-10-find-nodes-confined` du fork. **Taille** : 13 lignes hors tests sur 2 fichiers, 2 retirées ; tests : 64 lignes ajoutées sur 10 fichiers, 18 retirées (base `origin/main` 86131b2). **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
 
 La fiche 06 a proposé les autres outils de graphe pour une clé confinée (#95 à #97, v2.139.0). La liste blanche annonçait `find_nodes` pour un changement à part : cette fiche le propose.
 
@@ -31,7 +31,7 @@ Sans `find_nodes`, `chercher` passe aujourd'hui par `th_recall` (des passages) e
 
 Leçon de l'essai : les bancs « avant / après » seuls ne prouvent pas l'ouverture. Un refus ne fuit rien et ne change pas quand beta écrit, donc ils passent aussi sans le changement de la liste blanche. Le contrôle positif est la ligne de `graphWalks`, qui exige une réponse.
 
-Le patch de l'essai est gardé hors du dépôt, dans `thalamus_local/docs/pr/d4_find_nodes/d4-find-nodes-confined.patch`. Pour le rejouer : `git apply` sur `origin/main` 86131b2, puis `go test ./pkg/authz ./pkg/rpcserver ./pkg/httpapi ./pkg/cortexdb -count=1`.
+Pour le rejouer : la branche `co-10-find-nodes-confined` du fork, puis `go test ./pkg/authz ./pkg/rpcserver ./pkg/httpapi ./pkg/cortexdb -count=1`.
 
 ## La proposition (une PR, une règle)
 
@@ -41,6 +41,10 @@ Code (`pkg/authz/allowlist.go`) :
 
 - `find_nodes` entre dans `confinedTools` avec `stores: storeKnowledge | storeMemory, facade: true, args: names, node_types, limit`. Il n'a aucun champ d'identifiant : `RowIDsOf` ne journalise rien pour lui, comme pour `search_chunks_by_entities`.
 - Sa ligne sort de `refusedTools`.
+
+Code (`pkg/cortexdb/graphrag_tool_find_nodes.go`), ajouté après la relecture adverse : `node_types` se compare au nœud tel qu'il est servi. Une entité que le périmètre réduit n'a pas de type (`scopedNode`), donc elle ne répond à aucun filtre de type, comme dans les parcours (`ofTypes`). Sans ce point, une clé confinée lirait le type qu'une autre collection a donné à une entité commune. Test : `TestFindNodesMatchesNoTypeOnAnEntityTheScopeReduces`.
+
+Condition de fusion : le corps de la PR demande de fusionner seulement après le changement nommé dans une note privée envoyée au propriétaire le 28 octobre 2026.
 
 Tests (écrits avant le code ; avec les tests seuls, `pkg/authz` et `graphWalks` des deux ports tombent sur le refus) :
 
