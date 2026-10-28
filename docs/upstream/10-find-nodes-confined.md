@@ -60,7 +60,15 @@ Table outil par outil (règle du propriétaire du 20 octobre 2026) :
 
 ## Points à dire au propriétaire
 
-1. **Coût.** `find_nodes` lit tous les nœuds qui ont un contenu, à chaque appel (« the graph has no index on content »). Une clé confinée paie ce parcours comme une clé ouverte, et le filtre s'ajoute ensuite. À mesurer avant l'envoi : temps d'un appel à 4 noms sur le cerveau ai-audio et sur un cerveau de 10 000 documents, comme pour #76. Si le propriétaire veut une borne, elle tient dans `limit` et dans le nombre de noms par appel, pas dans la liste blanche.
+1. **Coût, mesuré le 28 octobre 2026** (copie du cerveau ai-audio : 30 161 nœuds avec un contenu, dont 15 160 chunks et 5 244 documents ; bibliothèque v2.139.1 ; Apple M2 ; médiane de 10 appels après un appel de chauffe) :
+
+   | Noms par appel | Sans clé | Clé confinée (`graphrag_chunks`) |
+   | -: | -: | -: |
+   | 1 | | 121 ms |
+   | 4 | 388 ms | 390 ms |
+   | 8 | | 800 ms |
+
+   Le filtre ajoute environ 2 ms. Le coût vient du rapprochement : environ 25 ms pour lire les nœuds, puis environ 95 ms par nom, parce que `foldName` replie le contenu de chaque nœud une fois par nom. Une clé confinée ne coûte donc pas plus qu'une clé ouverte. Si le propriétaire veut une borne, elle porte sur le nombre de noms par appel, pas sur la liste blanche. Hors de cette PR, on pourrait lui proposer une amélioration : replier chaque contenu une seule fois par appel.
 2. **L'ordre des résultats.** Les nœuds cachés sortent fenêtre par fenêtre, avant la limite, et `match` vient du premier nœud servi. La réponse d'alpha ne dépend donc pas de ce que beta écrit : le banc « before / after » le vérifie.
 3. **`node_types`** passe par `expandOntologyTypeFilter`. L'ontologie est commune au serveur, mais l'argument ne rend que des nœuds, et ces nœuds sont filtrés.
 
