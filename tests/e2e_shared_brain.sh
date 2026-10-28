@@ -4,8 +4,9 @@
 # client in remote mode driven over JSON-RPC. Prints PASS/FAIL per check.
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/tests/cortexdb_clone.sh"
 S=$(mktemp -d)
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp-stdio" ./cmd/cortexdb-mcp-stdio) || exit 1
+(cd "$CDB" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp-stdio" ./cmd/cortexdb-mcp-stdio) || exit 1
 E=$S
 GRPC=$S/cortexdb-grpc
 STDIO=$S/cortexdb-mcp-stdio

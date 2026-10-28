@@ -12,12 +12,13 @@
 # Usage: sh tests/e2e_plugin.sh [model]   (default: haiku; three short calls; 11 checks)
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/tests/cortexdb_clone.sh"
 MODEL=${1:-haiku}
 S=$(mktemp -d)
 pass=0; fail=0
 ok() { pass=$((pass+1)); echo "PASS  $1"; }
 ko() { fail=$((fail+1)); echo "FAIL  $1: $2" | cut -c1-600; }
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
+(cd "$CDB" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway && go build -o "$S/th-hook" ./cmd/th-hook) || exit 1
 mkdir -p "$S/data" "$S/work"
 ADDR=127.0.0.1:$((20000 + $$ % 10000)); GWADDR=127.0.0.1:$((30000 + $$ % 10000))

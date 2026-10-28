@@ -1,8 +1,9 @@
 # Contrôles locaux avant tout commit ou push vers l'amont CortexDB. Procédure : docs/pipeline_pr.md.
 # Trois niveaux (docs/pipeline_pr.md, section 1) : precommit à chaque changement (niveau 1),
 # travail de tête sur têtes gelées (niveau 2), prepr une fois par lot avant la poussée (niveau 3).
-# REPO : le clone (ou la copie de travail git) à contrôler. BASE : la base du patch.
-REPO ?= cortexdb
+# REPO : le clone (ou la copie de travail git) à contrôler ; par défaut CORTEXDB_CLONE, sinon cortexdb/ à la racine,
+# comme les bancs (tests/cortexdb_clone.sh). BASE : la base du patch.
+REPO ?= $(or $(CORTEXDB_CLONE),cortexdb)
 BASE ?= origin/main
 # DECLARED : blocs hors main incouvrables en local, déclarés dans la PR (ex. pkg/core/store_postgres.go), séparés par des espaces.
 DECLARED ?=
@@ -18,9 +19,13 @@ CANARY := CORTEXDB_REMOTE=127.0.0.1:1 CORTEXDB_GRPC_TOKEN=canary CORTEXDB_PATH=/
 	CORTEXDB_EMBED_BASE_URL=http://127.0.0.1:1 OPENAI_BASE_URL=http://127.0.0.1:1 OPENAI_API_KEY= \
 	CORTEXDB_LLM_BASE_URL=http://127.0.0.1:1 CORTEXDB_LLM_API_KEY=canary CORTEXDB_MEMORY_SEMANTIC_FLOOR=canary
 
-.PHONY: pgtest precommit fmt vet test patchcov mutate clock prepr benches level3 hooks inventory invcheck diffmain handmut bodynums
+.PHONY: print-repo pgtest precommit fmt vet test patchcov mutate clock prepr benches level3 hooks inventory invcheck diffmain handmut bodynums
 
 ## precommit : gofmt, go vet, tests -race des paquets touchés, couverture du patch à 100 %.
+## print-repo : le clone que les cibles liront (tools/test_cortexdb_clone.py)
+print-repo:
+	@echo $(REPO)
+
 precommit: fmt vet test patchcov
 	@echo "precommit: OK ($(REPO) contre $(BASE))"
 

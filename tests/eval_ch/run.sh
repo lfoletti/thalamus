@@ -5,8 +5,9 @@
 # Builds cortexdb-grpc and th-gateway, starts a fresh brain (with the local encoder when a model
 # is named), and runs eval.py. Results in tests/eval_ch/results/<label>.json.
 ROOT=$(cd "$(dirname "$0")/../.." && pwd); H=$ROOT/tests/eval_ch
+. "$ROOT/tests/cortexdb_clone.sh"
 S=$(mktemp -d); trap 'kill $GW $GRPC $ENC 2>/dev/null; rm -rf "$S"' EXIT
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
+(cd "$CDB" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway) || exit 1
 P=47930; LABEL=lexical; ENC=
 if [ "$1" != lexical ]; then
