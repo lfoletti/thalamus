@@ -27,7 +27,7 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 | [`10-find-nodes-confined.md`](10-find-nodes-confined.md) | `find_nodes` ouvert à une clé confinée, derrière le filtre des nœuds cachés de v2.139.0 | Rien à retirer : `chercher` (kg-mcp) passe par `find_nodes` pour un cerveau confiné | 2 lignes | envoyée le 28 octobre 2026 |
 | [`11-find-nodes-fold-once.md`](11-find-nodes-fold-once.md) | `find_nodes` normalise chaque nœud une fois par appel, pas une fois par nom | Rien à retirer : un lot de 8 noms passe de 800 à 160 ms sur ai-audio | 4 lignes et un test | envoyée avec la fiche 10, 28 octobre 2026 |
 
-L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `th-NN-<sujet>` du fork `lfoletti/cortexdb`, selon `docs/pipeline_pr.md`.
+L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `co-NN-<sujet>` du fork `lfoletti/cortexdb` (`co` pour CortexDB, décision de Lauro du 28 octobre 2026 ; les branches envoyées avant cette date gardent leur préfixe `gc-`), selon `docs/pipeline_pr.md`.
 
 Décision de Lauro du 22 octobre 2026 : le produit se conçoit aussi pour des utilisateurs européens (français, allemand, italien, romanche). Chaque fiche dit ce qu'elle change pour ces langues.
 

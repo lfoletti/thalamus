@@ -1,6 +1,6 @@
 # 11. `find_nodes` normalise chaque nœud une fois par appel
 
-**Statut** : envoyée avec la fiche 10 le 28 octobre 2026 sur demande de Lauro, branche `th-11-find-nodes-fold-once` du fork. **Taille** : 4 lignes de code hors tests, un test de 30 lignes (essayée le 28 octobre 2026 sur `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
+**Statut** : envoyée avec la fiche 10 le 28 octobre 2026 sur demande de Lauro, branche `co-11-find-nodes-fold-once` du fork. **Taille** : 4 lignes de code hors tests, un test de 30 lignes (essayée le 28 octobre 2026 sur `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
 
 ## Le besoin de Thalamus
 
