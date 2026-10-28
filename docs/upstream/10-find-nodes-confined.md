@@ -1,6 +1,6 @@
 # 10. `find_nodes` pour une clé confinée
 
-**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `co-10-find-nodes-confined` du fork, rebasée sur v2.140.0 (5ec662f). **Taille** : 13 lignes hors tests sur 2 fichiers, 2 retirées ; tests : 93 lignes ajoutées sur 10 fichiers, 19 retirées (base `origin/main` 5ec662f). **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
+**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, PR #111 (branche `co-10-find-nodes-confined` du fork), rebasée sur v2.140.0 (5ec662f) ; fusion demandée après un correctif nommé dans une note privée. **Taille** : 13 lignes hors tests sur 2 fichiers, 2 retirées ; tests : 93 lignes ajoutées sur 10 fichiers, 19 retirées (base `origin/main` 5ec662f). **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
 
 La fiche 06 a proposé les autres outils de graphe pour une clé confinée (#95 à #97, v2.139.0). La liste blanche annonçait `find_nodes` pour un changement à part : cette fiche le propose.
 
