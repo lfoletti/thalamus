@@ -25,6 +25,7 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 | [`08-synthesis-check.md`](08-synthesis-check.md) | Outil `check_against_sources` : les faits d'une phrase contre ses sources, équivalents donnés par la requête | Rien à retirer : chaque producteur de synthèses (contaixt et les autres) garde un seul contrôle, celui du moteur | 250 lignes | 7 |
 | [`09-ingest-embedder-and-repair.md`](09-ingest-embedder-and-repair.md) | 2 défauts de v2.136.0 : `ingest_document` ignorait l'encodeur, `vector_dimension_repair` effaçait `doc_id`, `metadata` et `acl` | **Close** : issue #84, corrigée en v2.137.0 (23 octobre 2026) |
 | [`10-find-nodes-confined.md`](10-find-nodes-confined.md) | `find_nodes` ouvert à une clé confinée : le filtre est dans v2.139.0, reste la liste blanche et les tests sautés | Rien à retirer : `chercher` (kg-mcp) passe par `find_nodes` pour un cerveau confiné (K3 du projet d'alignement) | 2 lignes, essayée le 28 octobre 2026 | sur demande de Lauro (D4) |
+| [`11-find-nodes-fold-once.md`](11-find-nodes-fold-once.md) | `find_nodes` normalise chaque nœud une fois par appel, pas une fois par nom | Rien à retirer : un lot de 8 noms passe de 800 à 160 ms sur ai-audio | 4 lignes et un test, essayée le 28 octobre 2026 | avec la fiche 10, sur demande de Lauro |
 
 L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `th-NN-<sujet>` du fork `lfoletti/cortexdb`, selon `docs/pipeline_pr.md`.
 

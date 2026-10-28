@@ -68,7 +68,7 @@ Table outil par outil (règle du propriétaire du 20 octobre 2026) :
    | 4 | 388 ms | 390 ms |
    | 8 | | 800 ms |
 
-   Le filtre ajoute environ 2 ms. Le coût vient du rapprochement : environ 25 ms pour lire les nœuds, puis environ 95 ms par nom, parce que `foldName` replie le contenu de chaque nœud une fois par nom. Une clé confinée ne coûte donc pas plus qu'une clé ouverte. Si le propriétaire veut une borne, elle porte sur le nombre de noms par appel, pas sur la liste blanche. Hors de cette PR, on pourrait lui proposer une amélioration : replier chaque contenu une seule fois par appel.
+   Le filtre ajoute environ 2 ms. Le coût vient du rapprochement : environ 25 ms pour lire les nœuds, puis environ 95 ms par nom, parce que `foldName` replie le contenu de chaque nœud une fois par nom. Une clé confinée ne coûte donc pas plus qu'une clé ouverte. Si le propriétaire veut une borne, elle porte sur le nombre de noms par appel, pas sur la liste blanche. Hors de cette PR, la fiche 11 normalise chaque contenu une seule fois par appel : 8 noms en 156 ms au lieu de 798 ms.
 2. **L'ordre des résultats.** Les nœuds cachés sortent fenêtre par fenêtre, avant la limite, et `match` vient du premier nœud servi. La réponse d'alpha ne dépend donc pas de ce que beta écrit : le banc « before / after » le vérifie.
 3. **`node_types`** passe par `expandOntologyTypeFilter`. L'ontologie est commune au serveur, mais l'argument ne rend que des nœuds, et ces nœuds sont filtrés.
 
