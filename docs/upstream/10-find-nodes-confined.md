@@ -1,6 +1,6 @@
 # 10. `find_nodes` pour une clé confinée
 
-**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `co-10-find-nodes-confined` du fork. **Taille** : 13 lignes hors tests sur 2 fichiers, 2 retirées ; tests : 93 lignes ajoutées sur 10 fichiers, 19 retirées (base `origin/main` 86131b2). **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
+**Statut** : envoyée le 28 octobre 2026 sur demande de Lauro, branche `co-10-find-nodes-confined` du fork, rebasée sur v2.140.0 (5ec662f). **Taille** : 13 lignes hors tests sur 2 fichiers, 2 retirées ; tests : 93 lignes ajoutées sur 10 fichiers, 19 retirées (base `origin/main` 5ec662f). **Dépend de** : rien. Le filtre que la liste blanche attend est dans v2.139.0 (ef87828).
 
 La fiche 06 a proposé les autres outils de graphe pour une clé confinée (#95 à #97, v2.139.0). La liste blanche annonçait `find_nodes` pour un changement à part : cette fiche le propose.
 
@@ -71,10 +71,10 @@ Table outil par outil (règle du propriétaire du 20 octobre 2026) :
    | 4 | 388 ms | 390 ms |
    | 8 | | 800 ms |
 
-   Le filtre ajoute environ 2 ms. Le temps se partage entre la lecture des nœuds (environ 25 ms) et le rapprochement de chaque nom (environ 95 ms par nom, `foldName` sur le contenu de chaque nœud). Une clé confinée ne coûte donc pas plus qu'une clé ouverte. La fiche 11 propose, dans une PR à part, de normaliser chaque contenu une fois par appel : 8 noms en 156 ms au lieu de 798 ms.
+   Le filtre ajoute environ 2 ms. Le temps se partage entre la lecture des nœuds (environ 25 ms) et le rapprochement de chaque nom (environ 95 ms par nom, `foldName` sur le contenu de chaque nœud). Une clé confinée ne coûte donc pas plus qu'une clé ouverte. La fiche 11, fusionnée dans v2.140.0 (#110), normalise chaque contenu une fois par appel : 8 noms en 156 ms au lieu de 798 ms.
 2. **L'ordre des résultats.** Les nœuds cachés sortent fenêtre par fenêtre, avant la limite, et `match` vient du premier nœud servi. La réponse d'alpha ne dépend donc pas de ce que beta écrit : le banc « before / after » le vérifie.
 3. **`node_types`** passe par `expandOntologyTypeFilter`. L'ontologie est commune au serveur, mais l'argument ne rend que des nœuds, et ces nœuds sont filtrés, type compris.
-4. **Avec la fiche 11.** Les deux PR ajoutent un test en fin de `graphrag_tool_find_nodes_test.go` : la seconde fusionnée demande un rebasage qui garde les deux tests.
+4. **Avec la fiche 11.** #110 est fusionnée ; la branche est rebasée sur v2.140.0 avec les deux tests.
 
 ## Ce que Thalamus fait après la fusion
 

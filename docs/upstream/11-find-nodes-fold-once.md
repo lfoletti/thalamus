@@ -1,6 +1,6 @@
 # 11. `find_nodes` normalise chaque nœud une fois par appel
 
-**Statut** : envoyée avec la fiche 10 le 28 octobre 2026 sur demande de Lauro, branche `co-11-find-nodes-fold-once` du fork. **Taille** : 6 lignes de code (dont un commentaire de deux lignes), 3 retirées, et une ligne de CI ; un test de 33 lignes (base `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
+**Statut** : **fusionnée le 28 octobre 2026 (#110, e1885de), publiée dans v2.140.0.** Le propriétaire a ajouté un commit au test : la plus petite de cinq mesures, parce que `testing.AllocsPerRun` compte aussi les allocations du travail de fond du moteur. **Taille** : 6 lignes de code (dont un commentaire de deux lignes), 3 retirées, et une ligne de CI ; un test de 33 lignes (base `origin/main` 86131b2). **Dépend de** : rien. Elle est indépendante de la fiche 10 : les deux PR partent de `main` et ne touchent pas les mêmes lignes.
 
 ## Le besoin de Thalamus
 
@@ -35,7 +35,7 @@ La mémoire ajoutée est une chaîne normalisée par nœud, le temps d'un appel.
 
 Sous `-race`, que la CI lance, le détecteur ajoute ses propres allocations (420 à 664 par nom) : le test se saute alors (`raceEnabled`) et tourne dans l'étape « race-exempt » de la CI, comme `TestALargeUpsertDoesNotExhaustTheSQLPlaceholders`.
 
-Pour le rejouer : la branche `co-11-find-nodes-fold-once` du fork, puis `go test ./pkg/cortexdb -run TestFindNodes -count=1`. Retirer le changement de `graphrag_tool_find_nodes.go` fait tomber le test.
+Pour le rejouer : v2.140.0, puis `go test ./pkg/cortexdb -run TestFindNodes -count=1`. Retirer le changement de `graphrag_tool_find_nodes.go` fait tomber le test.
 
 ## Ce que Thalamus y gagne
 
