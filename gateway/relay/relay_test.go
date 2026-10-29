@@ -493,6 +493,58 @@ func TestABrainThatCannotBeReachedIsAnError(t *testing.T) {
 	}
 }
 
+// A brain started on demand, as Contaixt's router does on the VPS, accepts
+// the connection and says nothing while cortexdb-grpc opens (27 s measured
+// on 29 October 2026). gRPC's default connect timeout, 20 s, closed it and
+// the first call failed ("error reading server preface"); the relay waits.
+func TestABrainThatStartsSlowlyIsWaitedFor(t *testing.T) {
+	t.Parallel()
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Read)
+	br := b.rights.Brains["team/acme"]
+	br.Addr = coldRouter(t, br.Addr, 21*time.Second)
+	b.rights.Brains["team/acme"] = br
+	s, err := b.session(t, "team/acme", k.Secret)
+	if err != nil {
+		t.Fatalf("a brain 21 s to start: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	if _, err := s.ListTools(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// coldRouter listens, keeps each connection silent for the start, then relays
+// it to the brain.
+func coldRouter(t *testing.T, brain string, start time.Duration) string {
+	t.Helper()
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = lis.Close() })
+	go func() {
+		for {
+			c, err := lis.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer c.Close()
+				time.Sleep(start)
+				s, err := net.Dial("tcp", brain)
+				if err != nil {
+					return
+				}
+				defer s.Close()
+				go func() { _, _ = io.Copy(s, c) }()
+				_, _ = io.Copy(c, s)
+			}()
+		}
+	}()
+	return lis.Addr().String()
+}
+
 // A call that names no row has no ids in its audit line; arguments that are
 // not an object give none either.
 func TestACallWithoutIdsHasNoneInTheAudit(t *testing.T) {

@@ -13,11 +13,13 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/rpc"
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/lfoletti/thalamus/gateway/identity"
@@ -205,6 +207,11 @@ func idsOf(args string) map[string]any {
 	return out
 }
 
+// coldStart is how long a connection to a brain may wait for the brain to
+// answer. A brain started on demand says nothing while it opens (27 s on
+// Contaixt's VPS), and gRPC's default, 20 s, closed the connection first.
+const coldStart = 60 * time.Second
+
 // dial opens a gRPC connection to a brain, attaching the key to every call.
 func dial(addr, secret string) (*grpc.ClientConn, error) {
 	target, creds, err := rpc.Endpoint(addr)
@@ -214,7 +221,7 @@ func dial(addr, secret string) (*grpc.ClientConn, error) {
 	opts := append(rpc.DialOptions(), grpc.WithTransportCredentials(creds), grpc.WithUnaryInterceptor(
 		func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 			return invoker(metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+secret), method, req, reply, cc, opts...)
-		}))
+		}), grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.DefaultConfig, MinConnectTimeout: coldStart}))
 	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("connect to %s: %w", addr, err)
