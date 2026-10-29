@@ -51,6 +51,7 @@ type brain struct {
 	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
 	graph             map[string]fakeGraph      // what get_nodes, knowledge_memory_neighbors and expand_graph serve, by the caller's secret
 	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
+	slowQuery         map[string]time.Duration  // how long knowledge_search waits, by query
 	replies           map[string]string         // what a tool answers, by tool name, as the engine's JSON
 	cut               atomic.Bool               // a slow call saw its caller go away
 }
@@ -106,9 +107,10 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	// A slow collection waits before the lock, so the other brains answer.
 	var where struct {
 		Collection string `json:"collection"`
+		Query      string `json:"query"`
 	}
 	_ = json.Unmarshal([]byte(req.GetArgsJson()), &where)
-	if d := b.slow[where.Collection]; d > 0 && req.GetName() == "knowledge_search" {
+	if d := max(b.slow[where.Collection], b.slowQuery[where.Query]); d > 0 && req.GetName() == "knowledge_search" {
 		select {
 		case <-time.After(d):
 		case <-ctx.Done():

@@ -8,8 +8,10 @@ import "time"
 // making room by stopping others. When the hook asks more brains than the
 // server holds at once, every message wakes some and stops others, and none
 // more answers. So a brain that missed a deadline is left alone by the
-// recalls with one, coldFor long or until a call reaches it: an agent's
-// call, a recall without a deadline, any tool of the gateway.
+// recalls with one, coldFor long or until a call reaches it and it answers:
+// a recall without a deadline, any th_* tool, a call through /mcp/<brain>.
+// A brain that answered one call of the recall is not cold, and a brain the
+// caller names is asked all the same.
 
 // coldFor is how long a recall with a deadline leaves a cold brain alone.
 // After it the brain is asked once more, and found again if it came back.
