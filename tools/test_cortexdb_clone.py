@@ -11,6 +11,12 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+def clean_env() -> dict:
+    """The environment without CORTEXDB_CLONE nor any GIT_ variable: under the pre-push hook, GIT_DIR names the real
+    repository, and a git or make call of these tests would act on it (incident of 25 October 2026)."""
+    return {k: v for k, v in os.environ.items() if k != "CORTEXDB_CLONE" and not k.startswith("GIT_")}
+
+
 BENCHES = ["tests/e2e_gateway.sh", "tests/e2e_shared_brain.sh", "tests/e2e_plugin.sh", "tests/e2e_extension.sh",
            "tests/eval_ch/run.sh"]
 
@@ -22,7 +28,7 @@ def run_bench(bench: str, clone: str | None) -> tuple[subprocess.CompletedProces
         (tmp / f).parent.mkdir(parents=True, exist_ok=True)
         if (ROOT / f).exists():
             shutil.copy(ROOT / f, tmp / f)
-    env = {k: v for k, v in os.environ.items() if k != "CORTEXDB_CLONE"}
+    env = clean_env()
     if clone is not None:
         env["CORTEXDB_CLONE"] = clone
     env["PATH"] = "/usr/bin:/bin"          # ni go ni npm : un banc qui irait plus loin tomberait autrement
@@ -52,7 +58,7 @@ class Benches(unittest.TestCase):
 
 class Makefile(unittest.TestCase):
     def repo(self, *args: str, env_clone: str | None = None) -> str:
-        env = {k: v for k, v in os.environ.items() if k != "CORTEXDB_CLONE"}
+        env = clean_env()
         if env_clone is not None:
             env["CORTEXDB_CLONE"] = env_clone
         r = subprocess.run(["make", "-s", "--no-print-directory", "print-repo", *args], cwd=ROOT, env=env,
@@ -72,7 +78,7 @@ class Makefile(unittest.TestCase):
     def test_the_benches_build_from_repo_and_say_when_it_is_missing(self):
         """make benches (and level3 after prepr) build from the REPO they were given, and a missing clone is
         printed, not hidden behind « ROUGE »."""
-        env = {k: v for k, v in os.environ.items() if k != "CORTEXDB_CLONE"}
+        env = clean_env()
         r = subprocess.run(["make", "-s", "--no-print-directory", "benches", "REPO=/nonexistent/co-12"], cwd=ROOT,
                            env=env, capture_output=True, text=True, timeout=60)
         self.assertNotEqual(r.returncode, 0)
@@ -81,8 +87,8 @@ class Makefile(unittest.TestCase):
     def test_make_hooks_points_the_hook_at_this_checkout(self):
         """The pre-push hook that make hooks writes runs this checkout's Makefile, wherever it is."""
         tmp = Path(tempfile.mkdtemp()).resolve()
-        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
-        r = subprocess.run(["make", "-s", "--no-print-directory", "hooks", f"REPO={tmp}"], cwd=ROOT,
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True, env=clean_env())
+        r = subprocess.run(["make", "-s", "--no-print-directory", "hooks", f"REPO={tmp}"], cwd=ROOT, env=clean_env(),
                            capture_output=True, text=True, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         hook = (tmp / ".git" / "hooks" / "pre-push").read_text()
