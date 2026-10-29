@@ -1,8 +1,9 @@
 # Contrôles locaux avant tout commit ou push vers l'amont CortexDB. Procédure : docs/pipeline_pr.md.
 # Trois niveaux (docs/pipeline_pr.md, section 1) : precommit à chaque changement (niveau 1),
 # travail de tête sur têtes gelées (niveau 2), prepr une fois par lot avant la poussée (niveau 3).
-# REPO : le clone (ou la copie de travail git) à contrôler. BASE : la base du patch.
-REPO ?= cortexdb
+# REPO : le clone (ou la copie de travail git) à contrôler ; par défaut CORTEXDB_CLONE, sinon cortexdb/ à la racine,
+# comme les bancs (tests/cortexdb_clone.sh). BASE : la base du patch.
+REPO ?= $(or $(CORTEXDB_CLONE),cortexdb)
 BASE ?= origin/main
 # DECLARED : blocs hors main incouvrables en local, déclarés dans la PR (ex. pkg/core/store_postgres.go), séparés par des espaces.
 DECLARED ?=
@@ -18,9 +19,13 @@ CANARY := CORTEXDB_REMOTE=127.0.0.1:1 CORTEXDB_GRPC_TOKEN=canary CORTEXDB_PATH=/
 	CORTEXDB_EMBED_BASE_URL=http://127.0.0.1:1 OPENAI_BASE_URL=http://127.0.0.1:1 OPENAI_API_KEY= \
 	CORTEXDB_LLM_BASE_URL=http://127.0.0.1:1 CORTEXDB_LLM_API_KEY=canary CORTEXDB_MEMORY_SEMANTIC_FLOOR=canary
 
-.PHONY: pgtest precommit fmt vet test patchcov mutate clock prepr benches level3 hooks inventory invcheck diffmain handmut bodynums
+.PHONY: print-repo pgtest precommit fmt vet test patchcov mutate clock prepr benches level3 hooks inventory invcheck diffmain handmut bodynums
 
 ## precommit : gofmt, go vet, tests -race des paquets touchés, couverture du patch à 100 %.
+## print-repo : le clone que les cibles liront (tools/test_cortexdb_clone.py)
+print-repo:
+	@echo $(REPO)
+
 precommit: fmt vet test patchcov
 	@echo "precommit: OK ($(REPO) contre $(BASE))"
 
@@ -58,12 +63,13 @@ prepr: invcheck precommit mutate clock
 	@cd $(REPO) && go clean -cache && $(CANARY) go test -race -count=1 -timeout 25m ./... && go test -count=1 ./pkg/eval -run TestLexicalRetrievalQuality
 	@echo "prepr: OK ($(REPO) contre $(BASE))"
 
-## benches : les deux bancs de bout en bout sur le clone cortexdb/ (proto) et le gateway,
+## benches : les deux bancs de bout en bout sur le clone REPO (par défaut CORTEXDB_CLONE, sinon cortexdb/ ;
+## donc proto reconstruite, ou la tête de level3) et le gateway,
 ## environ 3 min. Le 21 octobre 2026 ils ont trouvé deux trous que precommit, les mutations
 ## et diffmain ne voyaient pas (th_pending refusé, banc sur l'ancienne API). Sortie 1 au premier FAIL.
 benches:
-	@out=$$(sh tests/e2e_shared_brain.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=)' | sed 's|^|e2e_shared_brain: |'; test $$rc -eq 0 || { echo "benches: e2e_shared_brain ROUGE"; exit 1; }
-	@out=$$(sh tests/e2e_gateway.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=)' | sed 's|^|e2e_gateway: |'; test $$rc -eq 0 || { echo "benches: e2e_gateway ROUGE"; exit 1; }
+	@out=$$(CORTEXDB_CLONE=$(REPO) sh tests/e2e_shared_brain.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=|no CortexDB clone)' | sed 's|^|e2e_shared_brain: |'; test $$rc -eq 0 || { echo "benches: e2e_shared_brain ROUGE"; exit 1; }
+	@out=$$(CORTEXDB_CLONE=$(REPO) sh tests/e2e_gateway.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=|no CortexDB clone)' | sed 's|^|e2e_gateway: |'; test $$rc -eq 0 || { echo "benches: e2e_gateway ROUGE"; exit 1; }
 	@echo "benches: OK"
 
 ## level3 : la porte complète d'une tête : prepr, puis les deux bancs.
@@ -118,5 +124,5 @@ diffmain:
 hooks:
 	@H=$$(cd $(REPO) && git rev-parse --path-format=absolute --git-common-dir)/hooks; mkdir -p "$$H"; \
 	printf '%s\n' '#!/bin/sh' '# Installé par `make hooks` de Thalamus : rien ne part sans precommit.' \
-	  'exec make -C /Users/mini/Documents/thalamus precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
+	  'exec make -C $(CURDIR) precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
 	chmod +x "$$H/pre-push"; echo "hook installé : $$H/pre-push"

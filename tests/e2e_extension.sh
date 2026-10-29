@@ -1,17 +1,18 @@
 #!/bin/sh
 # End-to-end trial of the Chrome extension: a cortexdb-grpc server built
-# from cortexdb/, th-gateway in front, a local web page, and Chromium
+# from the CortexDB clone, th-gateway in front, a local web page, and Chromium
 # (Playwright) that loads the extension, sets its options, and proposes
 # the page, then a selection, into team/acme. The audit file and th_get
 # prove what arrived. Needs `npm install` in extension/ once.
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/tests/cortexdb_clone.sh"
 S=$(mktemp -d)
 pass=0; fail=0
 ok() { pass=$((pass+1)); echo "PASS  $1"; }
 ko() { fail=$((fail+1)); echo "FAIL  $1: $2" | cut -c1-600; }
 [ -d "$ROOT/extension/node_modules/playwright" ] || (cd "$ROOT/extension" && npm install --no-audit --no-fund >/dev/null) || exit 1
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
+(cd "$CDB" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway) || exit 1
 mkdir -p "$S/data" "$S/site"
 ADDR=127.0.0.1:$((20000 + $$ % 10000)); GWADDR=127.0.0.1:$((30000 + $$ % 10000)); SITEPORT=$((40000 + $$ % 10000)); IDPPORT=$((50000 + $$ % 10000))

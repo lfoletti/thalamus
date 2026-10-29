@@ -1,12 +1,13 @@
 #!/bin/sh
 # End-to-end trial of th-gateway in front of one shared brain: a cortexdb-grpc
-# server built from the cortexdb/ branch, a rights file with two brains on it,
+# server built from the CortexDB clone, a rights file with two brains on it,
 # keys issued by the gateway, tool calls over MCP streamable HTTP with curl,
 # and the audit file read back. Prints PASS/FAIL per check.
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/tests/cortexdb_clone.sh"
 S=$(mktemp -d)
-(cd "$ROOT/cortexdb" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
+(cd "$CDB" && go build -o "$S/cortexdb-grpc" ./cmd/cortexdb-grpc && go build -o "$S/cortexdb-mcp" ./cmd/cortexdb-mcp-stdio) || exit 1
 (cd "$ROOT/gateway" && go build -o "$S/th-gateway" ./cmd/th-gateway && go build -o "$S/th-hook" ./cmd/th-hook) || exit 1
 # The bench owns its environment: no setting of this machine's Thalamus
 # (TH_*, ~/.thalamus) reaches the hook or the gateway. HOME changes after

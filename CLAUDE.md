@@ -2,7 +2,7 @@
 
 Couche mince au-dessus de CortexDB pour des graphes de connaissances d'entreprise utilisés par des agents de code : fédération de cerveaux, droits, audit, relecture. Le thalamus relaie et filtre tout ce qui monte au cortex. Préfixe d'outils `th_`, binaires `th-gateway` et `th-hook`, module `github.com/lfoletti/thalamus/gateway`, plugin `thalamus`, clés `th/<login>/<cerveau>`.
 
-La racine est le dépôt git `lfoletti/thalamus` (**public**, MIT, branche `main`, remote `origin`). Le dossier sur disque est `thalamus` (`granular_cortex` jusqu'au 25 octobre 2026). `cortexdb/` est un dépôt à part, ignoré par la racine.
+La racine est le dépôt git `lfoletti/thalamus` (**public**, MIT, branche `main`, remote `origin`). Le dossier sur disque est `thalamus` (`granular_cortex` jusqu'au 25 octobre 2026). Le clone CortexDB est un dépôt à part : `CORTEXDB_CLONE` le désigne, sinon `cortexdb/` à la racine, ignoré par elle.
 
 ## Rôle de ce fichier
 
@@ -21,12 +21,13 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 - `.github/workflows/ci.yml` : la CI (gateway, extension, banc du gateway, scan des secrets, tests Python de `tools/`), sur chaque PR et sur `main`.
 - `tools/hooks/` : les hooks du dépôt, `pre-commit` (aucun commit sur `main`) et `pre-push` (termes privés, tests des parties touchées), testés par `tools/test_hooks.py`. `CONTRIBUTING.md` et `SECURITY.md` : règles publiques de contribution et de signalement.
 - `tests/` : bancs de bout en bout.
-  - `tests/e2e_gateway.sh` : le gateway devant un serveur gRPC construit depuis `cortexdb/` (environ 1 min).
+  - `tests/e2e_gateway.sh` : le gateway devant un serveur gRPC construit depuis le clone CortexDB (environ 1 min).
   - `tests/e2e_plugin.sh [modèle]` : une session Claude Code réelle avec le plugin. Ce banc coûte des appels au modèle et reste hors chaîne.
   - `tests/e2e_extension.sh` : l'extension dans Chromium devant un vrai gateway et le faux fournisseur OIDC `tests/fake_idp.mjs` (environ 30 s).
   - `tests/e2e_shared_brain.sh` : le clone seul (serveur gRPC, fichier de clés, client MCP distant, environ 2 min).
   - `tests/eval_ch/` : banc multilingue sur la Constitution fédérale (lire son `README.md`).
-- `cortexdb/` : clone complet de `github.com/liliang-cn/cortexdb` (amont `origin`, fork `fork` = `lfoletti/cortexdb`). Une branche par PR (`gc-NN-<sujet>`). Branche d'intégration `proto/granular-cortex`. Avant un rebasage ou une reconstruction, poser un tag `backup/<branche>-<date>`.
+  - Chaque banc trouve le clone par `tests/cortexdb_clone.sh` : `CORTEXDB_CLONE`, sinon `cortexdb/` à la racine ; un clone absent l'arrête avant toute construction. Le `REPO` du `Makefile` a le même défaut. Test : `tools/test_cortexdb_clone.py`.
+- Le clone CortexDB (`CORTEXDB_CLONE`, sinon `cortexdb/`) : clone complet de `github.com/liliang-cn/cortexdb` (amont `origin`, fork `fork` = `lfoletti/cortexdb`). Une branche par PR (`co-NN-<sujet>` ; `gc-NN-<sujet>` avant le 28 octobre 2026). Branche d'intégration `proto/granular-cortex`. Avant un rebasage ou une reconstruction, poser un tag `backup/<branche>-<date>`.
 
 ## Règles de publication
 
@@ -65,7 +66,7 @@ Les mêmes règles de vérification s'appliquent au gateway (`gateway/mutate.py`
 
 ## Commandes
 
-Dans `cortexdb/` :
+Dans le clone CortexDB :
 - Compiler : `go build ./...` (Go 1.26, environ 25 s).
 - Tests des paquets touchés : `go test -race ./pkg/authz/ ./pkg/httpapi/ ./pkg/rpcserver/ ./pkg/cortexdb/ ./cmd/cortexdb-mcp-stdio/` (environ 5 min, `pkg/cortexdb` seul prend 4 min).
 - Tests rapides : `go test ./pkg/cortexdb/ -run '<Nom>'`.
