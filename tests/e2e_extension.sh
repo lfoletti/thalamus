@@ -1,6 +1,6 @@
 #!/bin/sh
 # End-to-end trial of the Chrome extension: a cortexdb-grpc server built
-# from cortexdb/, th-gateway in front, a local web page, and Chromium
+# from the CortexDB clone, th-gateway in front, a local web page, and Chromium
 # (Playwright) that loads the extension, sets its options, and proposes
 # the page, then a selection, into team/acme. The audit file and th_get
 # prove what arrived. Needs `npm install` in extension/ once.

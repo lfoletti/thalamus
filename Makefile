@@ -63,12 +63,13 @@ prepr: invcheck precommit mutate clock
 	@cd $(REPO) && go clean -cache && $(CANARY) go test -race -count=1 -timeout 25m ./... && go test -count=1 ./pkg/eval -run TestLexicalRetrievalQuality
 	@echo "prepr: OK ($(REPO) contre $(BASE))"
 
-## benches : les deux bancs de bout en bout sur le clone cortexdb/ (proto) et le gateway,
+## benches : les deux bancs de bout en bout sur le clone REPO (par défaut CORTEXDB_CLONE, sinon cortexdb/ ;
+## donc proto reconstruite, ou la tête de level3) et le gateway,
 ## environ 3 min. Le 21 octobre 2026 ils ont trouvé deux trous que precommit, les mutations
 ## et diffmain ne voyaient pas (th_pending refusé, banc sur l'ancienne API). Sortie 1 au premier FAIL.
 benches:
-	@out=$$(sh tests/e2e_shared_brain.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=)' | sed 's|^|e2e_shared_brain: |'; test $$rc -eq 0 || { echo "benches: e2e_shared_brain ROUGE"; exit 1; }
-	@out=$$(sh tests/e2e_gateway.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=)' | sed 's|^|e2e_gateway: |'; test $$rc -eq 0 || { echo "benches: e2e_gateway ROUGE"; exit 1; }
+	@out=$$(CORTEXDB_CLONE=$(REPO) sh tests/e2e_shared_brain.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=|no CortexDB clone)' | sed 's|^|e2e_shared_brain: |'; test $$rc -eq 0 || { echo "benches: e2e_shared_brain ROUGE"; exit 1; }
+	@out=$$(CORTEXDB_CLONE=$(REPO) sh tests/e2e_gateway.sh 2>&1); rc=$$?; printf '%s\n' "$$out" | grep -E '^(FAIL|pass=|no CortexDB clone)' | sed 's|^|e2e_gateway: |'; test $$rc -eq 0 || { echo "benches: e2e_gateway ROUGE"; exit 1; }
 	@echo "benches: OK"
 
 ## level3 : la porte complète d'une tête : prepr, puis les deux bancs.
@@ -123,5 +124,5 @@ diffmain:
 hooks:
 	@H=$$(cd $(REPO) && git rev-parse --path-format=absolute --git-common-dir)/hooks; mkdir -p "$$H"; \
 	printf '%s\n' '#!/bin/sh' '# Installé par `make hooks` de Thalamus : rien ne part sans precommit.' \
-	  'exec make -C /Users/mini/Documents/thalamus precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
+	  'exec make -C $(CURDIR) precommit REPO="$$(git rev-parse --show-toplevel)"' > "$$H/pre-push"; \
 	chmod +x "$$H/pre-push"; echo "hook installé : $$H/pre-push"

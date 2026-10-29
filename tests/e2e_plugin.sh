@@ -1,6 +1,6 @@
 #!/bin/sh
 # End-to-end trial of the Claude Code plugin in a real, unattended session:
-# a cortexdb-grpc server built from cortexdb/, th-gateway in front, one
+# a cortexdb-grpc server built from the CortexDB clone, th-gateway in front, one
 # document in the brain, then `claude -p --plugin-dir plugin` twice from an
 # empty directory. The first prompt asks a question whose answer sits only
 # in the shared brain and in a local brain of the machine: the hook must

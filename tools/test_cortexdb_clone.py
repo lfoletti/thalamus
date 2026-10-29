@@ -46,7 +46,7 @@ class Benches(unittest.TestCase):
             with self.subTest(bench=bench):
                 r, tmp = run_bench(bench, None)
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-                self.assertIn(f"no CortexDB clone at {tmp}/cortexdb", r.stderr)
+                self.assertIn(f"no CortexDB clone at {tmp}/cortexdb:", r.stderr)
                 shutil.rmtree(tmp)
 
 
@@ -68,6 +68,26 @@ class Makefile(unittest.TestCase):
 
     def test_an_explicit_repo_wins(self):
         self.assertEqual(self.repo("REPO=../wt/co-12", env_clone="/elsewhere/cortexdb"), "../wt/co-12")
+
+    def test_the_benches_build_from_repo_and_say_when_it_is_missing(self):
+        """make benches (and level3 after prepr) build from the REPO they were given, and a missing clone is
+        printed, not hidden behind « ROUGE »."""
+        env = {k: v for k, v in os.environ.items() if k != "CORTEXDB_CLONE"}
+        r = subprocess.run(["make", "-s", "--no-print-directory", "benches", "REPO=/nonexistent/co-12"], cwd=ROOT,
+                           env=env, capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no CortexDB clone at /nonexistent/co-12:", r.stdout)
+
+    def test_make_hooks_points_the_hook_at_this_checkout(self):
+        """The pre-push hook that make hooks writes runs this checkout's Makefile, wherever it is."""
+        tmp = Path(tempfile.mkdtemp()).resolve()
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        r = subprocess.run(["make", "-s", "--no-print-directory", "hooks", f"REPO={tmp}"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        hook = (tmp / ".git" / "hooks" / "pre-push").read_text()
+        self.assertIn(f"make -C {ROOT} precommit", hook)
+        shutil.rmtree(tmp)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 #!/bin/sh
 # End-to-end trial of th-gateway in front of one shared brain: a cortexdb-grpc
-# server built from the cortexdb/ branch, a rights file with two brains on it,
+# server built from the CortexDB clone, a rights file with two brains on it,
 # keys issued by the gateway, tool calls over MCP streamable HTTP with curl,
 # and the audit file read back. Prints PASS/FAIL per check.
 set -u
