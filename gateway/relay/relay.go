@@ -37,11 +37,17 @@ type Server struct {
 	// The verifier of the identity block, rebuilt when the block changes.
 	idp    *identity.Verifier
 	idpFor rights.Identity // by secret: one MCP server per key, with the brain's tools
+
+	// The brains a recall with a deadline leaves alone, by the time they
+	// missed one (cold.go), and the clock.
+	coldMu sync.Mutex
+	cold   map[string]time.Time
+	now    func() time.Time
 }
 
 // New makes a relay for the brains of r, auditing to a.
 func New(src *rights.Source, a *Audit) *Server {
-	return &Server{src: src, audit: a, sessions: map[string]*mcp.Server{}}
+	return &Server{src: src, audit: a, sessions: map[string]*mcp.Server{}, cold: map[string]time.Time{}, now: time.Now}
 }
 
 // rights is the rights file as of now: the source reads it again when it

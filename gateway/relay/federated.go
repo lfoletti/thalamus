@@ -285,6 +285,18 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if err != nil {
 		return recallResult{}, err
 	}
+	var coldSkips []skipped
+	if deadline > 0 {
+		var asked []rights.Grant
+		for _, g := range grants {
+			if s.isCold(g.Brain) {
+				coldSkips = append(coldSkips, skipped{Brain: g.Brain, Reason: coldReason})
+				continue
+			}
+			asked = append(asked, g)
+		}
+		grants = asked
+	}
 
 	// Each brain sends its answer on a channel with room for all: a brain
 	// that answers after the deadline writes nothing that is read, and its
@@ -363,7 +375,11 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 			}
 		}
 	}
-	skips = append(skips, lateBrains(asked, answered, deadline)...)
+	missed := lateBrains(asked, answered, deadline)
+	for _, k := range missed {
+		s.markCold(k.Brain)
+	}
+	skips = slices.Concat(skips, missed, coldSkips)
 	sort.SliceStable(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
 	sort.Strings(brains)
 	sort.Strings(read)
@@ -435,6 +451,7 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 	if err != nil {
 		return "", err
 	}
+	s.warm(name)
 	return resp.GetResultJson(), nil
 }
 
