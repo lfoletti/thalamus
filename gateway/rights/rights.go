@@ -56,8 +56,9 @@ func (a Access) Clearance() authz.Clearance {
 
 // Brain is one CortexDB server and, when the server is shared between
 // brains, the collection this brain lives in. Without a collection the
-// brain is the whole server: its keys are not confined, and the engine
-// opens the graph tools to them, which a confined key never gets.
+// brain is the whole server: its keys are not confined. Since CortexDB
+// v2.141.0 the engine opens its read-only graph tools to a confined key
+// too, walking the key's part of the graph alone.
 type Brain struct {
 	Addr     string `yaml:"addr"`
 	KeysFile string `yaml:"keys_file"`

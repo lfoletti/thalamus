@@ -193,3 +193,49 @@ func TestAGraphToolRefusesAnAnswerItCannotRead(t *testing.T) {
 		t.Fatalf("%+v", res.Content[0])
 	}
 }
+
+// A graph tool reads: on a brain whose reads are counted, it leaves no
+// named line, and the count says one read.
+func TestAGraphReadIsCountedWithoutAName(t *testing.T) {
+	b := startWith(t, func(y string) string { return strings.ReplaceAll(y, "    audit_reads: true\n", "") })
+	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
+	mustCall(t, b.federated(t, k.Secret), "th_get_nodes", map[string]any{"brain": "team/acme", "node_ids": []string{"x"}})
+	if lines := b.auditLines(t); len(lines) != 0 {
+		t.Fatalf("named read: %+v", lines)
+	}
+	if err := b.a.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if lines := b.auditLines(t); len(lines) != 1 || lines[0]["tool"] != "reads" || lines[0]["calls"] != 1.0 {
+		t.Fatalf("count: %+v", lines)
+	}
+	if !Reads("th_search_chunks_by_entities") || !Reads("th_find_nodes") || !Reads("th_expand_graph") || !Reads("th_search_paths") {
+		t.Fatal("a graph tool is not a read")
+	}
+}
+
+// On a brain whose reads are named, the audit line names the documents the
+// answer served, from a chunk's document and from a document node, once
+// each, besides the ids the call asked for.
+func TestAGraphReadNamesTheDocumentsItServed(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
+	b.brain.replies = map[string]string{"search_chunks_by_entities": `{"chunks":[{"id":"chunk:plan.md:0","document_id":"plan.md","content":"a"},{"id":"chunk:plan.md:1","document_id":"plan.md","content":"b"}],"nodes":[{"id":"doc:notes.md"},{"id":"entity:ledger"}]}`}
+	mustCall(t, b.federated(t, k.Secret), "th_search_chunks_by_entities", map[string]any{"brain": "team/acme", "entity_names": []string{"ledger"}})
+	ids, _ := b.auditLines(t)[0]["ids"].(map[string]any)
+	got, _ := json.Marshal(ids["documents"])
+	if string(got) != `["notes.md","plan.md"]` {
+		t.Fatalf("audit ids: %+v", ids)
+	}
+}
+
+// A number goes through as the engine wrote it, in every brain.
+func TestAGraphToolKeepsTheEnginesNumbers(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
+	b.brain.replies = map[string]string{"get_nodes": `{"nodes":[],"version":1730000000000000001}`}
+	res := mustCall(t, b.federated(t, k.Secret), "th_get_nodes", map[string]any{"brain": "team/acme", "node_ids": []string{"x"}})
+	if text := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(text, "1730000000000000001") {
+		t.Fatalf("%s", text)
+	}
+}
