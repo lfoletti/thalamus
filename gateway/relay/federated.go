@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	rpcv1 "github.com/liliang-cn/cortexdb/v2/pkg/rpc/v1"
@@ -285,6 +286,18 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	if err != nil {
 		return recallResult{}, err
 	}
+	var coldSkips []skipped
+	if deadline > 0 {
+		var asked []rights.Grant
+		for _, g := range grants {
+			if s.isCold(g.Brain) && !slices.Contains(args.Brains, g.Brain) {
+				coldSkips = append(coldSkips, skipped{Brain: g.Brain, Reason: coldReason})
+				continue
+			}
+			asked = append(asked, g)
+		}
+		grants = asked
+	}
 
 	// Each brain sends its answer on a channel with room for all: a brain
 	// that answers after the deadline writes nothing that is read, and its
@@ -293,6 +306,9 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	defer cancel()
 	answers := make(chan brainAnswer, len(grants))
 	asked := make([]string, len(grants))
+	// reached says that a brain answered one call: past the deadline its
+	// alternate queries may still run, but it is not cold.
+	reached := make([]atomic.Bool, len(grants))
 	for i, g := range grants {
 		asked[i] = g.Brain
 		go func(i int, name string) {
@@ -301,6 +317,9 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 			b := s.rights().Brains[name]
 			for q, query := range queries {
 				hits, err := s.askBrain(ctx, b, user, name, query, args.TopK, b.Collection)
+				if err == nil {
+					reached[i].Store(true)
+				}
 				var syn []hit
 				var synErr error
 				if err == nil && b.Pyramid != nil && syntheses > 0 {
@@ -363,7 +382,13 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 			}
 		}
 	}
-	skips = append(skips, lateBrains(asked, answered, deadline)...)
+	missed := lateBrains(asked, answered, deadline)
+	for i, name := range asked {
+		if !answered[name] && !reached[i].Load() {
+			s.markCold(name)
+		}
+	}
+	skips = slices.Concat(skips, missed, coldSkips)
 	sort.SliceStable(skips, func(i, j int) bool { return skips[i].Brain < skips[j].Brain })
 	sort.Strings(brains)
 	sort.Strings(read)
@@ -435,6 +460,7 @@ func (s *Server) callBrain(ctx context.Context, b rights.Brain, user, name, tool
 	if err != nil {
 		return "", err
 	}
+	s.warm(name)
 	return resp.GetResultJson(), nil
 }
 
