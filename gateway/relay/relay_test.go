@@ -51,6 +51,7 @@ type brain struct {
 	missing           bool                      // knowledge_get answers NotFound for an id it does not serve, as the engine does
 	graph             map[string]fakeGraph      // what get_nodes, knowledge_memory_neighbors and expand_graph serve, by the caller's secret
 	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
+	replies           map[string]string         // what a tool answers, by tool name, as the engine's JSON
 	cut               atomic.Bool               // a slow call saw its caller go away
 }
 
@@ -140,6 +141,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 	}
 	if b.denyTool == req.GetName() {
 		return nil, status.Error(codes.PermissionDenied, "not for this key")
+	}
+	if r, ok := b.replies[req.GetName()]; ok {
+		return &rpcv1.CallToolResponse{ResultJson: r}, nil
 	}
 	if g, ok := b.graph[strings.TrimPrefix(bearer, "Bearer ")]; ok && (req.GetName() == "get_nodes" || req.GetName() == "knowledge_memory_neighbors" || req.GetName() == "expand_graph") {
 		if g.Fail {
