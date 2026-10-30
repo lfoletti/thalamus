@@ -1,6 +1,6 @@
 # 16. Un instantané quantifié se relit avec le quantifieur qui l'a écrit, sinon l'index se reconstruit
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : environ 30 lignes hors tests dans `pkg/core/store_index.go`, plus une table de tests de réouverture. **Dépend de** : rien. Défaut trouvé en préparant la fiche 12 : il a fait retirer `hnsw-sq8` de la PR #114.
+**Statut** : envoyée le 30 octobre 2026, liliang-cn/cortexdb#116 (brouillon, branche `co-16-sq8-reopen` du fork lfoletti/cortexdb). La PR va plus loin que cette fiche : elle compare aussi les bits (SQ8 contre SQ4), écrit la ligne `QUANTIZER` dans la même transaction que l'instantané, et ne reconstruit plus à chaque ouverture une configuration qui ne crée pas de quantifieur. **Taille estimée** : environ 30 lignes hors tests dans `pkg/core/store_index.go`, plus une table de tests de réouverture. **Dépend de** : rien. Défaut trouvé en préparant la fiche 12 : il a fait retirer `hnsw-sq8` de la PR #114.
 
 ## Le défaut
 
