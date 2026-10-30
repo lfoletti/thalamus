@@ -39,17 +39,19 @@ La table des noms d'ai-security pèse 9,8 Mo avec son index, soit 0,7 % du cerve
 
 Règle : `find_nodes` cherche parmi les nœuds nommés. Le texte d'un morceau n'est comparé que si l'appelant le demande.
 
-- Un argument `include_chunks`, booléen. La PR propose `false` par défaut, ce qui change le comportement par défaut. L'amont peut préférer `true` pour ne rien changer : Thalamus passerait alors `false` explicitement. C'est à demander dans la PR.
-- Sans les morceaux, la requête ajoute `AND node_type != 'chunk'`. L'index `idx_nodes_type` existe déjà.
-- `include_chunks` entre dans la liste blanche des arguments (`pkg/authz/allowlist.go`, `find_nodes` : `names`, `node_types`, `limit`), comme les autres. Le filtre des nœuds cachés ne change pas.
+- Un argument `skip_chunks`, booléen, éteint par défaut : sans lui, l'outil répond comme aujourd'hui. Thalamus le passe à `true`. Ce choix évite de changer le comportement par défaut dans la PR.
+- Avec `skip_chunks`, la requête ajoute `AND COALESCE(node_type,'') != 'chunk'` : le texte des morceaux n'est ni lu ni normalisé.
+- `skip_chunks` entre dans la liste blanche des arguments (`pkg/authz/allowlist.go`, `find_nodes` : `names`, `node_types`, `limit`), comme les autres. Le filtre des nœuds cachés ne change pas.
 
 Pourquoi ce n'est pas `node_types` : sous une clé confinée, une entité est servie sans son type (`scopedNode`). Un filtre `node_types` écarte alors les entités après coup, et le banc tombait à 0 avec ce filtre sous une clé ordinaire. Exclure un type de la lecture ne dépend pas du type servi.
 
 Preuves à apporter :
 
-1. Un test où un nom cité dans un morceau rend l'entité sans le morceau, puis le morceau avec `include_chunks: true`.
+1. Un test où un nom cité dans un morceau rend le morceau par défaut, puis l'entité seule avec `skip_chunks: true`.
 2. Une mutation qui retire le filtre fait tomber ce test.
 3. Les tests de portée existants (`find_nodes` dans la table des outils de graphe) restent verts, avec et sans l'argument.
+
+Mesure avec le code de la branche, sur une copie d'ai-security (8 noms, `limit` 20, médiane de 5 appels) : 826 ms par défaut, 154 ms avec `skip_chunks`, et les nœuds hors morceaux sont les mêmes, dans le même ordre, pour les 8 noms.
 
 ## PR B : une table des noms normalisés, tenue à l'écriture
 
@@ -60,7 +62,7 @@ Règle : un nom se cherche par un index, sans normaliser les nœuds à la lectur
 - **Égalité et égalité normalisée.** Une recherche par l'index sur `folded = foldName(nom)` donne les deux rangs. L'égalité exacte se déduit du contenu lu ensuite : un contenu égal au nom a la même forme normalisée.
 - **Inclusion.** `instr(folded, ?) > 0` sur la table, sans normaliser à la lecture. Il n'y a pas d'index pour une inclusion, mais la table est courte.
 
-Les morceaux, demandés par `include_chunks`, gardent la lecture d'aujourd'hui.
+Sans `skip_chunks`, les morceaux gardent la lecture d'aujourd'hui.
 
 Points à vérifier :
 
