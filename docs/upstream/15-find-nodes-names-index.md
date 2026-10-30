@@ -40,7 +40,7 @@ La table des noms d'ai-security pèse 9,8 Mo avec son index, soit 0,7 % du cerve
 Règle : `find_nodes` cherche parmi les nœuds nommés. Le texte d'un morceau n'est comparé que si l'appelant le demande.
 
 - Un argument `skip_chunks`, booléen, éteint par défaut : sans lui, l'outil répond comme aujourd'hui. Thalamus le passe à `true`. Ce choix évite de changer le comportement par défaut dans la PR.
-- Avec `skip_chunks`, la requête ajoute `AND COALESCE(node_type,'') != 'chunk'` : le texte des morceaux n'est ni lu ni normalisé.
+- Avec `skip_chunks`, la requête écarte les nœuds dont l'id commence par `chunk:`, avant de tester le contenu : le texte des morceaux n'est ni décodé ni normalisé. Le filtre porte sur l'id que le moteur dérive, pas sur le type : le type d'un nœud est celui de son dernier rédacteur, et une autre collection qui écrirait `chunk` comme type d'une entité la ferait disparaître. Les documents restent servis ; les runs et étapes d'exécution dont l'id commence par `chunk:` sont écartés aussi, et la PR le dit.
 - `skip_chunks` entre dans la liste blanche des arguments (`pkg/authz/allowlist.go`, `find_nodes` : `names`, `node_types`, `limit`), comme les autres. Le filtre des nœuds cachés ne change pas.
 
 Pourquoi ce n'est pas `node_types` : sous une clé confinée, une entité est servie sans son type (`scopedNode`). Un filtre `node_types` écarte alors les entités après coup, et le banc tombait à 0 avec ce filtre sous une clé ordinaire. Exclure un type de la lecture ne dépend pas du type servi.
@@ -51,7 +51,7 @@ Preuves à apporter :
 2. Une mutation qui retire le filtre fait tomber ce test.
 3. Les tests de portée existants (`find_nodes` dans la table des outils de graphe) restent verts, avec et sans l'argument.
 
-Mesure avec le code de la branche, sur une copie d'ai-security (8 noms, `limit` 20, médiane de 5 appels) : 826 ms par défaut, 154 ms avec `skip_chunks`, et les nœuds hors morceaux sont les mêmes, dans le même ordre, pour les 8 noms.
+Mesure avec le code de la branche, sur une copie d'ai-security (8 noms, `limit` 20, médiane de 5 appels) : 811 ms par défaut, 141 ms avec `skip_chunks`, et les nœuds hors morceaux sont les mêmes, dans le même ordre, pour les 8 noms.
 
 ## PR B : une table des noms normalisés, tenue à l'écriture
 
@@ -82,3 +82,5 @@ Envoyer la PR A d'abord. Elle donne l'essentiel du gain, 819 → 142 ms (× 5,8)
 ## Langues européennes
 
 `foldName` retire la ponctuation et les espaces et met en minuscules, mais il garde les accents : « Données » et « Donnees » ne se rejoignent pas. C'est la règle actuelle, que ces deux PR ne changent pas. La fiche 07 traite des accents.
+
+PR envoyée : liliang-cn/cortexdb#115 (brouillon), branche `co-15-find-nodes-names` du fork lfoletti/cortexdb.

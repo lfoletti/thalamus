@@ -65,3 +65,5 @@ Une ouverture ne lit plus l'instantané. Davantage de cerveaux tiendraient chaud
 ## Langues européennes
 
 Rien de propre à une langue : l'index travaille sur les vecteurs de l'encodeur choisi.
+
+PR envoyée : liliang-cn/cortexdb#114 (brouillon), branche `co-12-grpc-vector-index` du fork lfoletti/cortexdb.
