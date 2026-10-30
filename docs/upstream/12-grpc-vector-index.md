@@ -1,6 +1,6 @@
 # 12. `cortexdb-grpc` laisse choisir l'index des vecteurs
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 40 lignes hors tests dans `cmd/cortexdb-grpc`, un test de lecture des variables. **Dépend de** : rien. Le moteur a déjà les trois index ; seul le serveur ne permet pas de les choisir.
+**Statut** : envoyée le 30 octobre 2026, liliang-cn/cortexdb#114, en relecture. **Taille estimée** : 40 lignes hors tests dans `cmd/cortexdb-grpc`, un test de lecture des variables. **Dépend de** : rien. Le moteur a déjà les trois index ; seul le serveur ne permet pas de les choisir.
 
 ## Le besoin de Thalamus
 

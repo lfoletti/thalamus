@@ -1,6 +1,6 @@
 # 15. `find_nodes` : chercher parmi les noms, pas dans le texte des morceaux (deux PR)
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** :
+**Statut** : PR A envoyée le 30 octobre 2026, liliang-cn/cortexdb#115, en relecture ; PR B en attente. **Taille estimée** :
 - PR A : 25 lignes hors tests et deux tests ;
 - PR B : 150 lignes hors tests, une table et ses écritures, et des tests de cohérence.
 
