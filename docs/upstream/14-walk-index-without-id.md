@@ -51,6 +51,10 @@ Le gain suit le nombre d'arêtes : environ 100 Mo sur ai-engineering (estimation
 - **L'ordre des arêtes de même poids** suit l'ordre d'insertion au lieu de l'ordre alphabétique des identifiants. La somme des scores de PPR peut différer au dernier chiffre, parce que l'ordre des additions change. Le test de PPR doit comparer à une tolérance, pas à l'égalité.
 - **Un `VACUUM` peut renuméroter les `rowid`** d'une table sans `INTEGER PRIMARY KEY`. L'ordre reste stable entre deux lectures, mais peut changer après un `VACUUM`. Si l'amont tient à un ordre identique d'une base à sa copie compactée, il faut garder `ORDER BY id` dans `pprIncidentEdges` et payer une lecture de la table pour les seules arêtes retenues.
 
+## PostgreSQL
+
+Le même schéma sert les deux bases : `createGraphSchema` (`pkg/graph/graph.go`) ne change que le type des colonnes binaires selon le dialecte. PostgreSQL n'a pas de `rowid`, et son `ctid` change à chaque mise à jour d'une ligne. La PR doit donc garder `id` dans les index et dans les requêtes sous PostgreSQL, et ne le retirer que sous SQLite : un index et deux requêtes par dialecte. Cela double les cas à tester ; c'est une raison de plus pour envoyer cette fiche après les fiches 12 et 15 A.
+
 ## Preuves à apporter
 
 1. Test de plan : la requête de marche passe par un index couvrant, sans lecture de la table.
