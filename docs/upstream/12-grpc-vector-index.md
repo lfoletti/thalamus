@@ -4,7 +4,7 @@
 
 ## Le besoin de Thalamus
 
-Les cerveaux de Contaixt sont servis par `cortexdb-grpc` sur un VPS dont la mémoire est la borne (A9 et A10 du projet d'alignement : `MemoryMax=6G` pour une dizaine de cerveaux). Le serveur ouvre chaque base avec `cortexdb.DefaultConfig` (`cmd/cortexdb-grpc/main.go`) : un index HNSW en float32, dont l'instantané recopie tous les vecteurs dans `index_snapshots`. Sur ai-quant, cet instantané pèse 126 Mo sur 549, et l'index tient 300 Mo de mémoire résidente pour 40 457 vecteurs de dimension 384.
+Les cerveaux de Contaixt sont servis par `cortexdb-grpc` sur un VPS dont la mémoire est la borne (`MemoryMax=6G` pour une dizaine de cerveaux). Le serveur ouvre chaque base avec `cortexdb.DefaultConfig` (`cmd/cortexdb-grpc/main.go`) : un index HNSW en float32, dont l'instantané recopie tous les vecteurs dans `index_snapshots`. Sur ai-quant, cet instantané pèse 126 Mo sur 549, et l'index tient 300 Mo de mémoire résidente pour 40 457 vecteurs de dimension 384.
 
 Le moteur sait déjà faire plus léger :
 
@@ -57,7 +57,7 @@ Contaixt passerait ses cerveaux à `binary` avec un suréchantillon de 32, aprè
 | Instantané retiré du disque | 126 Mo | ≈ 430 Mo |
 | Mémoire résidente | ≈ 250 Mo | ≈ 800 Mo |
 
-Une ouverture ne lit plus l'instantané. Davantage de cerveaux tiendraient chauds sous la borne du VPS, ce qui répond à la cause d'A9.
+Une ouverture ne lit plus l'instantané. Davantage de cerveaux tiendraient chauds sous la borne du VPS, et le rappel en sauterait moins faute de réponse dans son délai.
 
 ## Langues européennes
 

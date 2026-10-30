@@ -8,7 +8,7 @@
 
 ## Le besoin de Thalamus
 
-`chercher` de kg-mcp se relaie par `th_find_nodes` (K3). L'expertise du 29 octobre 2026 l'a mesuré à 658 ms sur ai-engineering, contre quelques millisecondes pour kg-mcp. Le moteur le dit lui-même : « The graph has no index on content » (`graphrag_tool_find_nodes.go`, v2.141.0). Chaque appel fait trois choses :
+`chercher` de kg-mcp se relaie par `th_find_nodes`. L'expertise du 29 octobre 2026 l'a mesuré à 658 ms sur ai-engineering, contre quelques millisecondes pour kg-mcp. Le moteur le dit lui-même : « The graph has no index on content » (`graphrag_tool_find_nodes.go`, v2.141.0). Chaque appel fait trois choses :
 
 1. il relit le contenu de **tous** les nœuds qui en ont un, les morceaux compris ;
 2. il normalise chacun de ces contenus (`foldName`) ;
@@ -21,7 +21,7 @@ Les morceaux sont des passages de texte, pas des noms. Sur ai-security (v2.141.0
 | Morceaux (`chunk`) | 111 929 | 43,6 Mo |
 | Tous les autres (entités, documents, etc.) | 64 501 | 2,1 Mo |
 
-Comme l'inclusion porte aussi sur le texte des morceaux, un nom très cité remplit la réponse de passages qui le mentionnent. Pour les 8 entités les plus citées d'ai-security, demandées avec `limit` 20, 48 des 160 places rendues sont des morceaux. Ils ne prennent pas la place d'une entité : une inclusion se classe par longueur, et un morceau, plus long qu'un nom, vient presque toujours après. Ils remplissent les places qu'aucun nœud nommé n'occupe, mais chaque appel paie pour les trouver. Le banc K2 les écarte (`noms_trouves`). Un agent qui cherche « noyb » attend l'entité, pas les passages : pour les passages, il y a la recherche (`knowledge_search`, `search_chunks_by_entities`).
+Comme l'inclusion porte aussi sur le texte des morceaux, un nom très cité remplit la réponse de passages qui le mentionnent. Pour les 8 entités les plus citées d'ai-security, demandées avec `limit` 20, 48 des 160 places rendues sont des morceaux. Ils ne prennent pas la place d'une entité : une inclusion se classe par longueur, et un morceau, plus long qu'un nom, vient presque toujours après. Ils remplissent les places qu'aucun nœud nommé n'occupe, mais chaque appel paie pour les trouver. Le banc qui compare Thalamus à kg-mcp les écarte. Un agent qui cherche « noyb » attend l'entité, pas les passages : pour les passages, il y a la recherche (`knowledge_search`, `search_chunks_by_entities`).
 
 ## Mesure du 30 octobre 2026
 
@@ -43,7 +43,7 @@ Règle : `find_nodes` cherche parmi les nœuds nommés. Le texte d'un morceau n'
 - Sans les morceaux, la requête ajoute `AND node_type != 'chunk'`. L'index `idx_nodes_type` existe déjà.
 - `include_chunks` entre dans la liste blanche des arguments (`pkg/authz/allowlist.go`, `find_nodes` : `names`, `node_types`, `limit`), comme les autres. Le filtre des nœuds cachés ne change pas.
 
-Pourquoi ce n'est pas `node_types` : sous une clé confinée, une entité est servie sans son type (`scopedNode`). Un filtre `node_types` écarte alors les entités après coup, et le banc K3 tombait à 0 avec ce filtre. Exclure un type de la lecture ne dépend pas du type servi.
+Pourquoi ce n'est pas `node_types` : sous une clé confinée, une entité est servie sans son type (`scopedNode`). Un filtre `node_types` écarte alors les entités après coup, et le banc tombait à 0 avec ce filtre sous une clé ordinaire. Exclure un type de la lecture ne dépend pas du type servi.
 
 Preuves à apporter :
 
@@ -75,7 +75,7 @@ Preuves à apporter :
 
 ## Ordre conseillé
 
-Envoyer la PR A d'abord. Elle donne l'essentiel du gain, 819 → 142 ms (× 5,8), sans schéma ni écriture nouvelle, et elle rend des réponses plus propres. La PR B gagne encore × 2,5 (142 → 56 ms). En échange, une table doit rester juste dans tous les chemins d'écriture du moteur. Elle ne vaut d'être envoyée que si la PR A ne suffit pas au parcours de K4.
+Envoyer la PR A d'abord. Elle donne l'essentiel du gain, 819 → 142 ms (× 5,8), sans schéma ni écriture nouvelle, et elle rend des réponses plus propres. La PR B gagne encore × 2,5 (142 → 56 ms). En échange, une table doit rester juste dans tous les chemins d'écriture du moteur. Elle ne vaut d'être envoyée que si la PR A ne suffit pas au parcours d'un agent par Thalamus.
 
 ## Langues européennes
 
