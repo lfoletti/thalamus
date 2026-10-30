@@ -17,9 +17,9 @@ Le moteur sait déjà faire plus léger :
 
 Règle : l'opérateur choisit l'index des vecteurs au démarrage du serveur. Le défaut ne change pas.
 
-- `CORTEXDB_VECTOR_INDEX` : `hnsw` (défaut, comme aujourd'hui) ou `binary`. Des variables d'environnement seulement, comme `CORTEXDB_REVIEW_GATE`, sans option de ligne de commande.
+- `CORTEXDB_VECTOR_INDEX` : `hnsw` (défaut, comme aujourd'hui) ou, sur une base SQLite, `binary`. Des variables d'environnement seulement, comme `CORTEXDB_REVIEW_GATE`, sans option de ligne de commande.
 - `CORTEXDB_BINARY_OVERSAMPLE` : le multiplicateur de la liste de candidats de l'index binaire (`BinaryConfig.Oversample`). Sans la variable, le défaut du moteur, qui est 8.
-- Une valeur inconnue, un suréchantillon qui n'est pas un entier positif, ou un suréchantillon posé à côté de `hnsw` arrêtent le serveur avec un message qui nomme la variable.
+- Une valeur inconnue, un suréchantillon hors de 1 à 1000, un suréchantillon posé à côté de `hnsw`, ou `binary` sur une adresse PostgreSQL arrêtent le serveur avec un message qui nomme la variable.
 - Le journal de démarrage nomme l'index choisi, comme il nomme l'encodeur.
 
 Pas de `hnsw-sq8`. La relecture adverse a trouvé qu'une base fermée en SQ8 ne se rouvre pas sans SQ8 : `loadIndexSnapshot` (`pkg/core/store_index.go`) trouve la ligne `QUANTIZER`, ne construit pas de quantificateur quand la quantification est éteinte, et appelle `Load` sur un pointeur nul. Offert par le serveur, SQ8 ferait planter le démarrage suivant sans la variable, et `cortexdb-mcp-stdio` sur la même base. C'est un correctif à part, dans le moteur.
@@ -28,7 +28,7 @@ Ce que l'essai a montré :
 
 1. Une base passée de `hnsw` à `binary` garde ses lignes HNSW dans `index_snapshots` (12 lignes, 49,8 Mo sur ai-audio), sans les lire. La PR ne les retire pas : une réouverture en `hnsw` les réutilise. Le gain sur le disque demande donc qu'un cerveau soit construit en `binary` dès le départ, ou nettoyé à la publication.
 2. Les recherches passent par `Store.Search` : le banc du pilote, qui appelle `SearchGraphRag`, donne la même couverture avec les deux index (point suivant).
-3. Sous PostgreSQL, `binary` est l'index de bits de pgvector, qui lit le même suréchantillon.
+3. Pas de `binary` sous PostgreSQL. La recherche par l'index de bits y pose `hnsw.ef_search` à top_k × suréchantillon, que pgvector refuse au-delà de 1000 (au défaut, dès top_k 126). Borner la valeur rend une réponse plus courte que top_k, sans erreur. Passer par le chemin exact ne suffit pas non plus : une base qui garde son index flottant y répond à `ef_search` 40, comme le fait déjà une base `hnsw` PostgreSQL au-delà de top_k 40. C'est un défaut du moteur sous PostgreSQL, à traiter à part. Contaixt n'utilise que SQLite.
 
 ## Mesure du 30 octobre 2026
 
