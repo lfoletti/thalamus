@@ -1,13 +1,14 @@
 # 18. Sur PostgreSQL, un nœud écrit par lot est trouvé par son vecteur
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 30 à 50 lignes hors tests dans `pkg/graph/graph_batch.go` (et une reprise des bases existantes), plus un test à deux backends. **Dépend de** : rien ; touche `pkg/graph/pgvector.go` comme la fiche 17, dans d'autres fonctions. Défaut trouvé en écrivant les tests de la fiche 17.
+**Statut** : fiche écrite le 30 octobre 2026, corrigée le même soir (chemin de l'ingestion, nœuds RDF) ; PR de code en préparation (branche `co-18-graph-batch-mirror`), rien d'envoyé. **Taille estimée** : 30 à 50 lignes hors tests dans `pkg/graph/graph_batch.go` (et une reprise des bases existantes), plus un test à deux backends. **Dépend de** : rien ; touche `pkg/graph/pgvector.go` comme la fiche 17, dans d'autres fonctions. Défaut trouvé en écrivant les tests de la fiche 17.
 
 ## Le défaut
 
-Sur PostgreSQL, la recherche vectorielle du graphe (`vectorCandidates`, `pkg/graph/graph_hybrid.go`) lit la table `graph_node_vectors`, un miroir des vecteurs des nœuds indexé par HNSW. Seul `UpsertNode` tient ce miroir (`pgUpsertVector`, `graph.go`). Les deux écritures par lot ne le tiennent pas :
+Sur PostgreSQL, la recherche vectorielle du graphe (`vectorCandidates`, `pkg/graph/graph_hybrid.go`) lit la table `graph_node_vectors`, un miroir des vecteurs des nœuds indexé par HNSW. Seul `UpsertNode` tient ce miroir (`pgUpsertVector`, `graph.go`). Trois écritures ne le tiennent pas :
 
 - `UpsertNodesBatch` (`graph_batch.go`) ;
-- `upsertNodesBatchTx`, derrière `ExecuteBatch` et les transactions de connaissance (`knowledge_tx.go`).
+- `upsertNodesBatchTx`, derrière `ExecuteBatch` et les transactions de connaissance (`knowledge_tx.go`) ;
+- les nœuds RDF écrits avec les triplets (`upsertRDFTermNodeWithLabelTx`, `rdf.go`), qui portent un vecteur haché du terme.
 
 Les nœuds qu'elles écrivent sont dans `graph_nodes`, avec leur vecteur, mais pas dans le miroir. Et `vectorCandidates` ne retombe sur la recherche en mémoire que si le miroir ne rend **rien** :
 
@@ -16,7 +17,7 @@ Les nœuds qu'elles écrivent sont dans `graph_nodes`, avec leur vecteur, mais p
 
 ## Qui l'atteint aujourd'hui
 
-L'ingestion elle-même (`pkg/cortexdb/graphrag.go`) : le nœud du document s'écrit par `UpsertNode`, avec la moyenne des vecteurs de ses morceaux, donc il entre dans le miroir ; les nœuds de morceaux et d'entités s'écrivent par `UpsertNodesBatch`, donc ils n'y entrent pas. Dès le premier document ingéré sur PostgreSQL, la recherche vectorielle du graphe ne voit que des nœuds de documents. Aussi : l'outil d'ingestion (`graphrag_tool_ingest.go`), la mémoire (`memory_api.go`), l'import et la restauration du graphe (`graph_export.go`), les transactions de connaissance. Les écritures un par un (décisions, exécutions, actions d'ontologie, `hindsight`) suffisent à remplir le miroir.
+L'ingestion : par l'outil d'ingestion (`graphrag_tool_ingest.go`), le document, ses morceaux et ses entités s'écrivent tous par lot, et aucun n'entre dans le miroir ; la recherche reste juste, par le parcours complet en Go. Le défaut se déclenche dès qu'**un** nœud entre dans le miroir par une écriture un par un : une décision, une étape d'exécution, une action d'ontologie, `hindsight`, ou le nœud du document de `graphrag.go` (écrit par `UpsertNode`). À partir de là, plus aucun nœud ingéré n'est trouvé par similarité (essai : un nœud écrit seul, puis un document ingéré ; le morceau ne revient pas pour son propre vecteur, seul le nœud écrit seul revient). Aussi : la mémoire (`memory_api.go`), l'import et la restauration du graphe (`graph_export.go`), les transactions de connaissance, les triplets RDF.
 
 SQLite n'est pas touché : la recherche y passe par l'index en mémoire ou le parcours complet.
 
