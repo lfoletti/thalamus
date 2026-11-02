@@ -139,11 +139,11 @@ func TestNearIsTheBrainsBoundAndAFailedSearchRefuses(t *testing.T) {
 	if res := mustCall(t, s, "th_add", args); !res.IsError || !strings.Contains(text(res), "near copies") {
 		t.Fatalf("failed search: %s", text(res))
 	}
-	b.brain.failTool, b.brain.badJSON = "", true
+	b.brain.failTool, b.brain.badTool = "", "knowledge_search"
 	if res := mustCall(t, s, "th_add", args); !res.IsError || !strings.Contains(text(res), "decode knowledge_search") {
 		t.Fatalf("bad search answer: %s", text(res))
 	}
-	b.brain.badJSON, b.brain.failID = false, "rule:tests:a"
+	b.brain.badTool, b.brain.failID = "", "rule:tests:a"
 	if res := mustCall(t, s, "th_add", args); !res.IsError || !strings.Contains(text(res), "near copies") || !strings.Contains(text(res), "no such document rule:tests:a") {
 		t.Fatalf("failed candidate read: %s", text(res))
 	}
@@ -195,7 +195,7 @@ func TestThemesMayBeDeclaredInTheBrain(t *testing.T) {
 		t.Fatalf("declared theme: %s", text(res))
 	}
 	agg := b.brain.named("aggregate_metadata")
-	if agg["collection"] != "team-acme" || agg["type"] != "group_by" || fmt.Sprint(agg["group_by"]) != "[declares_theme]" {
+	if agg["collection"] != "team-acme" || agg["type"] != "group_by" || fmt.Sprint(agg["group_by"]) != "[declares_theme document_id]" {
 		t.Fatalf("themes read: %v", agg)
 	}
 	// A theme only proposed, not yet accepted, is not a theme.

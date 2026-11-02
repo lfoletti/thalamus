@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/lfoletti/thalamus/gateway/convention"
 	"github.com/lfoletti/thalamus/gateway/version"
 )
 
@@ -48,7 +49,17 @@ func (s *Server) serveREST(w http.ResponseWriter, r *http.Request) {
 			restError(w, http.StatusBadRequest, fmt.Errorf("body: %w", err))
 			return
 		}
-		restResult(w, s.add(r.Context(), user, args))
+		res, cause := s.write(r.Context(), user, args)
+		var refusal *convention.Refusal
+		var near *nearCopy
+		switch {
+		case errors.As(cause, &refusal):
+			restError(w, http.StatusBadRequest, errors.New(text0(res)))
+		case errors.As(cause, &near):
+			restError(w, http.StatusConflict, errors.New(text0(res)))
+		default:
+			restResult(w, res)
+		}
 	case r.URL.Path == "/v1/add":
 		restError(w, http.StatusMethodNotAllowed, errors.New("use POST"))
 	default:
@@ -71,9 +82,14 @@ func (s *Server) serveVersion(w http.ResponseWriter, r *http.Request) {
 
 // restResult writes a tool result: the engine's JSON on success, or the
 // error with a status that says whose fault it is.
+// A note the tool adds after the engine's answer (a document filed
+// unsorted) goes in the body, under "note".
 func restResult(w http.ResponseWriter, res *mcp.CallToolResult) {
-	text := res.Content[0].(*mcp.TextContent).Text
+	text := text0(res)
 	if !res.IsError {
+		if len(res.Content) > 1 {
+			text = withNote(text, res.Content[1].(*mcp.TextContent).Text)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(text))
@@ -87,14 +103,25 @@ func restResult(w http.ResponseWriter, res *mcp.CallToolResult) {
 		status = http.StatusForbidden
 	case strings.Contains(text, "is required"), strings.Contains(text, "must be"):
 		status = http.StatusBadRequest
-	case strings.Contains(text, "convention"):
-		status = http.StatusBadRequest
-	case strings.Contains(text, "near copy of"):
-		status = http.StatusConflict
 	case strings.Contains(text, "belongs to"):
 		status = http.StatusConflict
 	}
 	restError(w, status, errors.New(text))
+}
+
+// text0 is the first text of a tool result.
+func text0(res *mcp.CallToolResult) string { return res.Content[0].(*mcp.TextContent).Text }
+
+// withNote adds the note to the engine's JSON object, or wraps an answer
+// that is not one under "result".
+func withNote(body, note string) string {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(body), &m); err != nil || m == nil {
+		m = map[string]any{"result": body}
+	}
+	m["note"] = note
+	out, _ := json.Marshal(m)
+	return string(out)
 }
 
 func restJSON(w http.ResponseWriter, status int, v any) {

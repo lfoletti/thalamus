@@ -1,6 +1,7 @@
 package convention
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -194,5 +195,64 @@ func TestCloseNames(t *testing.T) {
 		if got := CloseNames(tc.a, tc.b); got != tc.want {
 			t.Errorf("%s %s: %v", tc.a, tc.b, got)
 		}
+	}
+}
+
+// The caller declares no theme: declares_theme is the gateway's, set only
+// on a document theme:<subject>, whose subject is checked even when it is
+// rewritten. A name that reads as a number is no name, since the engine
+// groups it as a number. A theme_proposed under a known theme is dropped.
+// Every refusal is a *Refusal.
+func TestTheCallerDeclaresNoThemeAndNamesAreNoNumbers(t *testing.T) {
+	got, err := Check(conv, "rule:tests:x", map[string]string{"theme": "tests", "nature": "rule", "declares_theme": "test", "theme_proposed": "Not A Key!"}, false, nil)
+	if err != nil || got["declares_theme"] != "" || got["theme_proposed"] != "" {
+		t.Fatalf("stray keys: %v %v", got, err)
+	}
+	got, err = Check(conv, "theme:ops", map[string]string{"declares_theme": "other"}, true, nil)
+	if err != nil || got["declares_theme"] != "ops" {
+		t.Fatalf("rewritten theme document: %v %v", got, err)
+	}
+	if _, err := Check(conv, "theme:Test Stuff", map[string]string{}, true, nil); err == nil || !strings.Contains(err.Error(), "theme:<subject>") {
+		t.Fatalf("rewritten bad subject: %v", err)
+	}
+	var r *Refusal
+	for _, n := range []string{"2026", "1e5", "inf", "nan"} {
+		for _, tc := range []struct {
+			id string
+			md map[string]string
+		}{
+			{"rule:" + n + ":x", map[string]string{"theme": n, "nature": "rule"}},
+			{"theme:" + n, map[string]string{}},
+			{"rule:" + n + ":x", map[string]string{"theme": "unsorted", "theme_proposed": n, "nature": "rule"}},
+		} {
+			if _, err := Check(conv, tc.id, tc.md, false, nil); !errors.As(err, &r) {
+				t.Errorf("%s %v: %v", tc.id, tc.md, err)
+			}
+		}
+	}
+	for _, tc := range []struct {
+		id string
+		md map[string]string
+	}{
+		{"rule:tests:x", map[string]string{"theme": "tests"}},
+		{"theme:test", map[string]string{}},
+		{"theme:tests", map[string]string{}},
+		{"pitfall:tests:x", map[string]string{"theme": "tests", "nature": "pitfall", "date": "2026-1-2"}},
+	} {
+		if _, err := Check(conv, tc.id, tc.md, false, nil); !errors.As(err, &r) || r.Error() == "" {
+			t.Errorf("%s: %v", tc.id, err)
+		}
+	}
+}
+
+// The bounds the convention states: one edit apart from four letters, not
+// below; a text of fewer than three words is compared by its words even
+// when the other is long.
+func TestTheStatedBounds(t *testing.T) {
+	if !CloseNames("cast", "cost") || CloseNames("cat", "cot") {
+		t.Fatalf("four letters: %v %v", CloseNames("cast", "cost"), CloseNames("cat", "cot"))
+	}
+	if l := Likeness("alpha beta", "alpha beta gamma delta"); l != 0.5 {
+		t.Fatalf("short text: %v", l)
 	}
 }

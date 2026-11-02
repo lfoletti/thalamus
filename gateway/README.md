@@ -15,16 +15,17 @@ La couche mince de Thalamus au-dessus d'un ou plusieurs serveurs CortexDB. Tranc
   - `emerge` donne le nombre de documents qui font d'un thème proposé un candidat (5 par défaut).
 
   `th_add` et `POST /v1/add` refusent alors, avant d'écrire :
+  - un nom de thème ou de nature qui se lit comme un nombre (`2026`, `inf`), que le moteur grouperait comme un nombre ;
   - une nature hors de la liste ;
   - une nature datée sans `date` au format AAAA-MM-JJ ;
   - un `status` autre que `current` ou `replaced` (posé à `current` s'il est absent) ;
   - un document nouveau dont l'identifiant n'est pas `<nature>:<thème>:<sujet>`.
 
-  Un document que le cerveau a déjà garde son identifiant.
+  Un document que le cerveau a déjà garde son identifiant. L'identifiant est lu une seule fois, pour le contrôle de l'auteur et pour la convention, et l'auteur est contrôlé avant la recherche des copies. Le point `/mcp/<cerveau>`, dont les outils bruts du moteur écriraient sans contrôle, refuse un cerveau à convention (403). En REST, le statut suit le genre du refus : 400 pour la convention, 409 pour une copie presque identique.
 
-  Un thème inconnu ne bloque pas : le document est rangé sous le thème d'attente, le thème qu'il nomme est gardé dans `theme_proposed`, et la réponse le dit.
+  Un thème inconnu ne bloque pas : le document est rangé sous le thème d'attente, le thème qu'il nomme est gardé dans `theme_proposed`, et la réponse le dit (en REST, sous `note` dans le corps). Sous un thème connu, `theme_proposed` est retiré.
 
-  Un document `theme:<sujet>` déclare un thème. Le gateway lit ces thèmes par `aggregate_metadata` (métadonnée `declares_theme`), seulement quand un document nomme un thème hors de la liste de départ. Sous la porte de relecture, un thème proposé ne vaut qu'une fois accepté. Un thème qui existe, ou dont le nom est proche d'un thème du cerveau, est refusé, sauf `distinct_from`. Deux noms sont proches s'ils sont égaux sans les tirets et sans un `s` final, ou, à partir de quatre lettres, à une lettre près.
+  Un document `theme:<sujet>` déclare un thème, et lui seul : le gateway pose `declares_theme` et retire celui que l'appelant envoie. Le gateway lit ces thèmes par `aggregate_metadata` (métadonnée `declares_theme`), seulement quand un document nomme un thème hors de la liste de départ. Sous la porte de relecture, un thème proposé ne vaut qu'une fois accepté. Un thème qui existe, ou dont le nom est proche d'un thème du cerveau, est refusé, sauf `distinct_from`. Deux noms sont proches s'ils sont égaux sans les tirets et sans un `s` final, ou, à partir de quatre lettres, à une lettre près.
 
   Le gateway cherche aussi par les mots du texte (`knowledge_search` lexical, cinq candidats lus en entier). Un candidat dont la ressemblance atteint la borne refuse l'écriture et la réponse le nomme, sauf si le document l'est lui-même, ou s'il le nomme dans `replaces` ou `distinct_from`. La ressemblance est l'indice de Jaccard des trigrammes de mots, sans modèle. Une recherche ou une lecture qui échoue refuse aussi l'écriture. En REST, le refus est un 400 pour la convention et un 409 pour une copie.
 
@@ -34,7 +35,8 @@ La couche mince de Thalamus au-dessus d'un ou plusieurs serveurs CortexDB. Tranc
   - les candidats ;
   - une proposition proche d'un thème existant ;
   - les thèmes qui portent plus du tiers des documents rangés ;
-  - les thèmes qu'aucun document ne porte.
+  - les thèmes qu'aucun document ne porte ;
+  - à part, les documents sous un thème que le cerveau ne connaît plus (`undeclared`) et ceux sans thème (`without_theme`), comptés dans le total (les documents `theme:` ne le sont pas).
 
   `th_retheme {brain, proposed, theme}`, pour un curateur, réécrit sous un thème connu les documents en attente qui le proposaient. Chaque document garde son auteur, son titre et sa source, et perd `theme_proposed`. Accepter un candidat, c'est le déclarer puis y ranger ses documents ; le refuser, c'est les ranger ailleurs.
 

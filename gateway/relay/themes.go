@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -16,17 +17,18 @@ import (
 )
 
 // declaredThemes are the themes the brain's accepted theme documents
-// declare, read from their metadata declares_theme. A proposed theme
-// document is not served under the review gate, so it declares nothing
-// until a curator accepts it.
+// declare, read from their metadata declares_theme: only a document
+// theme:<subject> declares its subject, whatever another row carries. A
+// proposed theme document is not served under the review gate, so it
+// declares nothing until a curator accepts it.
 func (s *Server) declaredThemes(ctx context.Context, b rights.Brain, user, name string) ([]string, error) {
-	groups, err := s.groups(ctx, b, user, name, []string{"declares_theme"}, nil)
+	groups, err := s.groups(ctx, b, user, name, []string{"declares_theme", "document_id"}, nil)
 	if err != nil {
 		return nil, err
 	}
 	var out []string
 	for _, g := range groups {
-		if v := g.key("declares_theme"); v != "" {
+		if v := g.key("declares_theme"); g.key("document_id") == convention.ThemePrefix+v {
 			out = append(out, v)
 		}
 	}
@@ -39,10 +41,15 @@ type group struct {
 	Count int            `json:"count"`
 }
 
-// key is a grouped value, "" when the records do not carry it.
+// key is a grouped value, "" when the records do not carry it. The engine
+// groups a value that reads as a number as a number: it is read back as
+// text.
 func (g group) key(k string) string {
-	if v, ok := g.Keys[k].(string); ok {
+	switch v := g.Keys[k].(type) {
+	case string:
 		return v
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	}
 	return ""
 }
@@ -98,18 +105,28 @@ type unsortedCount struct {
 	WithoutProposal int    `json:"without_proposal"`
 }
 
+// looseCount is a theme the documents carry that the brain does not know:
+// dropped from the convention, or whose theme document is gone.
+type looseCount struct {
+	Theme     string `json:"theme"`
+	Documents int    `json:"documents"`
+}
+
 type themesReport struct {
-	Brain     string        `json:"brain"`
-	Documents int           `json:"documents"`
-	Themes    []themeCount  `json:"themes"`
-	Unsorted  unsortedCount `json:"unsorted"`
-	Proposed  []proposal    `json:"proposed"`
-	Broad     []string      `json:"broad"`
-	Dormant   []string      `json:"dormant"`
+	Brain string `json:"brain"`
+	// Documents counts every document but the theme documents.
+	Documents    int           `json:"documents"`
+	Themes       []themeCount  `json:"themes"`
+	Unsorted     unsortedCount `json:"unsorted"`
+	Undeclared   []looseCount  `json:"undeclared"`
+	WithoutTheme int           `json:"without_theme"`
+	Proposed     []proposal    `json:"proposed"`
+	Broad        []string      `json:"broad"`
+	Dormant      []string      `json:"dormant"`
 }
 
 func (s *Server) addThemeTools(srv *mcp.Server, user string) {
-	srv.AddTool(&mcp.Tool{Name: "th_themes", Description: "Tells how a brain with a convention files its documents: the documents of each theme, the unsorted ones and the themes they propose, the candidates (a theme proposed by enough documents), a proposal close to an existing theme, the themes that carry more than a third of the filed documents, and the themes nothing carries. A curator declares a candidate with th_add of a document theme:<subject>, then files its documents with th_retheme.",
+	srv.AddTool(&mcp.Tool{Name: "th_themes", Description: "Tells how a brain with a convention files its documents: the documents of each theme, the unsorted ones and the themes they propose, the candidates (a theme proposed by enough documents), a proposal close to an existing theme, the themes that carry more than a third of the filed documents, the themes nothing carries, and apart the documents under a theme the brain no longer knows or without a theme. A curator declares a candidate with th_add of a document theme:<subject>, then files its documents with th_retheme.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain": map[string]any{"type": "string"},
 		}, "required": []string{"brain"}}},
@@ -153,10 +170,13 @@ func (s *Server) documentsBy(ctx context.Context, b rights.Brain, user, name, ke
 	if err != nil {
 		return nil, err
 	}
-	// The engine groups by the pair: one group is one document.
+	// The engine groups by the pair: one group is one document. A theme
+	// document files nothing, and is not counted.
 	out := map[string]int{}
 	for _, g := range groups {
-		out[g.key(key)]++
+		if !strings.HasPrefix(g.key("document_id"), convention.ThemePrefix) {
+			out[g.key(key)]++
+		}
 	}
 	return out, nil
 }
@@ -182,7 +202,7 @@ func (s *Server) themes(ctx context.Context, user string, args themesArgs) *mcp.
 const broadShare = 1.0 / 3
 
 func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name string, c rights.Convention) (themesReport, error) {
-	r := themesReport{Brain: name, Themes: []themeCount{}, Proposed: []proposal{}, Broad: []string{}, Dormant: []string{}}
+	r := themesReport{Brain: name, Themes: []themeCount{}, Undeclared: []looseCount{}, Proposed: []proposal{}, Broad: []string{}, Dormant: []string{}}
 	declared, err := s.declaredThemes(ctx, b, user, name)
 	if err != nil {
 		return r, err
@@ -215,7 +235,22 @@ func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name st
 		}
 	}
 	r.Unsorted = unsortedCount{Theme: unsorted, Documents: byTheme[unsorted], WithoutProposal: byProposal[""]}
-	r.Documents = filed + byTheme[unsorted]
+	for th, n := range byTheme {
+		r.Documents += n
+		switch {
+		case th == "":
+			r.WithoutTheme = n
+		case th != unsorted && !slices.Contains(known, th):
+			r.Undeclared = append(r.Undeclared, looseCount{th, n})
+		}
+	}
+	sort.Slice(r.Undeclared, func(i, j int) bool {
+		a, b := r.Undeclared[i], r.Undeclared[j]
+		if a.Documents != b.Documents {
+			return a.Documents > b.Documents
+		}
+		return a.Theme < b.Theme
+	})
 	for p, n := range byProposal {
 		if p == "" {
 			continue

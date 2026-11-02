@@ -446,6 +446,10 @@ func TestABrainMayDeclareAConvention(t *testing.T) {
 		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      unsorted: A classer\n", `unsorted "A classer"`},
 		{"    convention:\n      themes: [tests, misc]\n      natures: [rule]\n      unsorted: misc\n", `unsorted "misc" is a theme`},
 		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      emerge: -1\n", "emerge must not be negative"},
+		{"    convention:\n      themes: [tests, \"2026\"]\n      natures: [rule]\n", `theme "2026"`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule, nan]\n", `nature "nan"`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule, theme]\n", `nature "theme" would read as a theme document`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      unsorted: inf\n", `unsorted "inf"`},
 	} {
 		_, err := Parse([]byte(strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n"+tc.conv, 1)))
 		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "team/acme") {

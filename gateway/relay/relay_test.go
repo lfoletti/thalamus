@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -59,6 +60,11 @@ type brain struct {
 	rows []map[string]string
 	// failGroup makes aggregate_metadata fail when it groups by this key.
 	failGroup string
+	// numeric answers a grouped value that reads as a number as a JSON
+	// number, as the engine does.
+	numeric bool
+	// badID is a knowledge_get id answered with text that is not JSON.
+	badID string
 }
 
 // fakeGraph is one key's part of the graph around one entity.
@@ -194,6 +200,10 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			Filters map[string]string `json:"filters"`
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &agg)
+		var lim struct {
+			Limit int `json:"limit"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &lim)
 		if b.failGroup != "" && len(agg.GroupBy) > 0 && agg.GroupBy[0] == b.failGroup {
 			return nil, errors.New("brain says no to the groups of " + b.failGroup)
 		}
@@ -220,6 +230,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			for _, g := range agg.GroupBy {
 				if v, ok := r[g]; ok {
 					ks[g] = v
+					if f, err := strconv.ParseFloat(v, 64); err == nil && b.numeric {
+						ks[g] = f
+					}
 				} else {
 					ks[g] = nil
 				}
@@ -232,7 +245,10 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			counts[sig]++
 		}
 		groups := []map[string]any{}
-		for _, sig := range order {
+		for i, sig := range order {
+			if lim.Limit > 0 && i >= lim.Limit {
+				break
+			}
 			groups = append(groups, map[string]any{"keys": keys[sig], "count": counts[sig]})
 		}
 		out, _ := json.Marshal(map[string]any{"results": groups, "total": len(groups)})
@@ -258,6 +274,9 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			KnowledgeID string `json:"knowledge_id"`
 		}
 		_ = json.Unmarshal([]byte(req.GetArgsJson()), &get)
+		if get.KnowledgeID == b.badID && b.badID != "" {
+			return &rpcv1.CallToolResponse{ResultJson: "not json"}, nil
+		}
 		if get.KnowledgeID == b.failID && b.failID != "" {
 			return nil, errors.New("no such document " + get.KnowledgeID)
 		}

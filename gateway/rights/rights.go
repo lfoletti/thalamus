@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
@@ -144,6 +145,14 @@ func (c Convention) NearBound() float64 {
 // key is a lower case word, or words joined by hyphens.
 var key = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
+// Name reports whether s may name a theme or a nature: lower case words
+// joined by hyphens, and not a number, since the engine groups a value
+// that reads as a number (2026, 1e5, inf, nan) as a number.
+func Name(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	return key.MatchString(s) && err != nil
+}
+
 func (c Convention) check() error {
 	if len(c.Themes) == 0 {
 		return errors.New("the convention needs themes")
@@ -154,14 +163,17 @@ func (c Convention) check() error {
 	for kind, list := range map[string][]string{"theme": c.Themes, "nature": c.Natures} {
 		seen := map[string]bool{}
 		for _, v := range list {
-			if !key.MatchString(v) {
-				return fmt.Errorf("%s %q must be lower case words joined by hyphens", kind, v)
+			if !Name(v) {
+				return fmt.Errorf("%s %q must be lower case words joined by hyphens, not a number", kind, v)
 			}
 			if seen[v] {
 				return fmt.Errorf("%s %q twice", kind, v)
 			}
 			seen[v] = true
 		}
+	}
+	if slices.Contains(c.Natures, "theme") {
+		return errors.New(`nature "theme" would read as a theme document: every id theme:<subject> declares a theme`)
 	}
 	for _, d := range c.Dated {
 		if !slices.Contains(c.Natures, d) {
@@ -171,8 +183,8 @@ func (c Convention) check() error {
 	if c.Near < 0 || c.Near > 1 {
 		return errors.New("near must be between 0 and 1")
 	}
-	if c.Unsorted != "" && !key.MatchString(c.Unsorted) {
-		return fmt.Errorf("unsorted %q must be lower case words joined by hyphens", c.Unsorted)
+	if c.Unsorted != "" && !Name(c.Unsorted) {
+		return fmt.Errorf("unsorted %q must be lower case words joined by hyphens, not a number", c.Unsorted)
 	}
 	if slices.Contains(c.Themes, c.UnsortedTheme()) {
 		return fmt.Errorf("unsorted %q is a theme", c.UnsortedTheme())

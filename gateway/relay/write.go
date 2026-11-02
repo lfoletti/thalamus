@@ -142,20 +142,48 @@ func (s *Server) audited(ctx context.Context, b rights.Brain, user, name, tool, 
 }
 
 func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallToolResult {
+	res, _ := s.write(ctx, user, args)
+	return res
+}
+
+// write is th_add, and POST /v1/add: it returns the result and, when the
+// write is refused, why, so that REST can tell whose fault it is by its
+// kind (a *convention.Refusal, a *nearCopy) rather than its words. The id
+// is read once, for the owner check and the convention both, and the owner
+// is checked before the brain is searched.
+func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.CallToolResult, error) {
 	if strings.TrimSpace(args.Content) == "" {
-		return errResult(errors.New("th_add: content is required"))
+		err := errors.New("th_add: content is required")
+		return errResult(err), err
 	}
 	b, err := s.brainFor(user, args.Brain, rights.Write, "th_add")
 	if err != nil {
-		return errResult(err)
+		return errResult(err), err
 	}
 	access, _ := s.rights().Access(user, args.Brain)
+	refused := func(err error, denied bool) (*mcp.CallToolResult, error) {
+		s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error(), Denied: denied})
+		return errResult(fmt.Errorf("th_add: %w", err)), err
+	}
+	exists := false
+	if args.DocumentID != "" && (b.Convention != nil || access != rights.Curate) {
+		author, found, err := s.authorOf(ctx, b, user, args.Brain, args.DocumentID)
+		if err != nil {
+			return refused(err, access != rights.Curate)
+		}
+		exists = found
+		if found && access != rights.Curate && author != user {
+			if author == "" {
+				author = "no author"
+			}
+			return refused(fmt.Errorf("document %q belongs to %s: propose it under another document_id", args.DocumentID, author), true)
+		}
+	}
 	note := ""
 	if c := b.Convention; c != nil {
-		md, err := s.followsConvention(ctx, b, user, *c, args)
+		md, err := s.followsConvention(ctx, b, user, *c, args, exists)
 		if err != nil {
-			s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error()})
-			return errResult(fmt.Errorf("th_add: %w", err))
+			return refused(err, false)
 		}
 		if md["theme_proposed"] != "" && args.Metadata["theme"] != md["theme"] {
 			note = fmt.Sprintf("theme %q is not declared: filed under %s, theme_proposed %s", args.Metadata["theme"], md["theme"], md["theme_proposed"])
@@ -164,11 +192,6 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	}
 	if args.DocumentID == "" {
 		args.DocumentID = user + "-" + time.Now().UTC().Format("20060102T150405.000000000Z")
-	} else if access != rights.Curate {
-		if err := s.owns(ctx, b, user, args.Brain, args.DocumentID); err != nil {
-			s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error(), Denied: true})
-			return errResult(fmt.Errorf("th_add: %w", err))
-		}
 	}
 	md := map[string]string{}
 	for k, v := range args.Metadata {
@@ -192,7 +215,18 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	if note != "" && !res.IsError {
 		res.Content = append(res.Content, &mcp.TextContent{Text: note})
 	}
-	return res
+	return res, nil
+}
+
+// nearCopy is the refusal of a document almost identical to one the brain
+// has.
+type nearCopy struct {
+	id       string
+	likeness float64
+}
+
+func (e *nearCopy) Error() string {
+	return fmt.Sprintf("near copy of %s (likeness %.2f): rewrite %s under its id, or name it in metadata replaces or distinct_from", e.id, e.likeness, e.id)
 }
 
 // followsConvention applies the brain's convention to a document before it
@@ -200,19 +234,10 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 // The brain is searched by words for the document's text, each candidate is
 // read whole, and one whose likeness reaches the brain's bound refuses the
 // write, unless it is the document itself or the caller names it in
-// replaces or distinct_from. A search that fails refuses the write too: the
-// gate does not open because the brain could not be read.
-func (s *Server) followsConvention(ctx context.Context, b rights.Brain, user string, c rights.Convention, args addArgs) (map[string]string, error) {
-	exists := false
-	if args.DocumentID != "" {
-		_, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_get", map[string]any{"knowledge_id": args.DocumentID, "collection": nil})
-		switch {
-		case err == nil:
-			exists = true
-		case status.Code(err) != codes.NotFound:
-			return nil, err
-		}
-	}
+// replaces or distinct_from. A search or a read that fails, or does not
+// decode, refuses the write too: the gate does not open because the brain
+// could not be read. exists says the brain has a document of this id.
+func (s *Server) followsConvention(ctx context.Context, b rights.Brain, user string, c rights.Convention, args addArgs, exists bool) (map[string]string, error) {
 	var declared []string
 	theme := args.Metadata["theme"]
 	newTheme := strings.HasPrefix(args.DocumentID, convention.ThemePrefix) && !exists
@@ -251,9 +276,11 @@ func (s *Server) followsConvention(ctx context.Context, b rights.Brain, user str
 				Content string `json:"content"`
 			} `json:"knowledge"`
 		}
-		_ = json.Unmarshal([]byte(got), &doc)
+		if err := json.Unmarshal([]byte(got), &doc); err != nil {
+			return nil, fmt.Errorf("cannot look for near copies: decode knowledge_get %s: %w", id, err)
+		}
 		if l := convention.Likeness(args.Content, doc.Knowledge.Content); l >= c.NearBound() {
-			return nil, fmt.Errorf("near copy of %s (likeness %.2f): rewrite %s under its id, or name it in metadata replaces or distinct_from", id, l, id)
+			return nil, &nearCopy{id, l}
 		}
 	}
 	return md, nil
@@ -266,17 +293,18 @@ const (
 	nearCandidates = 5
 )
 
-// owns checks that a writer who names a document_id does not take over
-// another author's document: th_add replaces the document of that id, and the
-// proposal would take the accepted text out of the brain until review, under
-// the writer's name. An id the brain does not have is free.
-func (s *Server) owns(ctx context.Context, b rights.Brain, user, name, id string) error {
+// authorOf reads a document's author, found false when the brain has no
+// document of that id. th_add replaces the document of that id: a writer
+// may not take over another author's document, since the proposal would
+// take the accepted text out of the brain until review, under the
+// writer's name.
+func (s *Server) authorOf(ctx context.Context, b rights.Brain, user, name, id string) (author string, found bool, err error) {
 	result, err := s.callBrain(ctx, b, user, name, "knowledge_get", map[string]any{"knowledge_id": id, "collection": nil})
 	if status.Code(err) == codes.NotFound {
-		return nil
+		return "", false, nil
 	}
 	if err != nil {
-		return err
+		return "", false, err
 	}
 	var got struct {
 		Knowledge struct {
@@ -284,16 +312,9 @@ func (s *Server) owns(ctx context.Context, b rights.Brain, user, name, id string
 		} `json:"knowledge"`
 	}
 	if err := json.Unmarshal([]byte(result), &got); err != nil {
-		return fmt.Errorf("decode knowledge_get: %w", err)
+		return "", false, fmt.Errorf("decode knowledge_get: %w", err)
 	}
-	if got.Knowledge.Author != user {
-		owner := got.Knowledge.Author
-		if owner == "" {
-			owner = "no author"
-		}
-		return fmt.Errorf("document %q belongs to %s: propose it under another document_id", id, owner)
-	}
-	return nil
+	return got.Knowledge.Author, true, nil
 }
 
 // pendingHit is one document that waits for review.
