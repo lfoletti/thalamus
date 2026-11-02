@@ -311,7 +311,10 @@ func TestEntityCreditsABrainThatServesOnlyNeighbors(t *testing.T) {
 func TestTheBrainsEndpointCreditsAllButPureWrites(t *testing.T) {
 	b := attributionBench(t)
 	credited := []string{"knowledge_get", "knowledge_graph_query", "knowledge_memory_reflect", "knowledge_memory_consolidate", "extract_conversation", "knowledge_save", "a_tool_of_a_newer_engine"}
-	b.brain.tools = append(slices.Clone(credited), pureWrites...)
+	// Named here, not read from pureWrites: a pure write left out of it
+	// would be credited, and this test says so.
+	writes := []string{"ingest_document", "upsert_entities", "upsert_relations", "delete_entities", "delete_document_graph", "knowledge_delete", "memory_delete", "knowledge_graph_upsert", "knowledge_graph_delete"}
+	b.brain.tools = append(slices.Clone(credited), writes...)
 	b.brain.replies = map[string]string{}
 	for _, name := range b.brain.tools {
 		b.brain.replies[name] = `{"rows":[{"s":"ledger"}]}`
@@ -334,7 +337,7 @@ func TestTheBrainsEndpointCreditsAllButPureWrites(t *testing.T) {
 			t.Fatalf("%s: %s", name, got)
 		}
 	}
-	for _, name := range pureWrites {
+	for _, name := range writes {
 		if res := call(name); len(res.Content) != 1 || res.Content[0].(*mcp.TextContent).Text != `{"rows":[{"s":"ledger"}]}` {
 			t.Fatalf("a pure write is credited: %s %+v", name, res.Content)
 		}
