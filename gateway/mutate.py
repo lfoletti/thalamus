@@ -740,6 +740,12 @@ M = [
  ('convention/convention.go', 'theme == unsorted && slices.Contains(known, p) {', 'theme == unsorted && slices.Contains(known, p) && false {', 'convention', 'TestAProposalOfAKnownThemeIsFiledUnderIt', 'a proposal of a known theme stays unsorted'),
  ('relay/write.go', 'if p := args.Metadata["theme_proposed"]; theme == unsorted && p != "" {', 'if p := args.Metadata["theme_proposed"]; theme == unsorted && p != "" && false {', 'relay', 'TestAProposalOfAKnownThemeIsFiledUnderIt', 'a proposal of a declared theme does not read the brain'),
  ('relay/themes.go', 'const groupLimit = 100000', 'const groupLimit = 2', 'relay', 'TestAProposalIsCloseToTheFirstCloseTheme', 'a first page of groups'),
+ # réécriture : les métadonnées gardées
+ ('relay/write.go', 'args.Metadata = keepStored(stored, args.Metadata)', 'args.Metadata = keepStored(nil, args.Metadata)\n\t\t_ = stored', 'relay', 'TestARewriteKeepsTheStoredMetadata', 'a rewrite keeps no stored metadata'),
+ ('relay/write.go', 'if !strings.HasPrefix(k, "_") && k != "written_by" {', 'if k != "written_by" {', 'relay', 'TestARewriteKeepsTheStoredMetadata', "the engine's keys go back"),
+ ('relay/write.go', 'if !strings.HasPrefix(k, "_") && k != "written_by" {', 'if !strings.HasPrefix(k, "_") {', 'relay', 'TestARewriteKeepsTheStoredMetadata', 'written_by goes back'),
+ ('relay/write.go', '\tfor k, v := range sent {\n\t\tout[k] = v\n\t}', '\tfor k, v := range sent {\n\t\tif _, ok := out[k]; !ok {\n\t\t\tout[k] = v\n\t\t}\n\t}', 'relay', 'TestARewriteKeepsTheStoredMetadata', 'a stored key wins over a sent one'),
+ ('relay/write.go', 'return got.Knowledge.Author, got.Knowledge.Metadata, true, nil', 'return got.Knowledge.Author, nil, true, nil', 'relay', 'TestARewriteKeepsTheStoredMetadata', 'the stored metadata is not read'),
 ]
 
 bad = 0
