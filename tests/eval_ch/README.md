@@ -1,6 +1,6 @@
 # Banc suisse : le rappel d'une langue à une autre
 
-22 octobre 2026. Premier jeu d'évaluation multilingue de Thalamus (note `docs/notes/multilinguisme.md`, fiche amont 07).
+22 octobre 2026. Premier jeu d'évaluation multilingue de Thalamus (fiche amont 07).
 
 ## Le jeu
 

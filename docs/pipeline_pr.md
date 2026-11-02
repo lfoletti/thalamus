@@ -11,7 +11,7 @@ Procédure en vigueur depuis le 19 octobre 2026. Elle est née d'une soirée où
 5. Une PR déjà ouverte qu'il faut amender repasse en brouillon (`gh pr ready --undo`) le temps de la vérification, puis suit la règle 4.
 6. Toute poussée se fait en une fois par lot, après la vérification complète (section 4), jamais au fil des rapports Codecov.
 
-### Trois niveaux de vérification (décision de Lauro, 20 octobre 2026)
+### Trois niveaux de vérification (décision du mainteneur, 20 octobre 2026)
 
 Le 20 octobre 2026, chaque trou trouvé après le lancement de la chaîne lourde (porte manquante sur `cortex_query`, fermeture MCP sans test) a rendu caduc un passage de 25 minutes par PR. La règle qui en sort : la vérification lourde se lance une fois, à la fin, sur des têtes gelées.
 
@@ -23,7 +23,7 @@ Le 20 octobre 2026, chaque trou trouvé après le lancement de la chaîne lourde
 
 Le 21 octobre 2026, le niveau 3 de l'amendement du second tour a trouvé quatre trous que les niveaux 1 et 2 ne voyaient pas, d'où les trois ajouts ci-dessus : les bancs ont trouvé un circuit entier refusé (`th_pending` sous la règle du préfixe `_`) et un banc resté sur l'ancienne API ; `gremlins` un survivant réel sur `knowledge_save` ; la suite `-race` un test qui lisait l'horloge deux fois (1 échec sur 12). Un quatrième ajout tient à la méthode : la mutation à la main passe par `make handmut`, qui restaure le fichier depuis une copie et refuse un fichier non commis, parce qu'un `git checkout -- <fichier>` après une mutation a retiré un correctif non commis.
 
-### Niveau 2 : cinq contrôles par classe (décision de Lauro, 21 octobre 2026)
+### Niveau 2 : cinq contrôles par classe (décision du mainteneur, 21 octobre 2026)
 
 Le 21 octobre 2026, le second tour de revue des PR #72 à #77 a posé 14 points. Onze étaient trouvables avec ce que le dépôt contenait déjà. Le schéma : au tour 1, le relecteur nomme des cas ; nous corrigeons les cas nommés ; au tour 2, il teste la classe entière de chaque cas et compare avec `main`. Les contrôles ci-dessous font ce travail avant la poussée. Le cinquième est venu le soir même : une relecture adverse des têtes amendées a trouvé 28 points, dont 10 « blocker » ou « likely comment », que les quatre premiers ne voyaient pas (les classes « entrées exportées » et « RPC typés » manquaient à l'inventaire, et rien ne comparait l'inventaire à `failing_first.md`). Ils s'ajoutent au niveau 2, têtes gelées ensuite.
 
@@ -37,7 +37,7 @@ Le 21 octobre 2026, le second tour de revue des PR #72 à #77 a posé 14 points.
 
 ### 1 bis. Invite de la relecture adverse (contrôle 5)
 
-Révisée le 21 octobre 2026 au soir, sur demande de Lauro (rationaliser les requêtes sans perdre de qualité). Mesure du tour 2 de la PR à part, avant la révision : 44 tours, contexte de 45 891 à 174 043 tokens, 5,26 millions de tokens relus dans le cache, environ 743 000 tokens d'entrée en équivalent. La relecture du contexte à chaque tour domine le coût ; le contexte de départ (45 900 tokens) venait surtout des définitions de plus de 100 outils CortexDB que l'agent n'utilise pas.
+Révisée le 21 octobre 2026 au soir, sur demande du mainteneur (rationaliser les requêtes sans perdre de qualité). Mesure du tour 2 de la PR à part, avant la révision : 44 tours, contexte de 45 891 à 174 043 tokens, 5,26 millions de tokens relus dans le cache, environ 743 000 tokens d'entrée en équivalent. La relecture du contexte à chaque tour domine le coût ; le contexte de départ (45 900 tokens) venait surtout des définitions de plus de 100 outils CortexDB que l'agent n'utilise pas.
 
 Procédure :
 1. Préparer le kit : `python3 -I tools/advkit.py --repo <copie> --head <sha> --base <sha> --out <scratchpad>/adv-<pr>-r<n>`. Il exporte les deux arbres, écrit `pr.diff` et `stat.txt`, et deux scripts : `both.sh` (même `go test` sur `main` et sur la tête, sous le canari, sortie filtrée) et `mutone.py` (une mutation sur une copie de la tête, verdict `killed`, `survived` ou `build-failed`).
@@ -131,7 +131,7 @@ Entre deux amendements, la suite complète n'apporte rien qu'un changement confi
 - Un garde-fou qu'aucune entrée ne peut atteindre se retire, il ne se déclare pas.
 - Un bras d'une `switch` sur les erreurs qui n'est pas atteignable depuis la route se sort dans une fonction pure testée sur chaque cas (`toolGuardStatus`, `pkg/httpapi/policy.go`).
 
-### 3 bis. Forme de codage d'une tranche (décision de Lauro, 22 octobre 2026)
+### 3 bis. Forme de codage d'une tranche (décision du mainteneur, 22 octobre 2026)
 
 Leçons du lot C, second tour. Sur #76 et #77, 12 lignes déclarées « PostgreSQL » ne demandaient aucun serveur (`pgAggregateWhere`, `pgBindEach`). La plupart des constats des relectures étaient des membres oubliés d'une classe : la voie vectorielle sans le statut du plan, `get_nodes` hors de la porte, les parcours qui servaient les mémoires cachées. Les corps avaient des affirmations trop larges et des nombres faux, écrits à la main.
 
@@ -161,7 +161,7 @@ Ordre d'une tranche :
 3. Niveau 1 : lance `make precommit REPO=<copie> BASE=<base>`. Si un bloc hors `main` reste, ajoute le test ou retire le code. Note les blocs de `main` pour le corps.
 4. Niveau 1 : pour chaque règle, rejoue une mutation à la main, par `make handmut` (une mutation) ou par le harnais du lot (`../thalamus_local/docs/pr/round2/mutate_round2.py`, un jeu par PR, chaque test attendu vérifié contre le filtre `-run`). Jamais à la main avec `git checkout -- <fichier>` pour restaurer. Consigne « mutation → test qui tombe » dans `failing_first.md`.
 5. Niveau 2 : pour chaque règle et chaque point de revue, nomme la classe et lance `make inventory` ; une ligne par élément dans `failing_first.md`. Écris les scénarios différentiels du lot et lance `make diffmain` ; nomme chaque ligne du diff dans le corps ou corrige. Relève chaque promesse nouvelle (classe `promises`) et nomme son test. Rédige le corps (étape 6), relis-le, fais l'analyse qui reste. Puis gèle les têtes et lance le niveau 3 : `make prepr REPO=<copie> BASE=<base>` sur la tête de chaque pile, puis `make benches` une fois sur `proto` reconstruite (`make level3` enchaîne les deux sur une tête). Lis les survivants de `gremlins` (section 5) et rejoue ceux des paquets `main` par `make handmut`. Un trou trouvé pendant la chaîne va dans une liste ; la chaîne repart une fois, après la correction de toute la liste.
-6. Rédige le corps dans `../thalamus_local/docs/pr/<lot>/<id>.body.md` : quoi, pourquoi, tests, section « Failing first », et, si des lignes de `main` restent, une section `## Codecov` après `## Breaking Changes`, de même rang, qui dit « The N lines left uncovered are inevitable. … », les nomme et dit pourquoi. Pas de pied de page (décision de Lauro du 19 octobre 2026 : ni `Co-Authored-By` dans les commits, ni ligne « Generated with » dans les corps).
+6. Rédige le corps dans `../thalamus_local/docs/pr/<lot>/<id>.body.md` : quoi, pourquoi, tests, section « Failing first », et, si des lignes de `main` restent, une section `## Codecov` après `## Breaking Changes`, de même rang, qui dit « The N lines left uncovered are inevitable. … », les nomme et dit pourquoi. Pas de pied de page (décision du mainteneur du 19 octobre 2026 : ni `Co-Authored-By` dans les commits, ni ligne « Generated with » dans les corps).
 7. Pousse vers le fork. Le hook tourne. Pour un amendement, `git push --force-with-lease=<branche>:<ancienne tête>`.
 8. Ouvre la PR **en brouillon** : `gh pr create --draft --body-file …`.
 9. Attends la CI et le rapport Codecov de cette tête. Si le rapport montre zéro ligne, ou exactement les lignes déclarées : `gh pr ready <n>`. Sinon, retour à l'étape 2, sans poussée intermédiaire.

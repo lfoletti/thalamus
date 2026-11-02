@@ -5,7 +5,7 @@
 
 ## Contexte
 
-Le propriétaire de CortexDB demande que chaque PR porte des tests qui échouent sans son code. Les premières poussées du 19 octobre 2026 ont produit des rapports Codecov partiels (#76 : 39 lignes, #77 : 45 lignes) et plusieurs amendements successifs. Lauro a tranché le soir même : « je ne veux plus voir de nouveau commit dans le vide ».
+Le propriétaire de CortexDB demande que chaque PR porte des tests qui échouent sans son code. Les premières poussées du 19 octobre 2026 ont produit des rapports Codecov partiels (#76 : 39 lignes, #77 : 45 lignes) et plusieurs amendements successifs. Le mainteneur a tranché le soir même : « je ne veux plus voir de nouveau commit dans le vide ».
 
 ## Décision
 

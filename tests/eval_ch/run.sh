@@ -22,10 +22,10 @@ brains:
     addr: 127.0.0.1:$P
     keys_file: $S/keys.json
     collection: ch
-    readers: [user:lauro]
-    writers: [user:lauro]
+    readers: [user:eval]
+    writers: [user:eval]
 EOR
-KEY=$("$S/th-gateway" key issue "$S/rights.yaml" lauro ch | tail -1)
+KEY=$("$S/th-gateway" key issue "$S/rights.yaml" eval ch | tail -1)
 env "$@" "$S/cortexdb-grpc" -db "$S/brain.db" -addr 127.0.0.1:$P -keys "$S/keys.json" > "$S/grpc.log" 2>&1 & GRPC=$!
 "$S/th-gateway" serve "$S/rights.yaml" --listen 127.0.0.1:$((P+1)) --audit "$S/audit.jsonl" > "$S/gw.log" 2>&1 & GW=$!
 sleep 2
