@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -56,7 +57,7 @@ func (s *Server) addWriteTools(srv *mcp.Server, user string) {
 	srv.AddTool(&mcp.Tool{Name: "th_add", Description: "Proposes a document into a brain the caller may write. It waits for a curator's review; a curator's own document is accepted at once. In a brain with a convention, metadata theme and nature come from the brain's lists, a new document_id is <nature>:<theme>:<subject>, and a near copy of a document the brain has is refused, naming it. Returns the engine's ingest report.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":       map[string]any{"type": "string"},
-			"document_id": map[string]any{"type": "string", "description": "stable id; derived from the time when absent"},
+			"document_id": map[string]any{"type": "string", "description": "stable id; derived from the time when absent, except in a brain with a convention, which needs one"},
 			"title":       map[string]any{"type": "string"},
 			"content":     map[string]any{"type": "string"},
 			"source_url":  map[string]any{"type": "string"},
@@ -162,6 +163,7 @@ func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.Cal
 	}
 	access, _ := s.rights().Access(user, args.Brain)
 	refused := func(err error, denied bool) (*mcp.CallToolResult, error) {
+		// The cause goes back as it is, for REST to tell its kind.
 		s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error(), Denied: denied})
 		return errResult(fmt.Errorf("th_add: %w", err)), err
 	}
@@ -176,7 +178,12 @@ func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.Cal
 			if author == "" {
 				author = "no author"
 			}
-			return refused(fmt.Errorf("document %q belongs to %s: propose it under another document_id", args.DocumentID, author), true)
+			return refused(&writeRefusal{fmt.Sprintf("document %q belongs to %s: propose it under another document_id", args.DocumentID, author), http.StatusConflict}, true)
+		}
+		if found && access != rights.Curate && b.Convention != nil && strings.HasPrefix(args.DocumentID, convention.ThemePrefix) {
+			// A writer's rewrite would wait for review, hidden, and take
+			// the theme from the brain until a curator accepts it again.
+			return refused(&writeRefusal{fmt.Sprintf("document %q declares a theme: only a curator of %s rewrites it", args.DocumentID, args.Brain), http.StatusForbidden}, true)
 		}
 	}
 	note := ""
@@ -218,6 +225,15 @@ func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.Cal
 	return res, nil
 }
 
+// writeRefusal is a write refused for the caller's right over the
+// document, with the REST status that says so.
+type writeRefusal struct {
+	msg    string
+	status int
+}
+
+func (e *writeRefusal) Error() string { return e.msg }
+
 // nearCopy is the refusal of a document almost identical to one the brain
 // has.
 type nearCopy struct {
@@ -239,9 +255,14 @@ func (e *nearCopy) Error() string {
 // could not be read. exists says the brain has a document of this id.
 func (s *Server) followsConvention(ctx context.Context, b rights.Brain, user string, c rights.Convention, args addArgs, exists bool) (map[string]string, error) {
 	var declared []string
-	theme := args.Metadata["theme"]
-	newTheme := strings.HasPrefix(args.DocumentID, convention.ThemePrefix) && !exists
-	if newTheme || (!strings.HasPrefix(args.DocumentID, convention.ThemePrefix) && theme != c.UnsortedTheme() && !slices.Contains(c.Themes, theme)) {
+	// The brain's themes are read for a new theme document, and for a
+	// document whose theme, or proposed theme, the convention does not list.
+	theme, unsorted := args.Metadata["theme"], c.UnsortedTheme()
+	if p := args.Metadata["theme_proposed"]; theme == unsorted && p != "" {
+		theme = p
+	}
+	themeDoc := strings.HasPrefix(args.DocumentID, convention.ThemePrefix)
+	if (themeDoc && !exists) || (!themeDoc && theme != unsorted && !slices.Contains(c.Themes, theme)) {
 		var err error
 		if declared, err = s.declaredThemes(ctx, b, user, args.Brain); err != nil {
 			return nil, fmt.Errorf("cannot read the brain's themes: %w", err)

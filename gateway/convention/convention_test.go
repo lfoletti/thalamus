@@ -2,6 +2,7 @@ package convention
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -212,8 +213,13 @@ func TestTheCallerDeclaresNoThemeAndNamesAreNoNumbers(t *testing.T) {
 	if err != nil || got["declares_theme"] != "ops" {
 		t.Fatalf("rewritten theme document: %v %v", got, err)
 	}
-	if _, err := Check(conv, "theme:Test Stuff", map[string]string{}, true, nil); err == nil || !strings.Contains(err.Error(), "theme:<subject>") {
-		t.Fatalf("rewritten bad subject: %v", err)
+	if _, err := Check(conv, "theme:Test Stuff", map[string]string{}, false, nil); err == nil || !strings.Contains(err.Error(), "theme:<subject>") {
+		t.Fatalf("new bad subject: %v", err)
+	}
+	// An old theme document keeps its id, whatever its form, and declares
+	// nothing.
+	if got, err := Check(conv, "theme:Old Stuff", map[string]string{}, true, nil); err != nil || got["declares_theme"] != "" {
+		t.Fatalf("old bad subject: %v %v", got, err)
 	}
 	var r *Refusal
 	for _, n := range []string{"2026", "1e5", "inf", "nan"} {
@@ -254,5 +260,54 @@ func TestTheStatedBounds(t *testing.T) {
 	}
 	if l := Likeness("alpha beta", "alpha beta gamma delta"); l != 0.5 {
 		t.Fatalf("short text: %v", l)
+	}
+}
+
+// A theme document is filed under no theme: its theme and theme_proposed
+// are dropped. Its nature, when it says one, and its date pass the same
+// rules as any document's.
+func TestAThemeDocumentsMetadataFollowsTheRules(t *testing.T) {
+	got, err := Check(conv, "theme:ops", map[string]string{"theme": "unsorted", "theme_proposed": "Not A Key!", "nature": "rule"}, false, nil)
+	if err != nil || got["theme"] != "" || got["theme_proposed"] != "" || got["nature"] != "rule" || got["declares_theme"] != "ops" {
+		t.Fatalf("filed: %v %v", got, err)
+	}
+	for _, tc := range []struct {
+		md     map[string]string
+		exists bool
+		want   string
+	}{
+		{map[string]string{"nature": "nonsense"}, false, "metadata nature"},
+		{map[string]string{"nature": "nonsense"}, true, "metadata nature"},
+		{map[string]string{"date": "garbage"}, false, "metadata date"},
+		{map[string]string{"nature": "pitfall"}, false, "metadata date"},
+	} {
+		if _, err := Check(conv, "theme:ops", tc.md, tc.exists, nil); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%v %v: %v, want %q", tc.md, tc.exists, err, tc.want)
+		}
+	}
+	if got, err := Check(conv, "theme:ops", map[string]string{"nature": "pitfall", "date": "2026-11-02"}, false, nil); err != nil || got["date"] != "2026-11-02" {
+		t.Fatalf("dated: %v %v", got, err)
+	}
+}
+
+// A document that proposes a theme the brain knows is filed under it, its
+// id checked against that theme.
+func TestAProposalOfAKnownThemeIsFiledUnderIt(t *testing.T) {
+	for _, th := range []string{"tests", "ops"} {
+		got, err := Check(conv, "rule:"+th+":x", map[string]string{"theme": "unsorted", "theme_proposed": th, "nature": "rule"}, false, []string{"ops"})
+		if err != nil || got["theme"] != th || got["theme_proposed"] != "" {
+			t.Fatalf("%s: %v %v", th, got, err)
+		}
+	}
+	if _, err := Check(conv, "rule:unsorted:x", map[string]string{"theme": "unsorted", "theme_proposed": "tests", "nature": "rule"}, false, nil); err == nil || !strings.Contains(err.Error(), `"rule:tests:"`) {
+		t.Fatalf("id: %v", err)
+	}
+}
+
+// The known themes are the convention's, then each theme a document
+// declares that the convention does not list already.
+func TestKnownListsEachThemeOnce(t *testing.T) {
+	if got := fmt.Sprint(Known(conv, []string{"git", "ops", "ops"})); got != "[tests git ops]" {
+		t.Fatalf("known: %s", got)
 	}
 }

@@ -216,7 +216,7 @@ func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name st
 	if err != nil {
 		return r, err
 	}
-	known := append(slices.Clone(c.Themes), declared...)
+	known := convention.Known(c, declared)
 	filed := 0
 	for i, th := range known {
 		where := "convention"
@@ -307,12 +307,18 @@ func (s *Server) refile(ctx context.Context, b rights.Brain, user string, args r
 	if !slices.Contains(c.Themes, args.Theme) && !slices.Contains(declared, args.Theme) {
 		return moved, fmt.Errorf("theme %q is not declared: declare it with th_add theme:%s", args.Theme, args.Theme)
 	}
-	groups, err := s.groups(ctx, b, user, args.Brain, []string{"document_id"}, map[string]string{"theme": c.UnsortedTheme(), "theme_proposed": args.Proposed})
+	// Only accepted documents move: an engine without the review gate
+	// serves every row, and a move must not accept a rejected or a pending
+	// proposal. A theme document files nothing, and never moves.
+	groups, err := s.groups(ctx, b, user, args.Brain, []string{"document_id"}, map[string]string{"theme": c.UnsortedTheme(), "theme_proposed": args.Proposed, "_review_status": "accepted"})
 	if err != nil {
 		return moved, err
 	}
 	for _, g := range groups {
 		id := g.key("document_id")
+		if strings.HasPrefix(id, convention.ThemePrefix) {
+			continue
+		}
 		result, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_get", map[string]any{"knowledge_id": id, "collection": nil})
 		if err != nil {
 			return moved, err

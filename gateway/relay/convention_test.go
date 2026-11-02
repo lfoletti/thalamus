@@ -245,7 +245,9 @@ func TestAThemeDocumentIsWrittenWithItsTheme(t *testing.T) {
 	if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "theme:deploi", "content": "Deploying."}); !res.IsError || !strings.Contains(text(res), `close to the theme "deploy"`) {
 		t.Fatalf("close to a declared theme: %s", text(res))
 	}
-	if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "theme:ops", "content": "Operations again."}); res.IsError {
+	withCurator(t, b)
+	kc, _ := keys.Issue(b.keysFile, "kmlead", "team/acme", "team-acme", rights.Curate)
+	if res := mustCall(t, b.federated(t, kc.Secret), "th_add", map[string]any{"brain": "team/acme", "document_id": "theme:ops", "content": "Operations again."}); res.IsError {
 		t.Fatalf("rewriting a theme document: %s", text(res))
 	}
 }

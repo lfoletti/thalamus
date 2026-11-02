@@ -52,7 +52,10 @@ func (s *Server) serveREST(w http.ResponseWriter, r *http.Request) {
 		res, cause := s.write(r.Context(), user, args)
 		var refusal *convention.Refusal
 		var near *nearCopy
+		var right *writeRefusal
 		switch {
+		case errors.As(cause, &right):
+			restError(w, right.status, errors.New(text0(res)))
 		case errors.As(cause, &refusal):
 			restError(w, http.StatusBadRequest, errors.New(text0(res)))
 		case errors.As(cause, &near):
@@ -103,8 +106,6 @@ func restResult(w http.ResponseWriter, res *mcp.CallToolResult) {
 		status = http.StatusForbidden
 	case strings.Contains(text, "is required"), strings.Contains(text, "must be"):
 		status = http.StatusBadRequest
-	case strings.Contains(text, "belongs to"):
-		status = http.StatusConflict
 	}
 	restError(w, status, errors.New(text))
 }

@@ -46,13 +46,23 @@ func Check(c rights.Convention, id string, md map[string]string, exists bool, de
 	} else if s := out["status"]; s != "current" && s != "replaced" {
 		return nil, refuse("the brain's convention needs metadata status, current or replaced")
 	}
-	known := append(slices.Clone(c.Themes), declared...)
+	known := Known(c, declared)
 	unsorted := c.UnsortedTheme()
 	if subject, ok := strings.CutPrefix(id, ThemePrefix); ok {
-		if !rights.Name(subject) {
-			return nil, refuse("the brain's convention needs a document_id theme:<subject>, in lower case words joined by hyphens, not a number")
+		// A theme document is filed under no theme: it declares one. Its
+		// nature, when it says one, and its date follow the rules.
+		delete(out, "theme")
+		delete(out, "theme_proposed")
+		if err := natureAndDate(c, out, out["nature"] != ""); err != nil {
+			return nil, err
 		}
-		if exists {
+		switch {
+		case !rights.Name(subject) && exists:
+			// An old theme document keeps its id, and declares nothing.
+			return out, nil
+		case !rights.Name(subject):
+			return nil, refuse("the brain's convention needs a document_id theme:<subject>, in lower case words joined by hyphens, not a number")
+		case exists:
 			// A theme document rewritten keeps its theme.
 			out["declares_theme"] = subject
 			return out, nil
@@ -66,6 +76,10 @@ func Check(c rights.Convention, id string, md map[string]string, exists bool, de
 		}
 		out["theme"], out["theme_proposed"], theme = unsorted, theme, unsorted
 	}
+	if p := out["theme_proposed"]; theme == unsorted && slices.Contains(known, p) {
+		// A proposal of a theme the brain knows is filed under it.
+		out["theme"], theme = p, p
+	}
 	idTheme := theme
 	if theme != unsorted {
 		// A known theme proposes nothing.
@@ -76,14 +90,8 @@ func Check(c rights.Convention, id string, md map[string]string, exists bool, de
 		}
 		idTheme = p
 	}
-	if !slices.Contains(c.Natures, nature) {
-		return nil, refuse("the brain's convention needs metadata nature, one of: %s", strings.Join(c.Natures, ", "))
-	}
-	date, dated := out["date"]
-	if dated || slices.Contains(c.Dated, nature) {
-		if _, err := time.Parse(time.DateOnly, date); err != nil {
-			return nil, refuse("the brain's convention needs metadata date, as YYYY-MM-DD, for a %s", nature)
-		}
+	if err := natureAndDate(c, out, true); err != nil {
+		return nil, err
 	}
 	if !exists {
 		if !idForm.MatchString(id) {
@@ -94,6 +102,36 @@ func Check(c rights.Convention, id string, md map[string]string, exists bool, de
 		}
 	}
 	return out, nil
+}
+
+// natureAndDate checks the document's nature, from the brain's list, when
+// it needs one or says one, and its date, as YYYY-MM-DD, when it says one
+// or its nature is dated.
+func natureAndDate(c rights.Convention, md map[string]string, needNature bool) error {
+	nature := md["nature"]
+	if needNature && !slices.Contains(c.Natures, nature) {
+		return refuse("the brain's convention needs metadata nature, one of: %s", strings.Join(c.Natures, ", "))
+	}
+	date, dated := md["date"]
+	if dated || slices.Contains(c.Dated, nature) {
+		if _, err := time.Parse(time.DateOnly, date); err != nil {
+			return refuse("the brain's convention needs metadata date, as YYYY-MM-DD, for a %s", nature)
+		}
+	}
+	return nil
+}
+
+// Known are the themes the brain knows: the convention's, then each theme
+// a document declares that the convention does not list already, as when
+// a grown theme is promoted into the rights file.
+func Known(c rights.Convention, declared []string) []string {
+	out := slices.Clone(c.Themes)
+	for _, d := range declared {
+		if !slices.Contains(out, d) {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // ThemePrefix starts the id of a document that declares a theme.

@@ -65,6 +65,9 @@ type brain struct {
 	numeric bool
 	// badID is a knowledge_get id answered with text that is not JSON.
 	badID string
+	// noGate serves every row, whatever its review status, unless a filter
+	// names one: the engine run without the review gate.
+	noGate bool
 }
 
 // fakeGraph is one key's part of the graph around one entity.
@@ -214,7 +217,7 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			if st == "" {
 				st = "accepted"
 			}
-			if want, ok := agg.Filters["_review_status"]; (ok && st != want) || (!ok && st != "accepted") {
+			if want, ok := agg.Filters["_review_status"]; (ok && st != want) || (!ok && st != "accepted" && !b.noGate) {
 				continue
 			}
 			match := true
