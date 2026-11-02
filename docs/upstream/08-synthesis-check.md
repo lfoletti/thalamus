@@ -4,7 +4,7 @@
 
 ## Le besoin
 
-Un producteur écrit des synthèses avec un modèle et les stocke dans CortexDB : une synthèse = un document, avec ses preuves en métadonnée (voir `docs/notes/pyramide.md`). Une synthèse vaut quelque chose seulement si chaque fait qu'elle avance se lit dans ses preuves. Aujourd'hui, ce contrôle se fait hors du moteur, dans contaixt (`scripts/synthese.py`, `faits`, `fait_present`, `verifier`). Chaque producteur doit donc l'écrire une nouvelle fois.
+Un producteur écrit des synthèses avec un modèle et les stocke dans CortexDB : une synthèse = un document, avec ses preuves en métadonnée. Une synthèse vaut quelque chose seulement si chaque fait qu'elle avance se lit dans ses preuves. Aujourd'hui, ce contrôle se fait hors du moteur, chez le producteur. Chaque producteur doit donc l'écrire une nouvelle fois.
 
 Mesure de contaixt (5 octobre 2026, ai-music) : le contrôle a retiré 162 phrases sur 1 723. Le banc a donné ensuite 0 réponse fausse sur 50 questions.
 
