@@ -1,12 +1,12 @@
 # PR potentielles vers CortexDB (dossier en réserve)
 
-Décision de Lauro, 20 octobre 2026 : les éléments mécaniques que Thalamus contourne aujourd'hui remontent vers CortexDB, par petites PR, quand Thalamus aura atteint une certaine maturité. **Rien ne part maintenant.** Ce dossier prépare chaque PR pour que, le jour venu, il reste à écrire le test, le code et le corps.
+Décision du mainteneur, 20 octobre 2026 : les éléments mécaniques que Thalamus contourne aujourd'hui remontent vers CortexDB, par petites PR, quand Thalamus aura atteint une certaine maturité. **Rien ne part maintenant.** Ce dossier prépare chaque PR pour que, le jour venu, il reste à écrire le test, le code et le corps.
 
 Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteur reçoit ce qui est mécanique et vaut pour tout client ; Thalamus garde ce qui est une politique d'organisation (`rights.yaml`, groupes, curateurs, fédération entre serveurs). Chaque PR remontée rend Thalamus plus mince. Mesure du 20 octobre 2026 : Thalamus 1 831 lignes hors tests, CortexDB 160 039.
 
 ## Conditions de départ
 
-1. Les PR en cours sont fusionnées ou closes (#72 à #74, #78, #82 et #83 fusionnées ; #75 à #77 en relecture au 22 octobre 2026), et le commentaire de clôture de #66 est posté. Décision de Lauro du 22 octobre 2026 : les fiches 01 et 06 partent quand ces PR sont validées et que le dépôt Thalamus est public, pas avant.
+1. Les PR en cours sont fusionnées ou closes (#72 à #74, #78, #82 et #83 fusionnées ; #75 à #77 en relecture au 22 octobre 2026), et le commentaire de clôture de #66 est posté. Décision du mainteneur du 22 octobre 2026 : les fiches 01 et 06 partent quand ces PR sont validées et que le dépôt Thalamus est public, pas avant.
 2. Thalamus a tourné dans une vraie session Claude Code (`claude --plugin-dir ./plugin`), pas seulement sur le banc.
 3. Le dépôt Thalamus est public, pour que chaque PR renvoie au code qui la motive.
 4. Les règles de l'amont restent celles du 20 octobre 2026 : environ 400 lignes hors tests par PR, une règle par PR, tests « failing first », table outil par outil pour tout ce qu'une clé confinée atteint.
@@ -36,9 +36,9 @@ Principe de partage (voir `README.md` de Thalamus, section « Why ») : le moteu
 | [`19-postgres-ef-search.md`](19-postgres-ef-search.md) | Sur PostgreSQL, une recherche rend les `top_k` résultats demandés : parcours élargi à la limite sans filtre (jusqu'à 1000), classement exact au-delà ou avec un filtre | Rien à retirer : corrige des recherches tronquées à 40 sans erreur (y compris la recherche des nœuds du graphe, limite par défaut 50) et l'erreur de la recherche binaire dès `top_k` 126 | 40 à 60 lignes et des tests | fusionnée le 31 octobre 2026 (#117), v2.142.0 |
 | [`20-graph-batch-vector-mirror.md`](20-graph-batch-vector-mirror.md) | Sur PostgreSQL, un nœud écrit par lot (`UpsertNodesBatch`, `ExecuteBatch`) entre dans le miroir `graph_node_vectors` | Rien à retirer : corrige une recherche vectorielle du graphe qui ne voit que les nœuds de documents après une ingestion (0/20 nœuds écrits par lot trouvés), sans erreur | 30 à 50 lignes et des tests | fusionnée le 31 octobre 2026 (#118), v2.142.0 |
 
-L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `co-NN-<sujet>` du fork `lfoletti/cortexdb` (`co` pour CortexDB, décision de Lauro du 28 octobre 2026 ; les branches envoyées avant cette date gardent leur préfixe `gc-`), selon `docs/pipeline_pr.md`.
+L'ordre suit l'utilité pour Thalamus et la taille. Une fiche par PR, un commit par PR, sur une branche `co-NN-<sujet>` du fork `lfoletti/cortexdb` (`co` pour CortexDB, décision du mainteneur du 28 octobre 2026 ; les branches envoyées avant cette date gardent leur préfixe `gc-`), selon `docs/pipeline_pr.md`.
 
-Décision de Lauro du 22 octobre 2026 : le produit se conçoit aussi pour des utilisateurs européens (français, allemand, italien, romanche). Chaque fiche dit ce qu'elle change pour ces langues.
+Décision du mainteneur du 22 octobre 2026 : le produit se conçoit aussi pour des utilisateurs européens (français, allemand, italien, romanche). Chaque fiche dit ce qu'elle change pour ces langues.
 
 ## Ce qui ne remonte pas
 
