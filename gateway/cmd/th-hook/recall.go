@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,6 +61,12 @@ type recallOut struct {
 		Brain  string `json:"brain"`
 		Reason string `json:"reason"`
 	} `json:"skipped"`
+	// Attribution is the notice of each brain that contributed, which
+	// ends the context.
+	Attribution []struct {
+		Brain string `json:"brain"`
+		Text  string `json:"text"`
+	} `json:"attribution"`
 }
 
 // run dispatches: 0 done or silent, 1 a command failed, 2 wrong command
@@ -358,6 +365,17 @@ func render(out recallOut, budget int) string {
 			parts = append(parts, s.Brain+" ("+s.Reason+")")
 		}
 		footer = "Skipped: " + strings.Join(parts, ", ") + ".\n" + footer
+	}
+	// The notices come last, each text once: two brains of one publisher
+	// say it once. They are part of the footer, so no budget drops them.
+	var said []string
+	for _, a := range out.Attribution {
+		if !slices.Contains(said, a.Text) {
+			said = append(said, a.Text)
+		}
+	}
+	if len(said) > 0 {
+		footer += "\n" + strings.Join(said, "\n")
 	}
 	return fit(header, lines, footer, budget)
 }

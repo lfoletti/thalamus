@@ -169,6 +169,7 @@ The steps start one CortexDB server with two brains, then the gateway, then the 
        collection: handbook
        readers: [group:acme]
        writers: [user:carol]
+       attribution: {en: Information provided by Example., fr: Information fournie par Example.}
    groups:
      acme: [alice, bob, carol]
    ```

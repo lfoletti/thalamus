@@ -419,7 +419,7 @@ func (s *Server) get(ctx context.Context, user string, args getArgs) *mcp.CallTo
 	}
 	entry.OK = true
 	s.note(entry)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}
+	return attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}, s.noticesFor([]string{args.Brain}, ""))
 }
 
 // excerptOf rewrites a knowledge_get result with the brain's excerpt of its

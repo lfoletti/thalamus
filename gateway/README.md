@@ -13,6 +13,11 @@ La couche mince de Thalamus au-dessus d'un ou plusieurs serveurs CortexDB. Tranc
   - `near` donne la ressemblance, entre 0 et 1 (0,8 par défaut), à partir de laquelle un document est une copie presque identique.
   - `unsorted` nomme le thème d'attente (`unsorted` par défaut).
   - `emerge` donne le nombre de documents qui font d'un thème proposé un candidat (5 par défaut).
+- Attribution (`rights/attribution.go`, `relay/attribution.go`) : un cerveau déclare `attribution: {en: …, fr: …}` dans `rights.yaml`, la mention qui termine tout contexte servi depuis lui (« Information provided by Example. »), une ligne par langue. `rights check` exige des codes de langue de deux lettres minuscules, des mentions non vides d'une seule ligne, de 200 caractères au plus, et la ligne `en`, servie quand la langue de la question n'en a pas.
+  - `th_recall` rend sous `attribution` la mention de chaque cerveau qui a fourni un résultat gardé (y compris par `also_in`), une fois, dans la langue de la question. La langue se lit sans modèle, aux mots outils (en, fr, de, es, it, pt, nl) : la langue qui en a le plus, et la ligne `en` à égalité ou sans mot outil.
+  - `th_get`, `th_descend`, `th_entity`, les outils de graphe et le point par cerveau `/mcp/<cerveau>` rendent la mention du cerveau lu, dans la langue `en` (ils n'ont pas de question). Une réponse objet JSON reçoit le champ `attribution: [{brain, text}]`, le reste du texte inchangé ; une autre réponse reçoit la mention en second texte. Les outils des curateurs (`th_add`, `th_pending`, `th_review`, `th_themes`, `th_retheme`) n'en portent pas : ils administrent le cerveau, ils ne servent pas son information.
+  - Le hook termine son contexte par les mentions, chaque texte une fois ; le budget retire des extraits, jamais une mention.
+  - Sans `attribution`, rien ne change.
 
   `th_add` et `POST /v1/add` refusent alors, avant d'écrire :
   - un nom de thème ou de nature qui se lit comme un nombre (`2026`, `inf`), que le moteur grouperait comme un nombre ;

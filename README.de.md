@@ -169,6 +169,7 @@ Die Schritte starten einen CortexDB-Server mit zwei Gehirnen, dann das Gateway, 
        collection: handbook
        readers: [group:acme]
        writers: [user:carol]
+       attribution: {en: Information provided by Example., fr: Information fournie par Example.}
    groups:
      acme: [alice, bob, carol]
    ```

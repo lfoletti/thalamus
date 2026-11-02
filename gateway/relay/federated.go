@@ -206,6 +206,9 @@ type skipped struct {
 type recallResult struct {
 	Results []fused   `json:"results"`
 	Skipped []skipped `json:"skipped,omitempty"`
+	// Attribution is the notice of each brain that contributed a result,
+	// in the language of the question.
+	Attribution []notice `json:"attribution,omitempty"`
 }
 
 // hit is one answer of knowledge_search, as the engine returns it.
@@ -372,7 +375,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read, "denied": refusals}}
 	s.note(entry)
 	results := append(fuse(slices.Concat(synths...), syntheses, "synthesis"), fuse(slices.Concat(lists...), args.TopK, "")...)
-	return recallResult{Results: results, Skipped: skips}, nil
+	return recallResult{Results: results, Skipped: skips, Attribution: s.noticesFor(contributors(results), language(args.Query))}, nil
 }
 
 // grantsFor chooses the brains a federated tool asks: every brain the

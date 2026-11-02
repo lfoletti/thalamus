@@ -20,15 +20,16 @@ import (
 // fakeGateway is the federated endpoint of a gateway: it checks the bearer
 // and answers th_recall with canned results.
 type fakeGateway struct {
-	secret  string
-	results []map[string]any
-	skipped []map[string]any
-	fail    bool
-	badJSON bool // answer with text that is not JSON
-	noTool  bool // a gateway without th_recall
-	odd     int  // 1: an answer with no content, 2: an answer that is not text
-	calls   []map[string]any
-	listing []map[string]any // what th_brains answers
+	secret      string
+	results     []map[string]any
+	skipped     []map[string]any
+	attribution []map[string]any
+	fail        bool
+	badJSON     bool // answer with text that is not JSON
+	noTool      bool // a gateway without th_recall
+	odd         int  // 1: an answer with no content, 2: an answer that is not text
+	calls       []map[string]any
+	listing     []map[string]any // what th_brains answers
 	// slowInit is how long the first request, initialize, waits.
 	slowInit time.Duration
 	requests atomic.Int32
@@ -57,7 +58,7 @@ func (g *fakeGateway) start(t *testing.T) string {
 		case 2:
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.ImageContent{Data: []byte("x"), MIMEType: "image/png"}}}, nil
 		}
-		out, _ := json.Marshal(map[string]any{"results": g.results, "skipped": g.skipped})
+		out, _ := json.Marshal(map[string]any{"results": g.results, "skipped": g.skipped, "attribution": g.attribution})
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(out)}}}, nil
 	})
 	srv.AddTool(&mcp.Tool{Name: "th_brains", InputSchema: map[string]any{"type": "object"}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -273,5 +274,40 @@ func TestTheHookTellsHowToOpenASynthesis(t *testing.T) {
 	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?"}`)
 	if strings.Contains(contextOf(t, out), "th_descend") {
 		t.Fatalf("no synthesis, no th_descend:\n%s", out)
+	}
+}
+
+// The context ends with the notice of each brain that contributed, once
+// per text, after everything else, and the notices are never dropped to
+// fit the budget: the extracts give way first.
+func TestTheContextEndsWithTheNotices(t *testing.T) {
+	g := &fakeGateway{secret: "s3", results: []map[string]any{
+		{"brain": "team/acme", "knowledge_id": "spec-1", "snippet": "Rollback is two hours.", "provenance": "[team/acme] Spec, spec-1"},
+	}, attribution: []map[string]any{
+		{"brain": "team/acme", "text": "Information provided by Example."},
+		{"brain": "team/acme-eu", "text": "Information provided by Example."},
+		{"brain": "team/other", "text": "Courtesy of Other."},
+	}}
+	url := g.start(t)
+	_, out, _ := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?"}`)
+	ctx := contextOf(t, out)
+	if !strings.HasSuffix(ctx, "\nInformation provided by Example.\nCourtesy of Other.") || strings.Count(ctx, "Information provided by Example.") != 1 {
+		t.Fatalf("context:\n%s", ctx)
+	}
+	long := strings.Repeat("x", 2000)
+	g.results = nil
+	for i := 0; i < 8; i++ {
+		g.results = append(g.results, map[string]any{"brain": "b", "knowledge_id": fmt.Sprint("d-", i), "snippet": long, "provenance": fmt.Sprint("[b] d-", i)})
+	}
+	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
+	ctx = contextOf(t, out)
+	if len(ctx) > contextBudget || !strings.HasSuffix(ctx, "Courtesy of Other.") || !strings.Contains(ctx, "more not shown") {
+		t.Fatalf("len %d, end %q", len(ctx), ctx[len(ctx)-80:])
+	}
+	// No notice, no trailing line.
+	g.attribution = nil
+	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
+	if !strings.HasSuffix(contextOf(t, out), "list the brains with th_brains.") {
+		t.Fatalf("end: %q", contextOf(t, out))
 	}
 }

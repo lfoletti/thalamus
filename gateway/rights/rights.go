@@ -89,6 +89,9 @@ type Brain struct {
 	// the likeness from which a new document is a near copy. nil takes any
 	// document.
 	Convention *Convention `yaml:"convention"`
+	// Attribution is the notice that ends every context served from the
+	// brain, by language; nil serves none.
+	Attribution Attribution `yaml:"attribution"`
 }
 
 // Convention is a brain's rule for the documents written to it.
@@ -329,6 +332,11 @@ func Parse(data []byte) (*Rights, error) {
 		}
 		if c := b.Convention; c != nil {
 			if err := c.check(); err != nil {
+				return nil, fmt.Errorf("parse rights file: brain %q: %w", name, err)
+			}
+		}
+		if b.Attribution != nil {
+			if err := b.Attribution.check(); err != nil {
 				return nil, fmt.Errorf("parse rights file: brain %q: %w", name, err)
 			}
 		}

@@ -188,7 +188,7 @@ func (s *Server) addTool(srv *mcp.Server, client rpcv1.ToolsServiceClient, def *
 		}
 		entry.OK = true
 		s.note(entry)
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}, nil
+		return attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}, s.noticesFor([]string{who.Brain}, "")), nil
 	})
 }
 

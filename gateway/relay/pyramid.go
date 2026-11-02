@@ -147,7 +147,7 @@ func (s *Server) descend(ctx context.Context, user string, args descendArgs) *mc
 	entry.IDs["sources"] = read
 	entry.OK = true
 	s.note(entry)
-	return jsonResult(out)
+	return attributed(jsonResult(out), s.noticesFor([]string{args.Brain}, ""))
 }
 
 func (s *Server) addPyramidTools(srv *mcp.Server, user string) {

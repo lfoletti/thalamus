@@ -32,6 +32,7 @@ brains:
     keys_file: $S/data/keys.json
     collection: team-acme
     pyramid: {collection: acme-pyramid, sources: preuves}
+    attribution: {en: Information provided by Example., fr: Information fournie par Example.}
     readers: [group:acme]
     writers: [user:lfoletti]
   team/review:
@@ -227,6 +228,11 @@ check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme 
 # th_get reads a document whole, under the caller's right on the brain.
 get=$(mcp "$LF" "" th_get '{"brain":"team/acme","knowledge_id":"spec-1"}')
 if printf '%s' "$get" | grep -q '"id\\":\\"spec-1' && ! printf '%s' "$get" | grep -q isError; then ok "th_get reads spec-1 whole"; else ko "th_get" "$get"; fi
+# A brain's attribution ends what is served from it: th_get in the fallback
+# language, th_recall in the language of the question.
+if printf '%s' "$get" | grep -q '"attribution\\":\[{\\"brain\\":\\"team/acme\\",\\"text\\":\\"Information provided by Example.\\"}\]'; then ok "th_get carries team/acme's attribution"; else ko "th_get attribution" "$get"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"quand est le ledger rollback ?","top_k":3,"brains":["team/acme"]}')
+if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall carries team/acme's attribution in the question's language"; else ko "th_recall attribution" "$rec"; fi
 check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMR" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
 
 # The pyramid of team/acme: a synthesis in its own collection, citing spec-1.
