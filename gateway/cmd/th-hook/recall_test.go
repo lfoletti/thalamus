@@ -318,13 +318,44 @@ func TestTheContextEndsWithTheNotices(t *testing.T) {
 	}
 }
 
-// TH_LANG names the language of the person's questions: the hook sends it
-// to th_recall as lang, and the notices come in it.
+// TH_LANG names the language of the person's questions: the hook sends
+// the language it names to th_recall as lang, in any case, from a locale,
+// quoted as a shell file may leave it. A TH_LANG the gateway does not
+// serve is not sent, and the hook says so on stderr: the gateway then
+// reads the language of the prompt, and the extracts still come.
 func TestTheHookSendsTheLanguageItIsGiven(t *testing.T) {
 	g := &fakeGateway{secret: "s3", results: []map[string]any{{"brain": "b", "knowledge_id": "d", "snippet": "x", "provenance": "[b] d"}}}
 	url := g.start(t)
-	hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LANG": "fr"}, `{"prompt":"when does the ledger move?"}`)
-	if len(g.calls) != 1 || g.calls[0]["lang"] != "fr" {
-		t.Fatalf("calls: %v", g.calls)
+	for _, lang := range []string{"fr", "FR", "fr_CH.UTF-8", `"fr"`} {
+		g.calls = nil
+		_, _, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LANG": lang}, `{"prompt":"when does the ledger move?"}`)
+		if len(g.calls) != 1 || g.calls[0]["lang"] != "fr" || errOut != "" {
+			t.Fatalf("TH_LANG %q: calls %v, stderr %q", lang, g.calls, errOut)
+		}
+	}
+	for _, lang := range []string{"ja", "C", "frx"} {
+		g.calls = nil
+		code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LANG": lang}, `{"prompt":"when does the ledger move?"}`)
+		if _, sent := g.calls[0]["lang"]; sent || code != 0 || !strings.Contains(contextOf(t, out), "[b] d") || !strings.Contains(errOut, "TH_LANG") || !strings.Contains(errOut, lang) {
+			t.Fatalf("TH_LANG %q: calls %v, code %d, stderr %q", lang, g.calls, code, errOut)
+		}
+	}
+}
+
+// The budget is weighed with the notices of the extracts kept, not those
+// of the extracts dropped: a long notice of a dropped brain does not push
+// out an extract that fits with its own.
+func TestTheBudgetWeighsTheNoticesOfTheExtractsKept(t *testing.T) {
+	g := &fakeGateway{secret: "s3", results: []map[string]any{
+		{"brain": "org/a", "knowledge_id": "d-0", "snippet": "Short.", "provenance": "[org/a] d-0"},
+		{"brain": "org/b", "knowledge_id": "d-1", "snippet": strings.Repeat("x", contextBudget), "provenance": "[org/b] d-1"},
+	}, attribution: []map[string]any{
+		{"brain": "org/a", "text": "By A."},
+		{"brain": "org/b", "text": strings.Repeat("y", contextBudget)},
+	}}
+	url := g.start(t)
+	_, out, _ := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
+	if ctx := contextOf(t, out); !strings.Contains(ctx, "Short.") || !strings.HasSuffix(ctx, "\nBy A.") || strings.Contains(ctx, "yyy") {
+		t.Fatalf("context: %.300q", ctx)
 	}
 }

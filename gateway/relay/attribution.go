@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
@@ -16,7 +17,8 @@ import (
 // result, in the language of the question; th_get, th_descend, th_entity,
 // the graph tools and the per-brain endpoint carry the notice of the brain
 // they read, in the fallback language, since they have no question to read
-// it from; the per-brain endpoint credits its reads only, not its writes.
+// it from; the per-brain endpoint credits every answer but those of its
+// pure writes (pureWrites).
 // th_add, th_pending, th_review and th_retheme are a writer's or a
 // curator's tools, and th_themes serves counts and theme names, not
 // documents: they carry none.
@@ -40,8 +42,8 @@ var functionWords = map[string][]string{
 	"nl": {"de", "het", "een", "en", "van", "zijn", "wat", "hoe", "worden", "ze", "dat", "die", "voor", "met", "op", "niet", "te"},
 }
 
-// accents are the letters that mark a language, to break a tie between
-// languages other than English.
+// accents are the accented letters and the marks (Spanish ¿ and ¡) that
+// mark a language, to break a tie between languages other than English.
 var accents = map[string]string{
 	"fr": "éèêëàâçîïôûùœ",
 	"de": "äöüß",
@@ -67,7 +69,8 @@ var wordsOf = func() map[string]map[string]bool {
 // languages goes to the one with the most of its accented letters, then
 // to the first in rights.Languages: English never wins on zero words.
 func language(text string) string {
-	lower := strings.ToLower(text)
+	// Composed (NFC), a decomposed "où" is one word and its accent counts.
+	lower := strings.ToLower(norm.NFC.String(text))
 	counts := map[string]int{}
 	for _, w := range strings.FieldsFunc(lower, func(r rune) bool { return !unicode.IsLetter(r) }) {
 		for _, lang := range rights.Languages {
@@ -106,6 +109,18 @@ func language(text string) string {
 		}
 	}
 	return best
+}
+
+// pureWrites are the engine's writes and deletes that answer with ids and
+// counts only, never the brain's content: the per-brain endpoint credits
+// every other answer. A tool the engine classes as a write but which
+// serves content (knowledge_graph_query runs SPARQL SELECT,
+// knowledge_memory_reflect recalls), a write that returns its record
+// (knowledge_save), and a tool of a newer engine are credited: a notice too
+// many costs a line, a notice missing breaks the publisher's terms.
+var pureWrites = []string{
+	"ingest_document", "upsert_entities", "upsert_relations", "delete_entities", "delete_document_graph",
+	"knowledge_delete", "memory_delete", "knowledge_graph_upsert", "knowledge_graph_delete",
 }
 
 // noticesFor is the notice of each brain that has one, in the language,

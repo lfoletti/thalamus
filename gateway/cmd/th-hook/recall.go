@@ -18,6 +18,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/lfoletti/thalamus/gateway/rights"
 	"github.com/lfoletti/thalamus/gateway/version"
 )
 
@@ -176,7 +177,11 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 			note = skippedNote(since)
 			problems = append(problems, errors.New(note))
 		} else {
-			out, sharedErr = askShared(ctx, get, prompt, topK, only, skip)
+			lang, err := hookLanguage(get)
+			if err != nil {
+				problems = append(problems, err)
+			}
+			out, sharedErr = askShared(ctx, get, prompt, lang, topK, only, skip)
 			if unreachable(sharedErr) {
 				markDown(down)
 			}
@@ -213,9 +218,21 @@ func recall(stdin io.Reader, get func(string) string) (string, []error) {
 	return strings.Join(parts, "\n\n"), problems
 }
 
+// hookLanguage is the served language TH_LANG names, as rights.LanguageOf
+// reads it. A TH_LANG that names none is a problem, and "": the gateway
+// then reads the language of the prompt.
+func hookLanguage(get func(string) string) (string, error) {
+	v := get("TH_LANG")
+	lang := rights.LanguageOf(v)
+	if v != "" && lang == "" {
+		return "", fmt.Errorf("TH_LANG %q names no language the gateway serves (%s): the gateway reads the prompt's", v, strings.Join(rights.Languages, ", "))
+	}
+	return lang, nil
+}
+
 // askShared asks th_recall with the person's key, under the filter, for an
 // answer within the time left once connected.
-func askShared(ctx context.Context, get func(string) string, prompt string, topK int, only, skip []string) (recallOut, error) {
+func askShared(ctx context.Context, get func(string) string, prompt, lang string, topK int, only, skip []string) (recallOut, error) {
 	gateway, key, err := settings(get)
 	if err != nil {
 		return recallOut{}, err
@@ -229,7 +246,7 @@ func askShared(ctx context.Context, get func(string) string, prompt string, topK
 		args := map[string]any{"query": prompt, "top_k": topK, "deadline_ms": deadline.Milliseconds()}
 		// TH_LANG: the language of the person's questions, for the
 		// brains' notices; without it, the gateway reads the prompt.
-		if lang := get("TH_LANG"); lang != "" {
+		if lang != "" {
 			args["lang"] = lang
 		}
 		if len(only) > 0 {

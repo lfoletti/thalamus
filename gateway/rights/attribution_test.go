@@ -31,14 +31,14 @@ func TestABrainCarriesItsAttribution(t *testing.T) {
 }
 
 // rights check refuses an attribution a reader could not rely on: a
-// language that is not a two-letter code, an empty or multi-line notice,
+// language the gateway does not serve, an empty or multi-line notice,
 // one longer than MaxNotice, and one without its English fallback.
 func TestAnAttributionIsChecked(t *testing.T) {
 	long := strings.Repeat("x", MaxNotice+1)
 	for _, c := range []struct{ block, want string }{
 		{"    attribution:\n      fr: Information fournie par Example.\n", `needs an "en" notice`},
-		{"    attribution:\n      en: Provided by Example.\n      FR: Fourni par Example.\n", `language "FR" must be a two-letter lower case code`},
-		{"    attribution:\n      en: Provided by Example.\n      fra: Fourni par Example.\n", `language "fra" must be a two-letter lower case code`},
+		{"    attribution:\n      en: Provided by Example.\n      FR: Fourni par Example.\n", `language "FR" is not one the gateway serves (en, fr, de, es, it, pt, nl)`},
+		{"    attribution:\n      en: Provided by Example.\n      fra: Fourni par Example.\n", `language "fra" is not one the gateway serves`},
 		{"    attribution:\n      en: \"  \"\n", `the "en" notice is empty`},
 		{"    attribution:\n      en: \"Provided\\nby Example.\"\n", `the "en" notice must be one line`},
 		{"    attribution:\n      en: \"Provided\\rby Example.\"\n", `the "en" notice must be one line`},
@@ -55,6 +55,7 @@ func TestAnAttributionIsChecked(t *testing.T) {
 		{"    attribution:\n      en: \"a\\e[31mred\"\n", `the "en" notice must be one line of printable text`}, // ANSI
 		{"    attribution:\n      en: \"a\\u202Eb\"\n", `the "en" notice must be one line of printable text`},   // bidi override
 		{"    attribution:\n      en: \"a\\u2066b\"\n", `the "en" notice must be one line of printable text`},   // bidi isolate
+		{"    attribution:\n      en: \"a\\ue000b\"\n", `the "en" notice must be one line of printable text`},   // private use
 		// A language the gateway never serves is dead configuration.
 		{"    attribution:\n      en: By Example.\n      ja: By Example.\n", `language "ja" is not one the gateway serves`},
 		{"    attribution:\n      en: By Example.\n      zz: By Example.\n", `language "zz" is not one the gateway serves`},
@@ -97,6 +98,21 @@ func TestTheLanguagesServedStartWithEnglish(t *testing.T) {
 	for _, l := range []string{"ja", "", "EN", "eng"} {
 		if Served(l) {
 			t.Fatalf("%q served", l)
+		}
+	}
+}
+
+// LanguageOf reads the language a code or a locale names, as a person sets
+// it: any case, quoted or not, with a region, an encoding or a modifier.
+// "" for a language the gateway does not serve.
+func TestALanguageIsReadFromACodeOrALocale(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"fr", "fr"}, {"FR", "fr"}, {"fr_CH.UTF-8", "fr"}, {"de-CH", "de"}, {"pt_BR", "pt"},
+		{"en_US.UTF-8@euro", "en"}, {"it@euro", "it"}, {"nl.UTF-8", "nl"}, {` "es" `, "es"}, {"'de'", "de"},
+		{"", ""}, {"C", ""}, {"C.UTF-8", ""}, {"POSIX", ""}, {"ja_JP", ""}, {"fra", ""}, {"f", ""}, {`"`, ""},
+	} {
+		if got := LanguageOf(c.in); got != c.want {
+			t.Fatalf("LanguageOf(%q) = %q, want %q", c.in, got, c.want)
 		}
 	}
 }

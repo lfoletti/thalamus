@@ -2,7 +2,6 @@ package rights
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -33,15 +32,28 @@ var Languages = []string{FallbackLanguage, "fr", "de", "es", "it", "pt", "nl"}
 // Served reports whether the gateway serves notices in the language.
 func Served(lang string) bool { return slices.Contains(Languages, lang) }
 
-var languageCode = regexp.MustCompile(`^[a-z]{2}$`)
+// LanguageOf is the served language a code or a locale names, as a
+// person sets it: in any case, quoted or not, with a region, an encoding
+// or a modifier ("FR", "fr_CH.UTF-8", "pt-BR", `"de"`). "" when it names
+// none the gateway serves ("C", "ja", "fra").
+func LanguageOf(code string) string {
+	code = strings.ToLower(strings.Trim(strings.TrimSpace(code), `"'`))
+	if i := strings.IndexAny(code, "_-.@"); i >= 0 {
+		code = code[:i]
+	}
+	if Served(code) {
+		return code
+	}
+	return ""
+}
 
 // printable reports whether a notice is one line a reader sees as it is:
 // no control character (tabs, escapes, NEL included), no format character
-// (bidirectional overrides and isolates), no Unicode line or paragraph
-// separator.
+// (bidirectional overrides and isolates), no private-use character, no
+// Unicode line or paragraph separator.
 func printable(text string) bool {
 	return !strings.ContainsFunc(text, func(r rune) bool {
-		return unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Zl, unicode.Zp)
+		return unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Co, unicode.Zl, unicode.Zp)
 	})
 }
 
@@ -63,8 +75,6 @@ func (a Attribution) check() error {
 	for _, lang := range langs {
 		text := strings.TrimSpace(a[lang])
 		switch {
-		case !languageCode.MatchString(lang):
-			return fmt.Errorf("attribution: language %q must be a two-letter lower case code", lang)
 		case !Served(lang):
 			return fmt.Errorf("attribution: language %q is not one the gateway serves (%s)", lang, strings.Join(Languages, ", "))
 		case text == "":

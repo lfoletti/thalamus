@@ -3,9 +3,11 @@ package relay
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/liliang-cn/cortexdb/v2/pkg/authz"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/lfoletti/thalamus/gateway/keys"
@@ -40,6 +42,11 @@ func TestTheLanguageOfAQuestionIsReadFromItsFunctionWords(t *testing.T) {
 		{"C'est l'IA ?", "fr"},            // an elision is split off its word
 		{"WHAT IS THE RULE", "en"},        // case does not matter
 		{"Où en est la décision", "fr"},   // accented function words count
+		{"die Regel", "de"},               // a tie of de and nl: the order decides
+		{"de ça", "fr"},                   // ç, in fr and pt: the order decides
+		{"¿de?", "es"},                    // ¿ marks Spanish
+		{"ou\u0300 ?", "fr"},              // decomposed (NFD): one word, où
+		{"de man\u0303ana", "es"},         // a decomposed ñ counts
 	} {
 		if got := language(c.query); got != c.want {
 			t.Fatalf("language(%q) = %q, want %q", c.query, got, c.want)
@@ -256,10 +263,20 @@ func TestRecallCreditsEachAttributedBrain(t *testing.T) {
 	if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": "fr"})); got != "team/acme=Par Acme.|team/other=By Other." {
 		t.Fatalf("lang: %s", got)
 	}
-	for _, lang := range []string{"FR", "ja", "fra"} {
-		res := mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": lang})
-		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "lang") {
-			t.Fatalf("lang %q: %+v", lang, res.Content)
+	// A code in capitals, or a locale, names its language.
+	for _, lang := range []string{"FR", "fr_CH.UTF-8", "fr-CH"} {
+		if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": lang})); got != "team/acme=Par Acme.|team/other=By Other." {
+			t.Fatalf("lang %q: %s", lang, got)
+		}
+	}
+	// A lang the gateway does not serve, or not a string, is read from the
+	// query instead, and the recall answers.
+	for _, lang := range []any{"ja", "fra", "C", 12, nil} {
+		if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": lang})); got != "team/acme=By Acme.|team/other=By Other." {
+			t.Fatalf("lang %v: %s", lang, got)
+		}
+		if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "quand est le plan ?", "lang": lang})); got != "team/acme=Par Acme.|team/other=By Other." {
+			t.Fatalf("lang %v, a French query: %s", lang, got)
 		}
 	}
 	if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "top_k": 1})); got != "team/acme=By Acme." {
@@ -286,20 +303,97 @@ func TestEntityCreditsABrainThatServesOnlyNeighbors(t *testing.T) {
 	}
 }
 
-// The per-brain endpoint credits a read, not a write.
-func TestTheBrainsEndpointCreditsReadsOnly(t *testing.T) {
+// The per-brain endpoint credits every answer but those of the pure writes,
+// which return ids and counts, not the brain's content: a tool the engine
+// classes as a write but which serves content (a SPARQL SELECT through
+// knowledge_graph_query, reflect, consolidate, extract_conversation), and a
+// tool the gateway's engine does not know, carry the notice.
+func TestTheBrainsEndpointCreditsAllButPureWrites(t *testing.T) {
 	b := attributionBench(t)
+	credited := []string{"knowledge_get", "knowledge_graph_query", "knowledge_memory_reflect", "knowledge_memory_consolidate", "extract_conversation", "knowledge_save", "a_tool_of_a_newer_engine"}
+	b.brain.tools = append(slices.Clone(credited), pureWrites...)
+	b.brain.replies = map[string]string{}
+	for _, name := range b.brain.tools {
+		b.brain.replies[name] = `{"rows":[{"s":"ledger"}]}`
+	}
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	direct, err := b.session(t, "team/acme", k.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer direct.Close()
-	res, err := direct.CallTool(context.Background(), &mcp.CallToolParams{Name: "ingest_document", Arguments: map[string]any{"document_id": "x", "content": "y", "collection": "team-acme"}})
+	call := func(name string) *mcp.CallToolResult {
+		res, err := direct.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: map[string]any{"query": "SELECT ?s WHERE { ?s ?p ?o }"}})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: %v %+v", name, err, res)
+		}
+		return res
+	}
+	for _, name := range credited {
+		if got := noticesOf(t, call(name)); got != "team/acme=Information provided by Example." {
+			t.Fatalf("%s: %s", name, got)
+		}
+	}
+	for _, name := range pureWrites {
+		if res := call(name); len(res.Content) != 1 || res.Content[0].(*mcp.TextContent).Text != `{"rows":[{"s":"ledger"}]}` {
+			t.Fatalf("a pure write is credited: %s %+v", name, res.Content)
+		}
+	}
+}
+
+// pureWrites are writes of the engine: a read named there would lose its
+// notice.
+func TestThePureWritesAreWritesOfTheEngine(t *testing.T) {
+	if len(pureWrites) == 0 {
+		t.Fatal("no pure write")
+	}
+	for _, name := range pureWrites {
+		if access, known := authz.LookupTool(name); !known || access != authz.Write {
+			t.Fatalf("%s: known %v, access %v", name, known, access)
+		}
+	}
+}
+
+// A brain without attribution answers th_recall as main does, byte for
+// byte, whatever lang says: main ignores the argument.
+func TestABrainWithoutAttributionAnswersAsBefore(t *testing.T) {
+	b := start(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	b.brain.hits = map[string][]fakeHit{"team-acme": {{"a-1", "Plan", "The ledger moves on Sunday."}}}
+	s := b.federated(t, k.Secret)
+	for _, query := range []string{"ledger", "quand est le registre ?"} {
+		want := mustCall(t, s, "th_recall", map[string]any{"query": query})
+		if want.IsError {
+			t.Fatalf("%+v", want.Content)
+		}
+		for _, lang := range []any{"fr", "FR", "ja", "fr_CH.UTF-8", 12, true} {
+			got := mustCall(t, s, "th_recall", map[string]any{"query": query, "lang": lang})
+			if got.IsError || len(got.Content) != 1 || got.Content[0].(*mcp.TextContent).Text != want.Content[0].(*mcp.TextContent).Text {
+				t.Fatalf("lang %v: %+v, want %+v", lang, got.Content, want.Content)
+			}
+		}
+	}
+}
+
+// The schema names the languages th_recall serves notices in, and says
+// what another value does; it has no enum, so a client that checks the
+// schema still sends a locale such as fr_CH, which the gateway reads.
+func TestTheLangArgumentNamesTheServedLanguages(t *testing.T) {
+	b := attributionBench(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	tools, err := b.federated(t, k.Secret).ListTools(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.IsError || len(res.Content) != 1 || strings.Contains(res.Content[0].(*mcp.TextContent).Text, "attribution") {
-		t.Fatalf("a write is credited: %+v", res.Content)
+	for _, tool := range tools.Tools {
+		if tool.Name != "th_recall" {
+			continue
+		}
+		raw, _ := json.Marshal(tool.InputSchema.(map[string]any)["properties"].(map[string]any)["lang"])
+		if !strings.Contains(string(raw), "one of en, fr, de, es, it, pt, nl") || !strings.Contains(string(raw), "read from the query") || strings.Contains(string(raw), "enum") {
+			t.Fatalf("lang: %s", raw)
+		}
+		return
 	}
+	t.Fatal("no th_recall")
 }
