@@ -40,7 +40,9 @@ La convention reste dans Thalamus : quels thèmes, quelles natures, qui déclare
 
 **Après la fusion.** `Likeness`, `words`, `grams` et la boucle de lecture des candidats disparaissent de Thalamus (environ 60 lignes) ; un appel au lieu de six.
 
-## À vérifier avant d'écrire
+## Vérifié dans le code (v2.142.0)
 
-- Si `knowledge_update` sait changer les métadonnées d'un document sans le redécouper : `th_retheme` pourrait alors garder les morceaux et la relecture. Sinon, une cinquième PR.
-- L'ordre proposé : A, puis C, puis B et D. A est la seule qui corrige un défaut réel ; les autres retirent du code ou étendent la règle.
+- **A** est préparée sur la branche `co-19-ingest-conditional` : `if_absent` et `if_sha256` sur `ingest_document`, contrôlés avant le plan puis dans la transaction d'écriture, à côté de la recherche de `dedupe` (#75) ; sur PostgreSQL, un verrou consultatif sur l'id ; `ErrPreconditionFailed` rendu `FailedPrecondition` ; les deux arguments classés dans la liste blanche. Le RPC typé `InsertGraphDocument` n'en a pas : il faudrait changer le proto.
+- `knowledge_update` ne change pas les métadonnées seules : dès que `metadata` est donné, il redécoupe le document (`replaceArtifacts`, `knowledge_api.go`). `th_retheme` ne peut donc pas garder les morceaux et la relecture : c'est une cinquième PR (**E**, mise à jour des métadonnées du seul enregistrement, sans redécoupage, pour les clés que `recordOnlyKey` ne recopie pas déjà).
+- **C** touche le prédicat de la porte de relecture (`review.go`, `reviewGate`), lu par la recherche et par `aggregate_metadata` : l'argument doit être refusé à toute clé qui n'est pas de relecture, et la liste blanche le classer.
+- L'ordre proposé : A, puis C, puis B, D et E. A est la seule qui corrige un défaut réel ; les autres retirent du code ou étendent la règle.
