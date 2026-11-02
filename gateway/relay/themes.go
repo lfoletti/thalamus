@@ -103,47 +103,58 @@ type unsortedCount struct {
 	Theme           string `json:"theme"`
 	Documents       int    `json:"documents"`
 	WithoutProposal int    `json:"without_proposal"`
+	// WithoutProposalIDs name the documents th_retheme cannot move.
+	WithoutProposalIDs []string `json:"without_proposal_ids"`
 }
 
 // looseCount is a theme the documents carry that the brain does not know:
 // dropped from the convention, or whose theme document is gone.
 type looseCount struct {
-	Theme     string `json:"theme"`
-	Documents int    `json:"documents"`
-	// IDs are the first themeIDsLimit of its documents, in order.
-	IDs []string `json:"ids"`
+	Theme     string   `json:"theme"`
+	Documents int      `json:"documents"`
+	IDs       []string `json:"ids"`
 }
 
-// themeIDsLimit bounds each list of ids th_themes names: the documents
-// without a theme, and those of one undeclared theme.
-const themeIDsLimit = 50
+// th_themes names the documents a curator must file: those without a
+// theme, the unsorted ones without a proposal, and those of each
+// undeclared theme, in that order. Each list holds its first
+// themeIDsLimit ids in byte order, and one call names themeIDsTotal ids
+// at most; the counts stay whole.
+const (
+	themeIDsLimit = 50
+	themeIDsTotal = 200
+)
 
-// firstIDs is the first themeIDsLimit ids, in order.
-func firstIDs(ids []string) []string {
-	out := slices.Sorted(slices.Values(ids))
-	if len(out) > themeIDsLimit {
-		out = out[:themeIDsLimit]
-	}
-	return out
+// idBudget hands out the ids a report names.
+type idBudget struct{ left int }
+
+func (b *idBudget) take(ids []string) []string {
+	out := append([]string{}, ids...)
+	slices.Sort(out)
+	n := min(len(out), themeIDsLimit, b.left)
+	b.left -= n
+	return out[:n]
 }
 
 type themesReport struct {
 	Brain string `json:"brain"`
 	// Documents counts every document but the theme documents.
-	Documents    int           `json:"documents"`
-	Themes       []themeCount  `json:"themes"`
-	Unsorted     unsortedCount `json:"unsorted"`
-	Undeclared   []looseCount  `json:"undeclared"`
-	WithoutTheme int           `json:"without_theme"`
-	// WithoutThemeIDs are the first themeIDsLimit of them, in order.
-	WithoutThemeIDs []string   `json:"without_theme_ids"`
-	Proposed        []proposal `json:"proposed"`
-	Broad           []string   `json:"broad"`
-	Dormant         []string   `json:"dormant"`
+	Documents       int           `json:"documents"`
+	Themes          []themeCount  `json:"themes"`
+	Unsorted        unsortedCount `json:"unsorted"`
+	Undeclared      []looseCount  `json:"undeclared"`
+	WithoutTheme    int           `json:"without_theme"`
+	WithoutThemeIDs []string      `json:"without_theme_ids"`
+	// UnnamedIDs counts the documents of these lists that are not named
+	// because the engine sent their id back as a number.
+	UnnamedIDs int        `json:"unnamed_ids"`
+	Proposed   []proposal `json:"proposed"`
+	Broad      []string   `json:"broad"`
+	Dormant    []string   `json:"dormant"`
 }
 
 func (s *Server) addThemeTools(srv *mcp.Server, user string) {
-	srv.AddTool(&mcp.Tool{Name: "th_themes", Description: "Tells how a brain with a convention files its documents: the documents of each theme, the unsorted ones and the themes they propose, the candidates (a theme proposed by enough documents), a proposal close to an existing theme, the themes that carry more than a third of the filed documents, the themes nothing carries, and apart the documents under a theme the brain no longer knows or without a theme, with their ids (the first 50 of each list, by id). A curator declares a candidate with th_add of a document theme:<subject>, then files its documents with th_retheme.",
+	srv.AddTool(&mcp.Tool{Name: "th_themes", Description: "Tells how a brain with a convention files its documents: the documents of each theme, the unsorted ones and the themes they propose, the candidates (a theme proposed by enough documents), a proposal close to an existing theme, the themes that carry more than a third of the filed documents, the themes nothing carries, and apart the documents under a theme the brain no longer knows or without a theme, with their ids: the first 50 of each list in byte order, 200 per call at most; an id the engine sends back as a number is counted, not named. A curator declares a candidate with th_add of a document theme:<subject>, then files its documents with th_retheme.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain": map[string]any{"type": "string"},
 		}, "required": []string{"brain"}}},
@@ -181,21 +192,29 @@ func (s *Server) conventionOf(user, name string, need rights.Access, tool string
 	return b, *b.Convention, nil
 }
 
-// documentsBy lists the documents, not the records, of each value of key.
-func (s *Server) documentsBy(ctx context.Context, b rights.Brain, user, name, key string, filters map[string]string) (map[string][]string, error) {
+// documentsBy counts the documents, not the records, of each value of
+// key, and gives the ids it can name.
+func (s *Server) documentsBy(ctx context.Context, b rights.Brain, user, name, key string, filters map[string]string) (map[string]int, map[string][]string, error) {
 	groups, err := s.groups(ctx, b, user, name, []string{key, "document_id"}, filters)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// The engine groups by the pair: one group is one document. A theme
-	// document files nothing, and is not counted.
-	out := map[string][]string{}
+	// document files nothing, and is not counted. The engine sends an id
+	// that reads as a number as a number, and its stored spelling (007,
+	// 1e3) is lost: it is counted, not named.
+	n, ids := map[string]int{}, map[string][]string{}
 	for _, g := range groups {
-		if id := g.key("document_id"); !strings.HasPrefix(id, convention.ThemePrefix) {
-			out[g.key(key)] = append(out[g.key(key)], id)
+		id := g.key("document_id")
+		if strings.HasPrefix(id, convention.ThemePrefix) {
+			continue
+		}
+		n[g.key(key)]++
+		if _, text := g.Keys["document_id"].(string); text {
+			ids[g.key(key)] = append(ids[g.key(key)], id)
 		}
 	}
-	return out, nil
+	return n, ids, nil
 }
 
 func (s *Server) themes(ctx context.Context, user string, args themesArgs) *mcp.CallToolResult {
@@ -217,11 +236,21 @@ func (s *Server) themes(ctx context.Context, user string, args themesArgs) *mcp.
 	return jsonResult(report)
 }
 
-// listed is every id the report names, for the audit.
+// listed is every id the report names, once, for the audit.
 func (r themesReport) listed() []string {
-	out := slices.Clone(r.WithoutThemeIDs)
+	var out []string
+	seen := map[string]bool{}
+	lists := [][]string{r.WithoutThemeIDs, r.Unsorted.WithoutProposalIDs}
 	for _, u := range r.Undeclared {
-		out = append(out, u.IDs...)
+		lists = append(lists, u.IDs)
+	}
+	for _, l := range lists {
+		for _, id := range l {
+			if !seen[id] {
+				seen[id] = true
+				out = append(out, id)
+			}
+		}
 	}
 	return out
 }
@@ -231,21 +260,20 @@ func (r themesReport) listed() []string {
 const broadShare = 1.0 / 3
 
 func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name string, c rights.Convention) (themesReport, error) {
-	r := themesReport{Brain: name, Themes: []themeCount{}, Undeclared: []looseCount{}, WithoutThemeIDs: []string{}, Proposed: []proposal{}, Broad: []string{}, Dormant: []string{}}
+	r := themesReport{Brain: name, Themes: []themeCount{}, Undeclared: []looseCount{}, Proposed: []proposal{}, Broad: []string{}, Dormant: []string{}}
 	declared, err := s.declaredThemes(ctx, b, user, name)
 	if err != nil {
 		return r, err
 	}
-	idsByTheme, err := s.documentsBy(ctx, b, user, name, "theme", nil)
+	byTheme, idsByTheme, err := s.documentsBy(ctx, b, user, name, "theme", nil)
 	if err != nil {
 		return r, err
 	}
 	unsorted := c.UnsortedTheme()
-	idsByProposal, err := s.documentsBy(ctx, b, user, name, "theme_proposed", map[string]string{"theme": unsorted})
+	byProposal, idsByProposal, err := s.documentsBy(ctx, b, user, name, "theme_proposed", map[string]string{"theme": unsorted})
 	if err != nil {
 		return r, err
 	}
-	byTheme, byProposal := counts(idsByTheme), counts(idsByProposal)
 	known := convention.Known(c, declared)
 	filed := 0
 	for i, th := range known {
@@ -269,9 +297,9 @@ func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name st
 		r.Documents += n
 		switch {
 		case th == "":
-			r.WithoutTheme, r.WithoutThemeIDs = n, firstIDs(idsByTheme[th])
+			r.WithoutTheme = n
 		case th != unsorted && !slices.Contains(known, th):
-			r.Undeclared = append(r.Undeclared, looseCount{th, n, firstIDs(idsByTheme[th])})
+			r.Undeclared = append(r.Undeclared, looseCount{Theme: th, Documents: n})
 		}
 	}
 	sort.Slice(r.Undeclared, func(i, j int) bool {
@@ -281,6 +309,14 @@ func (s *Server) themesReport(ctx context.Context, b rights.Brain, user, name st
 		}
 		return a.Theme < b.Theme
 	})
+	budget := &idBudget{left: themeIDsTotal}
+	r.WithoutThemeIDs = budget.take(idsByTheme[""])
+	r.Unsorted.WithoutProposalIDs = budget.take(idsByProposal[""])
+	r.UnnamedIDs = byTheme[""] - len(idsByTheme[""]) + byProposal[""] - len(idsByProposal[""])
+	for i, u := range r.Undeclared {
+		r.Undeclared[i].IDs = budget.take(idsByTheme[u.Theme])
+		r.UnnamedIDs += u.Documents - len(idsByTheme[u.Theme])
+	}
 	for p, n := range byProposal {
 		if p == "" {
 			continue
@@ -385,13 +421,4 @@ func (s *Server) refile(ctx context.Context, b rights.Brain, user string, args r
 		moved = append(moved, id)
 	}
 	return moved, nil
-}
-
-// counts is the number of documents of each value.
-func counts(ids map[string][]string) map[string]int {
-	out := make(map[string]int, len(ids))
-	for k, v := range ids {
-		out[k] = len(v)
-	}
-	return out
 }

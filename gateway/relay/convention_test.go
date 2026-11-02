@@ -462,9 +462,11 @@ func TestThemesIsARead(t *testing.T) {
 	if b.rights.Brains["team/acme"].AuditReads {
 		t.Fatal("the bench still audits the reads of team/acme")
 	}
-	b.brain.rows = themeRows()
+	// A document without a theme: the call names its id, and still leaves
+	// no named line.
+	b.brain.rows = append(themeRows(), map[string]string{"document_id": "old-note"})
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
-	if res := mustCall(t, b.federated(t, k.Secret), "th_themes", map[string]any{"brain": "team/acme"}); res.IsError {
+	if res := mustCall(t, b.federated(t, k.Secret), "th_themes", map[string]any{"brain": "team/acme"}); res.IsError || !strings.Contains(text(res), `"without_theme_ids":["old-note"]`) {
 		t.Fatalf("th_themes: %s", text(res))
 	}
 	for _, l := range b.auditLines(t) {
