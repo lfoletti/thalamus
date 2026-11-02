@@ -203,7 +203,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 
 ## ロードマップ
 
-**完了**（2026年10月25日、リリース 0.4.0）
+**完了**（2026年11月2日、リリース 0.6.0）
 
 - 権限、キー、ブレインごとの MCP エンドポイント。
 - 人が読めるブレインを対象にしたフェデレーテッドリコール。各抜粋に出典付き。
@@ -221,6 +221,8 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 - 複数の言語での質問：`th_recall` は質問を他の言語でも受け取り（`alternate_queries`）、それぞれを別々に検索します。スイスのベンチマークが、ある言語から別の言語（フランス語、ドイツ語、イタリア語、ロマンシュ語）へのリコールを `tests/eval_ch/` で測定します。
 - リコールの期限：`th_recall` は `deadline_ms` を受け取り、準備のできたブレインの回答を統合します。フックがこれを使うため、遅いブレインが他のブレインのリコールを止めることはなくなりました。
 - Claude Code の中のブレイン：`/brains` はブレインのダイアログを開き、各ブレインが応答するかどうかを示します。Enter で、ブレインを自動リコールに対してオンまたはオフにします。引数なしの `/th-recall` はチェックリストで尋ねます。プロジェクトの `CLAUDE.md` は、`th_add` が書き込むブレインを指定します。
+- ゲートウェイ経由のエンジンのグラフツール：`th_find_nodes`、`th_get_nodes`、`th_expand_graph`、`th_search_paths`、`th_search_chunks_by_entities`。呼び出し元のキーに限定されます。
+- ブレインごとの規約：`rights.yaml` が性質、テーマの初期リスト、日付付きの性質を宣言します。`th_add` は書き込み時に性質、日付、id、ほぼ同一のコピーを確認します。テーマはその場で増やせます。キュレーターが `theme:<subject>` ドキュメントで宣言し、テーマが未知のドキュメントは提案とともに未分類のテーマに置かれます。`th_themes` はテーマ、提案、候補を報告し、`th_retheme` は受け入れた提案のドキュメントを移動します。
 - リリース：macOS と Linux 用の `th-gateway`、`th-hook`、プラグイン、拡張機能のアーカイブ、Docker イメージ `ghcr.io/lfoletti/thalamus`、そして `go install`。[リリース](https://github.com/lfoletti/thalamus/releases)を参照してください。
 
 **CortexDB とともに**

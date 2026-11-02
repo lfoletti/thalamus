@@ -203,7 +203,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 
 ## 路线图
 
-**已完成**（2026 年 10 月 25 日，版本 0.4.0）
+**已完成**（2026 年 11 月 2 日，版本 0.6.0）
 
 - 权限、key，以及每个大脑一个 MCP 端点。
 - 在某人可读的大脑上进行联邦召回，每条摘录附有来源。
@@ -221,6 +221,8 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 - 多语言问题：`th_recall` 接受其他语言的问题（`alternate_queries`），并分别检索每一种。`tests/eval_ch/` 中的瑞士基准测量从一种语言到另一种语言（法语、德语、意大利语、罗曼什语）的召回。
 - 召回的截止时间：`th_recall` 接受 `deadline_ms`，并融合已就绪的大脑的回答。钩子使用它，因此一个慢的大脑不再阻碍其他大脑的召回。
 - Claude Code 中的大脑：`/brains` 打开大脑列表对话框，显示每个大脑是否响应，按 Enter 可为自动召回开启或关闭某个大脑。不带参数的 `/th-recall` 以勾选清单询问。项目的 `CLAUDE.md` 指定 `th_add` 写入的大脑。
+- 通过网关使用引擎的图工具：`th_find_nodes`、`th_get_nodes`、`th_expand_graph`、`th_search_paths` 和 `th_search_chunks_by_entities`，限定于调用者的 key。
+- 每个大脑的约定：`rights.yaml` 声明性质、主题的初始列表和需要日期的性质。`th_add` 在写入时检查性质、日期、id 和近似副本。主题可以随时增加：馆员用 `theme:<subject>` 文档声明主题，主题未知的文档连同其提议归入待分类主题。`th_themes` 报告主题、提议和候选，`th_retheme` 移动已接受提议的文档。
 - 发布：适用于 macOS 和 Linux 的 `th-gateway`、`th-hook`、插件和扩展的归档文件，Docker 镜像 `ghcr.io/lfoletti/thalamus`，以及 `go install`。参见[发布页面](https://github.com/lfoletti/thalamus/releases)。
 
 **与 CortexDB 协作**

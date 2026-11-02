@@ -203,7 +203,7 @@ Mit einem `identity`-Block in `rights.yaml` ersetzt `th-gateway login http://127
 
 ## Roadmap
 
-**Erledigt** (25. Oktober 2026, Release 0.4.0)
+**Erledigt** (2. November 2026, Release 0.6.0)
 
 - Rechte, Schlüssel und ein MCP-Endpunkt pro Gehirn.
 - Föderierter Abruf über die Gehirne, die eine Person lesen darf, mit der Quelle jedes Auszugs.
@@ -221,6 +221,8 @@ Mit einem `identity`-Block in `rights.yaml` ersetzt `th-gateway login http://127
 - Fragen in mehreren Sprachen: `th_recall` nimmt die Frage in weiteren Sprachen entgegen (`alternate_queries`) und sucht jede einzeln. Ein Schweizer Benchmark misst den Abruf von einer Sprache in eine andere (Französisch, Deutsch, Italienisch, Rätoromanisch) in `tests/eval_ch/`.
 - Eine Frist für den Abruf: `th_recall` nimmt `deadline_ms` entgegen und führt die Antworten der Gehirne zusammen, die bereit sind. Der Hook nutzt sie, sodass ein langsames Gehirn den Abruf der anderen nicht mehr aufhält.
 - Die Gehirne in Claude Code: `/brains` öffnet einen Dialog der Gehirne, der zeigt, ob jedes antwortet, und Enter schaltet ein Gehirn für den automatischen Abruf ein oder aus. `/th-recall` ohne Argumente fragt mit einer Checkliste. Die `CLAUDE.md` des Projekts nennt das Gehirn, in das `th_add` schreibt.
+- Die Graph-Werkzeuge der Engine über das Gateway: `th_find_nodes`, `th_get_nodes`, `th_expand_graph`, `th_search_paths` und `th_search_chunks_by_entities`, beschränkt auf den Schlüssel des Aufrufers.
+- Eine Konvention pro Gehirn: `rights.yaml` deklariert die Naturen, eine Startliste von Themen und die datierten Naturen. `th_add` prüft beim Schreiben die Natur, das Datum, die Id und Beinahe-Kopien. Ein Thema wächst unterwegs: Ein Kurator deklariert es mit einem Dokument `theme:<subject>`, und ein Dokument mit unbekanntem Thema wird mit seinem Vorschlag unter dem Wartethema abgelegt. `th_themes` meldet die Themen, die Vorschläge und die Kandidaten, und `th_retheme` verschiebt die Dokumente eines angenommenen Vorschlags.
 - Releases: Archive von `th-gateway`, `th-hook`, dem Plugin und der Erweiterung für macOS und Linux, ein Docker-Image `ghcr.io/lfoletti/thalamus` und `go install`. Siehe die [Releases](https://github.com/lfoletti/thalamus/releases).
 
 **Mit CortexDB**

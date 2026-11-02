@@ -203,7 +203,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 
 ## 로드맵
 
-**완료** (2026년 10월 25일, 릴리스 0.4.0)
+**완료** (2026년 11월 2일, 릴리스 0.6.0)
 
 - 권한, 키, 브레인마다 MCP 엔드포인트 하나.
 - 한 사람이 읽을 수 있는 브레인들에 대한 연합 리콜. 각 발췌에 출처가 붙습니다.
@@ -221,6 +221,8 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 - 여러 언어로 된 질문: `th_recall`은 다른 언어로 된 질문(`alternate_queries`)을 받아 각각 따로 검색합니다. 스위스 벤치가 `tests/eval_ch/`에서 한 언어에서 다른 언어로의 리콜(프랑스어, 독일어, 이탈리아어, 로만슈어)을 측정합니다.
 - 리콜의 마감 시간: `th_recall`은 `deadline_ms`를 받아 준비된 브레인들의 답을 융합합니다. 훅이 이를 사용하므로, 느린 브레인이 더 이상 다른 브레인의 리콜을 멈추지 않습니다.
 - Claude Code 안의 브레인: `/brains`는 각 브레인의 응답 여부를 보여 주는 브레인 대화 상자를 열고, Enter로 자동 리콜에서 브레인을 켜거나 끕니다. 인수 없는 `/th-recall`은 체크리스트로 묻습니다. 프로젝트의 `CLAUDE.md`는 `th_add`가 기록할 브레인을 지정합니다.
+- 게이트웨이를 통한 엔진의 그래프 도구: `th_find_nodes`, `th_get_nodes`, `th_expand_graph`, `th_search_paths`, `th_search_chunks_by_entities`. 호출자의 키로 제한됩니다.
+- 브레인별 규약: `rights.yaml`이 성격, 주제의 시작 목록, 날짜가 필요한 성격을 선언합니다. `th_add`는 쓰기 시점에 성격, 날짜, id, 거의 같은 사본을 확인합니다. 주제는 즉석에서 늘어납니다. 큐레이터가 `theme:<subject>` 문서로 선언하고, 주제를 알 수 없는 문서는 제안과 함께 미분류 주제에 놓입니다. `th_themes`는 주제, 제안, 후보를 보고하고, `th_retheme`은 수락된 제안의 문서를 옮깁니다.
 - 릴리스: macOS와 Linux용 `th-gateway`, `th-hook`, 플러그인, 확장 프로그램의 아카이브, Docker 이미지 `ghcr.io/lfoletti/thalamus`, 그리고 `go install`. [릴리스](https://github.com/lfoletti/thalamus/releases)를 참조하십시오.
 
 **CortexDB와 함께**
