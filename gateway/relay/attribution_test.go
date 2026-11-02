@@ -13,8 +13,10 @@ import (
 )
 
 // The language of a question is read from its function words, without a
-// model: the language with the most of them, and "" (the default) when no
-// language has more than the others.
+// model: the language with the most of them. English sharing the lead, or
+// no function word at all, is "" (the fallback, English). A tie between
+// other languages is broken by their accented letters, then by the order
+// of rights.Languages: English never wins on zero words.
 func TestTheLanguageOfAQuestionIsReadFromItsFunctionWords(t *testing.T) {
 	for _, c := range []struct{ query, want string }{
 		{"What does the regulation require of the providers?", "en"},
@@ -24,12 +26,20 @@ func TestTheLanguageOfAQuestionIsReadFromItsFunctionWords(t *testing.T) {
 		{"Quali sono gli obblighi dei fornitori e come si applicano nella pratica?", "it"},
 		{"Quais são as obrigações dos fornecedores e como elas se aplicam?", "pt"},
 		{"Wat zijn de verplichtingen van de aanbieders en hoe worden ze toegepast?", "nl"},
-		{"AI Act", ""},                  // no function word
-		{"", ""},                        // nothing
-		{"de la", ""},                   // as French as Spanish: a tie
-		{"C'est l'IA ?", "fr"},          // an elision is split off its word
-		{"WHAT IS THE RULE", "en"},      // case does not matter
-		{"Où en est la décision", "fr"}, // accented function words count
+		{"AI Act", ""},  // no function word
+		{"", ""},        // nothing
+		{"de la", "fr"}, // as French as Spanish: the order decides
+		{"the de", ""},  // English shares the lead: the fallback
+		{"RGPD : délai de conservation ?", "fr"},
+		{"Wo finde ich die Regel?", "de"},
+		{"Qual è la scadenza?", "it"},
+		{"¿Dónde está?", "es"},
+		{"de mañana", "es"},               // a tie, broken by ñ
+		{"de ação", "pt"},                 // ã and ç: Portuguese over French
+		{"Qu’est-ce que le RGPD ?", "fr"}, // the typographic apostrophe splits too
+		{"C'est l'IA ?", "fr"},            // an elision is split off its word
+		{"WHAT IS THE RULE", "en"},        // case does not matter
+		{"Où en est la décision", "fr"},   // accented function words count
 	} {
 		if got := language(c.query); got != c.want {
 			t.Fatalf("language(%q) = %q, want %q", c.query, got, c.want)
@@ -51,6 +61,17 @@ func TestAttributedAddsTheNoticesWithoutTouchingTheAnswer(t *testing.T) {
 	res = attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: `{}`}}}, ns[:1])
 	if got := text(res, 0); got != `{"attribution":[{"brain":"b/one","text":"By One."}]}` {
 		t.Fatalf("empty object: %s", got)
+	}
+	res = attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "{ }\n"}}}, ns[:1])
+	if got := text(res, 0); got != `{ "attribution":[{"brain":"b/one","text":"By One."}]}`+"\n" {
+		t.Fatalf("blank object: %q", got)
+	}
+	// An answer without a first text gets the notices as a text.
+	for _, content := range [][]mcp.Content{nil, {&mcp.ImageContent{Data: []byte("x"), MIMEType: "image/png"}}} {
+		res = attributed(&mcp.CallToolResult{Content: content}, ns[:1])
+		if got := text(res, len(res.Content)-1); got != "By One." || len(res.Content) != len(content)+1 {
+			t.Fatalf("content %v: %+v", content, res.Content)
+		}
 	}
 	for _, body := range []string{`[1, 2]`, `null`, `not json`, `{"attribution": "theirs"}`, `{"a": 1} {"b": 2}`} {
 		res = attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: body}}}, ns)
@@ -204,7 +225,7 @@ func TestEntityCarriesTheNoticeOfItsBrains(t *testing.T) {
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	o, _ := keys.Issue(b.keysFile, "lfoletti", "team/other", "other", rights.Write)
 	b.brain.graph = map[string]fakeGraph{
-		k.Secret: {Known: true, Neighbors: []map[string]any{{"id": "n:1", "content": "One", "node_type": "concept"}}},
+		k.Secret: {Known: true, Neighbors: []map[string]any{{"id": "entity:bob", "vector": nil, "content": "Bob"}}},
 		o.Secret: {Known: true},
 	}
 	s := b.federated(t, k.Secret)
@@ -213,5 +234,72 @@ func TestEntityCarriesTheNoticeOfItsBrains(t *testing.T) {
 		var raw map[string]json.RawMessage
 		_ = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &raw)
 		t.Fatalf("th_entity: %s (%s)", got, res.Content[0].(*mcp.TextContent).Text)
+	}
+}
+
+// Two attributed brains are each credited, each in its own words: a brain
+// without the question's language gives its English line, so one context
+// may mix languages. A brain cut off by top_k is not credited.
+func TestRecallCreditsEachAttributedBrain(t *testing.T) {
+	b := startWith(t, func(y string) string {
+		y = strings.Replace(y, "    collection: team-acme\n", "    collection: team-acme\n    attribution: {en: By Acme., fr: Par Acme.}\n", 1)
+		return strings.Replace(y, "    collection: other\n", "    collection: other\n    attribution: {en: By Other.}\n", 1)
+	})
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	_, _ = keys.Issue(b.keysFile, "lfoletti", "team/other", "other", rights.Write)
+	b.brain.hits = map[string][]fakeHit{"team-acme": {{"a-1", "Plan", "One."}}, "other": {{"o-1", "Other", "Two."}}}
+	s := b.federated(t, k.Secret)
+	if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "quand est le plan ?"})); got != "team/acme=Par Acme.|team/other=By Other." {
+		t.Fatalf("two brains: %s", got)
+	}
+	// lang overrides the detection.
+	if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": "fr"})); got != "team/acme=Par Acme.|team/other=By Other." {
+		t.Fatalf("lang: %s", got)
+	}
+	for _, lang := range []string{"FR", "ja", "fra"} {
+		res := mustCall(t, s, "th_recall", map[string]any{"query": "plan", "lang": lang})
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "lang") {
+			t.Fatalf("lang %q: %+v", lang, res.Content)
+		}
+	}
+	if got := noticesOf(t, mustCall(t, s, "th_recall", map[string]any{"query": "plan", "top_k": 1})); got != "team/acme=By Acme." {
+		t.Fatalf("top_k 1: %s", got)
+	}
+}
+
+// A brain that serves neighbors of the entity without knowing the entity
+// itself is credited too.
+func TestEntityCreditsABrainThatServesOnlyNeighbors(t *testing.T) {
+	b := startWith(t, func(y string) string {
+		return strings.Replace(y, "    collection: other\n", "    collection: other\n    attribution: {en: By Other.}\n", 1)
+	})
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	o, _ := keys.Issue(b.keysFile, "lfoletti", "team/other", "other", rights.Write)
+	b.brain.graph = map[string]fakeGraph{
+		k.Secret: {Known: true},
+		o.Secret: {Neighbors: []map[string]any{{"id": "entity:bob", "vector": nil, "content": "Bob"}}},
+	}
+	s := b.federated(t, k.Secret)
+	res := mustCall(t, s, "th_entity", map[string]any{"entity": "Ledger"})
+	if got := noticesOf(t, res); got != "team/other=By Other." {
+		t.Fatalf("th_entity: %s (%s)", got, res.Content[0].(*mcp.TextContent).Text)
+	}
+}
+
+// The per-brain endpoint credits a read, not a write.
+func TestTheBrainsEndpointCreditsReadsOnly(t *testing.T) {
+	b := attributionBench(t)
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	direct, err := b.session(t, "team/acme", k.Secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer direct.Close()
+	res, err := direct.CallTool(context.Background(), &mcp.CallToolParams{Name: "ingest_document", Arguments: map[string]any{"document_id": "x", "content": "y", "collection": "team-acme"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError || len(res.Content) != 1 || strings.Contains(res.Content[0].(*mcp.TextContent).Text, "attribution") {
+		t.Fatalf("a write is credited: %+v", res.Content)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -24,7 +25,25 @@ const FallbackLanguage = "en"
 // context, not a licence.
 const MaxNotice = 200
 
+// Languages are the languages the gateway serves a notice in: those it
+// reads in a question, English, the fallback, first. A notice in another
+// language could never be chosen, so rights check refuses it.
+var Languages = []string{FallbackLanguage, "fr", "de", "es", "it", "pt", "nl"}
+
+// Served reports whether the gateway serves notices in the language.
+func Served(lang string) bool { return slices.Contains(Languages, lang) }
+
 var languageCode = regexp.MustCompile(`^[a-z]{2}$`)
+
+// printable reports whether a notice is one line a reader sees as it is:
+// no control character (tabs, escapes, NEL included), no format character
+// (bidirectional overrides and isolates), no Unicode line or paragraph
+// separator.
+func printable(text string) bool {
+	return !strings.ContainsFunc(text, func(r rune) bool {
+		return unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Zl, unicode.Zp)
+	})
+}
 
 // Notice is the notice in the language, or in the fallback language when
 // the language has none; "" for a brain without an attribution.
@@ -46,10 +65,12 @@ func (a Attribution) check() error {
 		switch {
 		case !languageCode.MatchString(lang):
 			return fmt.Errorf("attribution: language %q must be a two-letter lower case code", lang)
+		case !Served(lang):
+			return fmt.Errorf("attribution: language %q is not one the gateway serves (%s)", lang, strings.Join(Languages, ", "))
 		case text == "":
 			return fmt.Errorf("attribution: the %q notice is empty", lang)
-		case strings.ContainsAny(text, "\r\n"):
-			return fmt.Errorf("attribution: the %q notice must be one line", lang)
+		case !printable(text):
+			return fmt.Errorf("attribution: the %q notice must be one line of printable text", lang)
 		case utf8.RuneCountInString(text) > MaxNotice:
 			return fmt.Errorf("attribution: the %q notice is longer than %d characters", lang, MaxNotice)
 		}

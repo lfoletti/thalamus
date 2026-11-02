@@ -42,8 +42,22 @@ func TestAnAttributionIsChecked(t *testing.T) {
 		{"    attribution:\n      en: \"  \"\n", `the "en" notice is empty`},
 		{"    attribution:\n      en: \"Provided\\nby Example.\"\n", `the "en" notice must be one line`},
 		{"    attribution:\n      en: \"Provided\\rby Example.\"\n", `the "en" notice must be one line`},
+		{"    attribution:\n      en: \"Provided\\x7fby Example.\"\n", `the "en" notice must be one line`}, // DEL
 		{"    attribution:\n      en: " + long + "\n", "is longer than"},
 		{"    attribution: {}\n", `needs an "en" notice`},
+		// Unicode line breaks, control and format characters: the notice
+		// goes raw into a model's context and a terminal.
+		{"    attribution:\n      en: \"a\\Lb\"\n", `the "en" notice must be one line of printable text`},       // U+2028
+		{"    attribution:\n      en: \"a\\Pb\"\n", `the "en" notice must be one line of printable text`},       // U+2029
+		{"    attribution:\n      en: \"a\\Nb\"\n", `the "en" notice must be one line of printable text`},       // NEL
+		{"    attribution:\n      en: \"a\\0b\"\n", `the "en" notice must be one line of printable text`},       // NUL
+		{"    attribution:\n      en: \"a\\tb\"\n", `the "en" notice must be one line of printable text`},       // tab
+		{"    attribution:\n      en: \"a\\e[31mred\"\n", `the "en" notice must be one line of printable text`}, // ANSI
+		{"    attribution:\n      en: \"a\\u202Eb\"\n", `the "en" notice must be one line of printable text`},   // bidi override
+		{"    attribution:\n      en: \"a\\u2066b\"\n", `the "en" notice must be one line of printable text`},   // bidi isolate
+		// A language the gateway never serves is dead configuration.
+		{"    attribution:\n      en: By Example.\n      ja: By Example.\n", `language "ja" is not one the gateway serves`},
+		{"    attribution:\n      en: By Example.\n      zz: By Example.\n", `language "zz" is not one the gateway serves`},
 	} {
 		_, err := Parse([]byte(withAttribution(c.block)))
 		if err == nil || !strings.Contains(err.Error(), c.want) || !strings.Contains(err.Error(), "team/acme") {
@@ -55,6 +69,8 @@ func TestAnAttributionIsChecked(t *testing.T) {
 	if got := r.Brains["team/acme"].Attribution.Notice("en"); len(got) != MaxNotice {
 		t.Fatalf("notice at the bound: %d", len(got))
 	}
+	// The bound is on the trimmed notice.
+	parse(t, withAttribution("    attribution:\n      en: \"  "+strings.Repeat("x", MaxNotice)+"  \"\n"))
 	// The bound counts characters, not bytes.
 	parse(t, withAttribution("    attribution:\n      en: "+strings.Repeat("é", MaxNotice)+"\n"))
 }
@@ -64,5 +80,23 @@ func TestANoticeIsTrimmed(t *testing.T) {
 	r := parse(t, withAttribution("    attribution:\n      en: \"  Provided by Example.  \"\n"))
 	if got := r.Brains["team/acme"].Attribution.Notice("en"); got != "Provided by Example." {
 		t.Fatalf("%q", got)
+	}
+}
+
+// Languages are the languages the gateway serves a notice in: those it
+// detects in a question, English first.
+func TestTheLanguagesServedStartWithEnglish(t *testing.T) {
+	if Languages[0] != FallbackLanguage || len(Languages) != 7 {
+		t.Fatalf("%v", Languages)
+	}
+	for _, l := range Languages {
+		if !Served(l) {
+			t.Fatalf("%s not served", l)
+		}
+	}
+	for _, l := range []string{"ja", "", "EN", "eng"} {
+		if Served(l) {
+			t.Fatalf("%q served", l)
+		}
 	}
 }

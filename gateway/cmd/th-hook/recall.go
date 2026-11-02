@@ -49,6 +49,7 @@ type hookOutput struct {
 
 // extract is one result of th_recall, as the gateway returns it.
 type extract struct {
+	Brain      string   `json:"brain"`
 	Snippet    string   `json:"snippet"`
 	Provenance string   `json:"provenance"`
 	Level      string   `json:"level"`
@@ -226,6 +227,11 @@ func askShared(ctx context.Context, get func(string) string, prompt string, topK
 			return nil, err
 		}
 		args := map[string]any{"query": prompt, "top_k": topK, "deadline_ms": deadline.Milliseconds()}
+		// TH_LANG: the language of the person's questions, for the
+		// brains' notices; without it, the gateway reads the prompt.
+		if lang := get("TH_LANG"); lang != "" {
+			args["lang"] = lang
+		}
 		if len(only) > 0 {
 			args["brains"] = only
 		}
@@ -366,24 +372,35 @@ func render(out recallOut, budget int) string {
 		}
 		footer = "Skipped: " + strings.Join(parts, ", ") + ".\n" + footer
 	}
-	// The notices come last, each text once: two brains of one publisher
-	// say it once. They are part of the footer, so no budget drops them.
-	var said []string
-	for _, a := range out.Attribution {
-		if !slices.Contains(said, a.Text) {
-			said = append(said, a.Text)
+	// The notices come last, those of the brains whose extracts are shown,
+	// each text once: two brains of one publisher say it once.
+	withNotices := func(kept int) string {
+		shown := map[string]bool{}
+		for _, r := range out.Results[:kept] {
+			shown[r.Brain] = true
+			for _, b := range r.AlsoIn {
+				shown[b] = true
+			}
 		}
+		var said []string
+		for _, a := range out.Attribution {
+			if shown[a.Brain] && !slices.Contains(said, a.Text) {
+				said = append(said, a.Text)
+			}
+		}
+		if len(said) == 0 {
+			return footer
+		}
+		return footer + "\n" + strings.Join(said, "\n")
 	}
-	if len(said) > 0 {
-		footer += "\n" + strings.Join(said, "\n")
-	}
-	return fit(header, lines, footer, budget)
+	return fit(header, lines, withNotices, budget)
 }
 
-// fit joins header, lines and footer, dropping lines from the end until
-// the block fits the budget, and says how many it left out. When not one
-// line fits, it returns "": a heading over nothing is not worth its place.
-func fit(header string, lines []string, footer string, budget int) string {
+// fit joins header, lines and the footer of the lines kept, dropping lines
+// from the end until the block fits the budget, and says how many it left
+// out. When not one line fits, it returns "": a heading over nothing is
+// not worth its place.
+func fit(header string, lines []string, footerOf func(kept int) string, budget int) string {
 	size := func(parts ...string) int {
 		n := 0
 		for _, p := range parts {
@@ -393,7 +410,7 @@ func fit(header string, lines []string, footer string, budget int) string {
 	}
 	kept := lines
 	note := ""
-	for len(kept) > 0 && size(append([]string{header, footer, note}, kept...)...) > budget {
+	for len(kept) > 0 && size(append([]string{header, footerOf(len(kept)), note}, kept...)...) > budget {
 		kept = kept[:len(kept)-1]
 		note = fmt.Sprintf("(%d more not shown; ask for them with th_recall.)", len(lines)-len(kept))
 	}
@@ -404,7 +421,7 @@ func fit(header string, lines []string, footer string, budget int) string {
 	if note != "" {
 		parts = append(parts, note)
 	}
-	return strings.Join(append(parts, footer), "\n")
+	return strings.Join(append(parts, footerOf(len(kept))), "\n")
 }
 
 // source reads a setting from the environment or, when it is not there,

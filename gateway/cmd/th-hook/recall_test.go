@@ -277,37 +277,54 @@ func TestTheHookTellsHowToOpenASynthesis(t *testing.T) {
 	}
 }
 
-// The context ends with the notice of each brain that contributed, once
-// per text, after everything else, and the notices are never dropped to
-// fit the budget: the extracts give way first.
+// The context ends with the notice of each brain whose extract it shows
+// (also_in included), once per text, after everything else; the notices
+// of the brains whose extracts the budget dropped go with them.
 func TestTheContextEndsWithTheNotices(t *testing.T) {
 	g := &fakeGateway{secret: "s3", results: []map[string]any{
-		{"brain": "team/acme", "knowledge_id": "spec-1", "snippet": "Rollback is two hours.", "provenance": "[team/acme] Spec, spec-1"},
+		{"brain": "org/a", "knowledge_id": "spec-1", "snippet": "Rollback is two hours.", "provenance": "[org/a] Spec, spec-1", "also_in": []string{"org/c"}},
+		{"brain": "org/b", "knowledge_id": "spec-2", "snippet": "Cutover on Sunday.", "provenance": "[org/b] Spec, spec-2", "also_in": []string{"org/d"}},
 	}, attribution: []map[string]any{
-		{"brain": "team/acme", "text": "Information provided by Example."},
-		{"brain": "team/acme-eu", "text": "Information provided by Example."},
-		{"brain": "team/other", "text": "Courtesy of Other."},
+		{"brain": "org/a", "text": "Information provided by Example."},
+		{"brain": "org/b", "text": "Courtesy of Other."},
+		{"brain": "org/c", "text": "By C."},
+		{"brain": "org/d", "text": "Information provided by Example."},
 	}}
 	url := g.start(t)
 	_, out, _ := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"when does the ledger move?"}`)
 	ctx := contextOf(t, out)
-	if !strings.HasSuffix(ctx, "\nInformation provided by Example.\nCourtesy of Other.") || strings.Count(ctx, "Information provided by Example.") != 1 {
+	if !strings.HasSuffix(ctx, "th_brains.\nInformation provided by Example.\nCourtesy of Other.\nBy C.") || strings.Count(ctx, "Information provided by Example.") != 1 {
 		t.Fatalf("context:\n%s", ctx)
 	}
-	long := strings.Repeat("x", 2000)
-	g.results = nil
-	for i := 0; i < 8; i++ {
-		g.results = append(g.results, map[string]any{"brain": "b", "knowledge_id": fmt.Sprint("d-", i), "snippet": long, "provenance": fmt.Sprint("[b] d-", i)})
+	if _, asked := g.calls[0]["lang"]; asked {
+		t.Fatalf("lang sent without TH_LANG: %v", g.calls[0])
 	}
+	// An extract the budget drops takes its brain's notice with it.
+	g.results = []map[string]any{
+		{"brain": "org/a", "knowledge_id": "d-0", "snippet": "Short.", "provenance": "[org/a] d-0"},
+		{"brain": "org/b", "knowledge_id": "d-1", "snippet": strings.Repeat("x", contextBudget), "provenance": "[org/b] d-1"},
+	}
+	g.attribution = g.attribution[:2]
 	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
 	ctx = contextOf(t, out)
-	if len(ctx) > contextBudget || !strings.HasSuffix(ctx, "Courtesy of Other.") || !strings.Contains(ctx, "more not shown") {
-		t.Fatalf("len %d, end %q", len(ctx), ctx[len(ctx)-80:])
+	if len(ctx) > contextBudget || !strings.HasSuffix(ctx, "\nInformation provided by Example.") || strings.Contains(ctx, "Courtesy of Other.") || !strings.Contains(ctx, "(1 more not shown") {
+		t.Fatalf("budget: %q", ctx)
 	}
 	// No notice, no trailing line.
 	g.attribution = nil
 	_, out, _ = hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3"}, `{"prompt":"a long enough prompt"}`)
 	if !strings.HasSuffix(contextOf(t, out), "list the brains with th_brains.") {
 		t.Fatalf("end: %q", contextOf(t, out))
+	}
+}
+
+// TH_LANG names the language of the person's questions: the hook sends it
+// to th_recall as lang, and the notices come in it.
+func TestTheHookSendsTheLanguageItIsGiven(t *testing.T) {
+	g := &fakeGateway{secret: "s3", results: []map[string]any{{"brain": "b", "knowledge_id": "d", "snippet": "x", "provenance": "[b] d"}}}
+	url := g.start(t)
+	hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LANG": "fr"}, `{"prompt":"when does the ledger move?"}`)
+	if len(g.calls) != 1 || g.calls[0]["lang"] != "fr" {
+		t.Fatalf("calls: %v", g.calls)
 	}
 }
