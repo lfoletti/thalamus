@@ -4,7 +4,7 @@
 
 ## Le besoin de Thalamus
 
-Décision de Lauro du 22 octobre 2026 : Thalamus sert aussi une organisation suisse, avec des documents et des questions en français, en allemand, en italien et en romanche. Le produit se conçoit aussi pour des utilisateurs européens. Le moteur a un traitement dédié au chinois, au japonais et au coréen (`pkg/core/fts_cjk.go`, avec le jeu `pkg/eval/testdata/dataset_zh.json`). Les langues européennes n'ont pas encore cet équivalent.
+Décision du mainteneur du 22 octobre 2026 : Thalamus sert aussi une organisation suisse, avec des documents et des questions en français, en allemand, en italien et en romanche. Le produit se conçoit aussi pour des utilisateurs européens. Le moteur a un traitement dédié au chinois, au japonais et au coréen (`pkg/core/fts_cjk.go`, avec le jeu `pkg/eval/testdata/dataset_zh.json`). Les langues européennes n'ont pas encore cet équivalent.
 
 ## Constats du 22 octobre 2026 (v2.136.0)
 
