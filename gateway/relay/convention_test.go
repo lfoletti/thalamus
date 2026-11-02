@@ -501,3 +501,57 @@ func TestThemeToolsEdges(t *testing.T) {
 		t.Fatalf("failed list: %s", text(res))
 	}
 }
+
+// A rewrite of a document the brain has keeps the stored metadata that the
+// caller does not send: a session that rewrites its state without metadata
+// keeps the state's theme and nature, and passes the convention. A key the
+// caller sends wins. The engine's own keys (a leading underscore) and
+// written_by are the engine's, and are not sent back. A brain without a
+// convention takes the metadata as it is sent, as before.
+func TestARewriteKeepsTheStoredMetadata(t *testing.T) {
+	stored := map[string]any{"theme": "git", "nature": "rule", "source": "https://x/a", "_review_status": "accepted", "written_by": "th/lfoletti/team/acme"}
+	b := conventionBench(t)
+	b.brain.docs = map[string]map[string]any{"state:project:current": {"id": "state:project:current", "author": "lfoletti", "content": "Old state.", "metadata": stored}}
+	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	s := b.federated(t, k.Secret)
+	if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "state:project:current", "content": "New state."}); res.IsError {
+		t.Fatalf("rewrite without metadata: %s", text(res))
+	}
+	md, _ := b.brain.named("ingest_document")["metadata"].(map[string]any)
+	if md["theme"] != "git" || md["nature"] != "rule" || md["source"] != "https://x/a" || md["status"] != "current" {
+		t.Fatalf("kept: %v", md)
+	}
+	if _, ok := md["_review_status"]; ok {
+		t.Fatalf("an engine key went back: %v", md)
+	}
+	if _, ok := md["written_by"]; ok {
+		t.Fatalf("written_by went back: %v", md)
+	}
+	if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "state:project:current", "content": "Newer state.", "metadata": map[string]any{"source": "https://x/b", "theme": "tests"}}); res.IsError {
+		t.Fatalf("rewrite with metadata: %s", text(res))
+	}
+	var last map[string]any
+	for _, c := range b.brain.calls {
+		if c.Name == "ingest_document" {
+			_ = json.Unmarshal([]byte(c.ArgsJson), &last)
+		}
+	}
+	md, _ = last["metadata"].(map[string]any)
+	if md["source"] != "https://x/b" || md["theme"] != "tests" || md["nature"] != "rule" {
+		t.Fatalf("sent keys win: %v", md)
+	}
+	// A new document keeps nothing: it has no stored metadata.
+	if res := mustCall(t, s, "th_add", map[string]any{"brain": "team/acme", "document_id": "rule:git:new-one", "content": "A brand new rule about branches."}); !res.IsError || !strings.Contains(text(res), "metadata theme") {
+		t.Fatalf("new document without metadata: %s", text(res))
+	}
+	// Without a convention, the metadata goes as it is sent.
+	free := start(t)
+	free.brain.docs = map[string]map[string]any{"state:project:current": {"id": "state:project:current", "author": "lfoletti", "content": "Old state.", "metadata": stored}}
+	kf, _ := keys.Issue(free.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
+	if res := mustCall(t, free.federated(t, kf.Secret), "th_add", map[string]any{"brain": "team/acme", "document_id": "state:project:current", "content": "New state."}); res.IsError {
+		t.Fatalf("free brain: %s", text(res))
+	}
+	if md, _ := free.brain.named("ingest_document")["metadata"].(map[string]any); len(md) != 0 {
+		t.Fatalf("free metadata: %v", md)
+	}
+}

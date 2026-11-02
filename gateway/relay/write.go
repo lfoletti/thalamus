@@ -168,8 +168,10 @@ func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.Cal
 		return errResult(fmt.Errorf("th_add: %w", err)), err
 	}
 	exists := false
+	var stored map[string]string
 	if args.DocumentID != "" && (b.Convention != nil || access != rights.Curate) {
-		author, found, err := s.authorOf(ctx, b, user, args.Brain, args.DocumentID)
+		author, md, found, err := s.authorOf(ctx, b, user, args.Brain, args.DocumentID)
+		stored = md
 		if err != nil {
 			return refused(err, access != rights.Curate)
 		}
@@ -188,6 +190,10 @@ func (s *Server) write(ctx context.Context, user string, args addArgs) (*mcp.Cal
 	}
 	note := ""
 	if c := b.Convention; c != nil {
+		// A rewrite keeps the stored metadata the caller does not send: a
+		// session that rewrites a state without metadata keeps its theme
+		// and nature. A key the caller sends wins.
+		args.Metadata = keepStored(stored, args.Metadata)
 		md, err := s.followsConvention(ctx, b, user, *c, args, exists)
 		if err != nil {
 			return refused(err, false)
@@ -314,28 +320,44 @@ const (
 	nearCandidates = 5
 )
 
-// authorOf reads a document's author, found false when the brain has no
+// keepStored returns the stored metadata of a document, without the
+// engine's own keys, under the keys the caller sends.
+func keepStored(stored, sent map[string]string) map[string]string {
+	out := make(map[string]string, len(stored)+len(sent))
+	for k, v := range stored {
+		if !strings.HasPrefix(k, "_") && k != "written_by" {
+			out[k] = v
+		}
+	}
+	for k, v := range sent {
+		out[k] = v
+	}
+	return out
+}
+
+// authorOf reads a document's author and stored metadata, found false when the brain has no
 // document of that id. th_add replaces the document of that id: a writer
 // may not take over another author's document, since the proposal would
 // take the accepted text out of the brain until review, under the
 // writer's name.
-func (s *Server) authorOf(ctx context.Context, b rights.Brain, user, name, id string) (author string, found bool, err error) {
+func (s *Server) authorOf(ctx context.Context, b rights.Brain, user, name, id string) (author string, md map[string]string, found bool, err error) {
 	result, err := s.callBrain(ctx, b, user, name, "knowledge_get", map[string]any{"knowledge_id": id, "collection": nil})
 	if status.Code(err) == codes.NotFound {
-		return "", false, nil
+		return "", nil, false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", nil, false, err
 	}
 	var got struct {
 		Knowledge struct {
-			Author string `json:"author"`
+			Author   string            `json:"author"`
+			Metadata map[string]string `json:"metadata"`
 		} `json:"knowledge"`
 	}
 	if err := json.Unmarshal([]byte(result), &got); err != nil {
-		return "", false, fmt.Errorf("decode knowledge_get: %w", err)
+		return "", nil, false, fmt.Errorf("decode knowledge_get: %w", err)
 	}
-	return got.Knowledge.Author, true, nil
+	return got.Knowledge.Author, got.Knowledge.Metadata, true, nil
 }
 
 // pendingHit is one document that waits for review.
