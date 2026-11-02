@@ -203,7 +203,7 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 
 ## Roadmap
 
-**Done** (25 October 2026, release 0.4.0)
+**Done** (2 November 2026, release 0.6.0)
 
 - Rights, keys and one MCP endpoint per brain.
 - Federated recall over the brains that a person may read, with the source of each extract.
@@ -221,6 +221,8 @@ With an `identity` block in `rights.yaml`, `th-gateway login http://127.0.0.1:87
 - Questions in several languages: `th_recall` takes the question in other languages (`alternate_queries`) and searches each one apart. A Swiss bench measures the recall from one language to another (French, German, Italian, Romansh) in `tests/eval_ch/`.
 - A deadline for the recall: `th_recall` takes `deadline_ms` and fuses the answers of the brains that are ready. The hook uses it, so a slow brain no longer stops the recall of the others.
 - The brains in Claude Code: `/brains` opens a dialog of the brains, with whether each one answers, and Enter turns a brain on or off for the automatic recall. `/th-recall` without arguments asks with a checklist. The project's `CLAUDE.md` names the brain where `th_add` writes.
+- The graph tools of the engine, through the gateway: `th_find_nodes`, `th_get_nodes`, `th_expand_graph`, `th_search_paths` and `th_search_chunks_by_entities`, confined to the caller's key.
+- A convention per brain: `rights.yaml` declares the natures, a seed list of themes and the dated natures. `th_add` checks the nature, the date, the id and near copies at write time. A theme grows on the fly: a curator declares it with a `theme:<subject>` document, and a document whose theme is unknown is filed under the unsorted theme with its proposal. `th_themes` reports the themes, the proposals and the candidates, and `th_retheme` moves the documents of an accepted proposal.
 - Releases: archives of `th-gateway`, `th-hook`, the plugin and the extension for macOS and Linux, a Docker image `ghcr.io/lfoletti/thalamus`, and `go install`. See the [releases](https://github.com/lfoletti/thalamus/releases).
 
 **With CortexDB**
