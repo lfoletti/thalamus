@@ -1,6 +1,6 @@
-# 15. `find_nodes` : chercher parmi les noms, pas dans le texte des morceaux (deux PR)
+# 17. `find_nodes` : chercher parmi les noms, pas dans le texte des morceaux (deux PR)
 
-**Statut** : PR A envoyée le 30 octobre 2026, liliang-cn/cortexdb#115, en relecture ; PR B en attente. **Taille estimée** :
+**Statut** : PR A **fusionnée le 31 octobre 2026 (liliang-cn/cortexdb#115, d21a511), publiée dans v2.142.0** (`find_nodes` prend `skip_chunks`, éteint par défaut) ; PR B en attente, rien d'envoyé. **Taille estimée** :
 - PR A : 25 lignes hors tests et deux tests ;
 - PR B : 150 lignes hors tests, une table et ses écritures, et des tests de cohérence.
 
@@ -83,4 +83,4 @@ Envoyer la PR A d'abord. Elle donne l'essentiel du gain, 819 → 142 ms (× 5,8)
 
 `foldName` retire la ponctuation et les espaces et met en minuscules, mais il garde les accents : « Données » et « Donnees » ne se rejoignent pas. C'est la règle actuelle, que ces deux PR ne changent pas. La fiche 07 traite des accents.
 
-PR envoyée : liliang-cn/cortexdb#115 (brouillon), branche `co-15-find-nodes-names` du fork lfoletti/cortexdb.
+PR A fusionnée : liliang-cn/cortexdb#115, v2.142.0, branche `co-15-find-nodes-names` du fork lfoletti/cortexdb.

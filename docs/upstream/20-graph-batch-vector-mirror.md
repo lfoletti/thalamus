@@ -1,6 +1,6 @@
-# 18. Sur PostgreSQL, un nœud écrit par lot est trouvé par son vecteur
+# 20. Sur PostgreSQL, un nœud écrit par lot est trouvé par son vecteur
 
-**Statut** : fiche écrite le 30 octobre 2026, corrigée le même soir (chemin de l'ingestion, nœuds RDF) ; PR de code en préparation (branche `co-18-graph-batch-mirror`), rien d'envoyé. **Taille estimée** : 30 à 50 lignes hors tests dans `pkg/graph/graph_batch.go` (et une reprise des bases existantes), plus un test à deux backends. **Dépend de** : rien ; touche `pkg/graph/pgvector.go` comme la fiche 17, dans d'autres fonctions. Défaut trouvé en écrivant les tests de la fiche 17.
+**Statut** : **fusionnée le 31 octobre 2026 (liliang-cn/cortexdb#118, 5b876e8, branche `co-18-graph-batch-mirror` du fork lfoletti/cortexdb), publiée dans v2.142.0.** La PR couvre aussi les nœuds des termes RDF et recopie à l'ouverture les vecteurs qu'une version antérieure a laissés hors du miroir. **Taille estimée** : 30 à 50 lignes hors tests dans `pkg/graph/graph_batch.go` (et une reprise des bases existantes), plus un test à deux backends. **Dépend de** : rien ; touche `pkg/graph/pgvector.go` comme la fiche 19, dans d'autres fonctions. Défaut trouvé en écrivant les tests de la fiche 19.
 
 ## Le défaut
 
@@ -48,7 +48,7 @@ Tests à écrire d'abord, sur `main`, sous `CORTEXDB_TEST_POSTGRES` : le tableau
 
 - `UpsertNode` écrit son miroir hors de sa propre écriture : un échec laisse le nœud sans miroir. À aligner dans la même PR (une transaction), ou à nommer.
 - Le coût de la reprise sur une grande base PostgreSQL (une lecture de tous les nœuds à vecteur) : la faire par pages, et la journaliser.
-- `GraphFilter.NodeTypes`, appliqué après la limite (nommé dans la fiche 17) : une fois les morceaux et entités dans le miroir, une recherche typée sur les documents perdra des places au profit des morceaux. Mesurer avec un filtre, et rapprocher des deux fiches.
+- `GraphFilter.NodeTypes`, appliqué après la limite (nommé dans la fiche 19) : une fois les morceaux et entités dans le miroir, une recherche typée sur les documents perdra des places au profit des morceaux. Mesurer avec un filtre, et rapprocher des deux fiches.
 - CI amont sans PostgreSQL : lignes à déclarer dans `## Codecov`, ou partie testable sans base (le choix des nœuds à recopier).
 
 ## Ce que Thalamus y gagne

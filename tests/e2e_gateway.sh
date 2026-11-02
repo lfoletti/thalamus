@@ -40,6 +40,13 @@ brains:
     collection: team-review
     writers: [user:lfoletti]
     curators: [user:kmlead]
+  team/notes:
+    addr: $ADDR
+    keys_file: $S/data/keys.json
+    collection: team-notes
+    writers: [user:lfoletti]
+    curators: [user:kmlead]
+    convention: {themes: [tests, git], natures: [rule, pitfall], dated: [pitfall], emerge: 2}
   org/secrets:
     addr: $ADDR
     keys_file: $S/data/keys.json
@@ -73,6 +80,8 @@ MD=$("$GW" key issue "$S/data/rights.yaml" mdupont team/acme) || ko "issue mdupo
 KM=$("$GW" key issue "$S/data/rights.yaml" kmlead org/secrets) || ko "issue kmlead" "$KM"
 LFR=$("$GW" key issue "$S/data/rights.yaml" lfoletti team/review) || ko "issue lfoletti on team/review" "$LFR"
 KMR=$("$GW" key issue "$S/data/rights.yaml" kmlead team/review) || ko "issue kmlead on team/review" "$KMR"
+LFN=$("$GW" key issue "$S/data/rights.yaml" lfoletti team/notes) || ko "issue lfoletti on team/notes" "$LFN"
+KMN=$("$GW" key issue "$S/data/rights.yaml" kmlead team/notes) || ko "issue kmlead on team/notes" "$KMN"
 if "$GW" key issue "$S/data/rights.yaml" mdupont org/secrets >/dev/null 2>&1; then ko "mdupont on secrets issued" ""; else ok "mdupont has no key on org/secrets"; fi
 kill $SERVER; wait $SERVER 2>/dev/null
 CORTEXDB_REVIEW_GATE=1 "$GRPC" -db "$S/data/brain.db" -addr "$ADDR" -keys "$S/data/keys.json" > "$S/data/server.log" 2>&1 &
@@ -156,6 +165,32 @@ add=$(mcp "$KMR" "" th_add '{"brain":"team/review","document_id":"note-km","cont
 if printf '%s' "$add" | grep -q isError; then ko "curator th_add" "$add"; else ok "the curator adds note-km"; fi
 add=$(mcp "$LF" "" th_add '{"brain":"team/review","document_id":"note-km","content":"Taken over."}')
 printf '%s' "$add" | grep -q 'belongs to kmlead' && ok "lfoletti may not replace kmlead's note-km" || ko "take over" "$add"
+
+# The convention, on team/notes: a document follows the brain's lists; a
+# theme the brain does not know yet files it under unsorted; th_themes names
+# the candidate; the curator declares it and files its documents there.
+add=$(mcp "$LFN" "" th_add '{"brain":"team/notes","document_id":"rule:tests:x","content":"x","metadata":{"theme":"tests","nature":"note"}}')
+printf '%s' "$add" | grep -q 'metadata nature, one of: rule, pitfall' && ok "th_add refuses a nature outside the convention" || ko "convention nature" "$add"
+add=$(mcp "$LFN" "" th_add '{"brain":"team/notes","document_id":"rule:ops:deploy-on-monday","title":"Deploy on Monday","content":"The release train leaves on Monday morning after the nightly benches.","metadata":{"theme":"ops","nature":"rule"}}')
+printf '%s' "$add" | grep -q 'filed under unsorted, theme_proposed ops' && ok "an undeclared theme files the document under unsorted" || ko "unsorted" "$add"
+rev=$(mcp "$KMN" "" th_review '{"brain":"team/notes","knowledge_id":"rule:ops:deploy-on-monday","decision":"accepted"}')
+printf '%s' "$rev" | grep -q isError && ko "accept rule:ops:deploy-on-monday" "$rev" || ok "the curator accepts lfoletti's unsorted rule"
+add=$(mcp "$KMN" "" th_add '{"brain":"team/notes","document_id":"rule:ops:freeze-friday","content":"No change reaches production on a Friday afternoon, whatever its size.","metadata":{"theme":"ops","nature":"rule"}}')
+printf '%s' "$add" | grep -q isError && ko "curator unsorted" "$add" || ok "the curator files a second rule proposing ops"
+add=$(mcp "$KMN" "" th_add '{"brain":"team/notes","document_id":"rule:ops:freeze-friday-again","content":"No change reaches production on a Friday afternoon, whatever its size!","metadata":{"theme":"ops","nature":"rule"}}')
+printf '%s' "$add" | grep -q 'near copy of rule:ops:freeze-friday' && ok "a near copy is refused, naming the original" || ko "near copy" "$add"
+thm=$(mcp "$LFN" "" th_themes '{"brain":"team/notes"}')
+printf '%s' "$thm" | grep -q '"theme\\":\\"ops\\",\\"documents\\":2,\\"candidate\\":true' && ok "th_themes names ops a candidate, with its two documents" || ko "th_themes" "$thm"
+add=$(mcp "$KMN" "" th_add '{"brain":"team/notes","document_id":"theme:ops","content":"Releases, freezes and the production calendar."}')
+printf '%s' "$add" | grep -q isError && ko "declare ops" "$add" || ok "the curator declares the theme ops"
+add=$(mcp "$KMN" "" th_add '{"brain":"team/notes","document_id":"theme:test","content":"Testing."}')
+printf '%s' "$add" | grep -q 'close to the theme \\"tests\\"' && ok "a theme close to tests is refused" || ko "close theme" "$add"
+mov=$(mcp "$KMN" "" th_retheme '{"brain":"team/notes","proposed":"ops","theme":"ops"}')
+printf '%s' "$mov" | grep -q 'rule:ops:deploy-on-monday' && printf '%s' "$mov" | grep -q 'rule:ops:freeze-friday' && ok "th_retheme files both documents under ops" || ko "th_retheme" "$mov"
+got=$(mcp "$KMN" "" th_get '{"brain":"team/notes","knowledge_id":"rule:ops:deploy-on-monday"}')
+if printf '%s' "$got" | grep -q '\\"theme\\":\\"ops\\"' && printf '%s' "$got" | grep -q '\\"author\\":\\"lfoletti\\"' && ! printf '%s' "$got" | grep -q theme_proposed; then ok "the filed document keeps its author, under ops, without its proposal"; else ko "filed document" "$got"; fi
+thm=$(mcp "$LFN" "" th_themes '{"brain":"team/notes"}')
+printf '%s' "$thm" | grep -q '"theme\\":\\"ops\\",\\"documents\\":2,\\"declared\\":\\"document\\"' && ok "th_themes counts ops among the declared themes" || ko "th_themes after" "$thm"
 
 # The client: the plugin's hook asks th_recall with the user's key and
 # hands the extracts to Claude Code; a prompt too short asks nothing.
@@ -280,7 +315,7 @@ wait $LOGIN; lcode=$?
 if [ "$lcode" = 0 ] && grep -q 'Signed in as lfoletti' "$S/data/login.out" && grep -q 'Signed in. You can close this window' "$S/data/browser.out"; then ok "th-gateway login signs lfoletti in through the provider"; else ko "login" "$lcode $(cat "$S/data/login.out") $(cat "$S/data/browser.out")"; fi
 [ "$(cat "$S/data/env")" = "TH_GATEWAY=http://$GWADDR
 TH_KEY=$LFS" ] && ok "the env file holds the gateway and the first brain's key, issued before" || ko "env file" "$(cat "$S/data/env")"
-grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme","team/review"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
+grep -q '"user":"lfoletti".*"tool":"login".*"brains":\["org/secrets","team/acme","team/notes","team/review"\].*"ok":true' "$S/data/audit.jsonl" && ok "the login is audited with the brains" || ko "login audit" "$(grep login "$S/data/audit.jsonl")"
 kill $IDP 2>/dev/null; wait $IDP 2>/dev/null
 # sed -i takes its suffix differently in BSD and GNU sed: edit through a copy.
 edit() { sed "$1" "$2" > "$2.new" && mv "$2.new" "$2"; }

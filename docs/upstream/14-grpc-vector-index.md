@@ -1,6 +1,6 @@
-# 12. `cortexdb-grpc` laisse choisir l'index des vecteurs
+# 14. `cortexdb-grpc` laisse choisir l'index des vecteurs
 
-**Statut** : envoyée le 30 octobre 2026, liliang-cn/cortexdb#114, en relecture. **Taille estimée** : 40 lignes hors tests dans `cmd/cortexdb-grpc`, un test de lecture des variables. **Dépend de** : rien. Le moteur a déjà les trois index ; seul le serveur ne permet pas de les choisir.
+**Statut** : **fusionnée le 31 octobre 2026 (liliang-cn/cortexdb#114, 0c3a286), publiée dans v2.142.0.** Le serveur lit `CORTEXDB_VECTOR_INDEX` (`hnsw` par défaut, ou `binary` sur SQLite) et `CORTEXDB_BINARY_OVERSAMPLE`. **Taille estimée** : 40 lignes hors tests dans `cmd/cortexdb-grpc`, un test de lecture des variables. **Dépend de** : rien. Le moteur a déjà les trois index ; seul le serveur ne permet pas de les choisir.
 
 ## Le besoin de Thalamus
 
@@ -66,4 +66,4 @@ Une ouverture ne lit plus l'instantané. Davantage de cerveaux tiendraient chaud
 
 Rien de propre à une langue : l'index travaille sur les vecteurs de l'encodeur choisi.
 
-PR envoyée : liliang-cn/cortexdb#114 (brouillon), branche `co-12-grpc-vector-index` du fork lfoletti/cortexdb.
+PR fusionnée : liliang-cn/cortexdb#114, v2.142.0, branche `co-12-grpc-vector-index` du fork lfoletti/cortexdb.

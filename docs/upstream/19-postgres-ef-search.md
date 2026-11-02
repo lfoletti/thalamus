@@ -1,6 +1,6 @@
-# 17. Sur PostgreSQL, une recherche rend les `top_k` résultats demandés, pas 40 au plus
+# 19. Sur PostgreSQL, une recherche rend les `top_k` résultats demandés, pas 40 au plus
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 40 à 60 lignes hors tests, dans `pkg/core/store_postgres*.go` et `pkg/graph/pgvector.go`, plus une table de tests PostgreSQL. **Dépend de** : rien. Défaut trouvé en préparant la fiche 12 : il a fait retirer `binary` sur PostgreSQL de la PR #114.
+**Statut** : **fusionnée le 31 octobre 2026 (liliang-cn/cortexdb#117, 5b876e8, branche `co-17-pg-ef-search` du fork lfoletti/cortexdb), publiée dans v2.142.0.** La PR diffère de la fiche : une recherche sans filtre jusqu'à 1000 lignes élargit le parcours à sa limite ; une recherche filtrée, sans borne ou plus longue est classée exactement, sans l'index. **Taille estimée** : 40 à 60 lignes hors tests, dans `pkg/core/store_postgres*.go` et `pkg/graph/pgvector.go`, plus une table de tests PostgreSQL. **Dépend de** : rien. Défaut trouvé en préparant la fiche 14 : il a fait retirer `binary` sur PostgreSQL de la PR #114.
 
 ## Le défaut
 
@@ -64,6 +64,6 @@ Tests à écrire d'abord, sur `main`, sous `CORTEXDB_TEST_POSTGRES` : une table 
 
 ## Ce que Thalamus y gagne
 
-Rien de direct aujourd'hui : les cerveaux servis sont sur SQLite. Un cerveau PostgreSQL (gateway multi-utilisateur, base partagée) recevrait 40 morceaux pour un `top_k` de 50 ou 100, et la fiche 12 pourrait ensuite offrir `binary` sur PostgreSQL.
+Rien de direct aujourd'hui : les cerveaux servis sont sur SQLite. Un cerveau PostgreSQL (gateway multi-utilisateur, base partagée) recevrait 40 morceaux pour un `top_k` de 50 ou 100, et la fiche 14 pourrait ensuite offrir `binary` sur PostgreSQL.
 
 Pour européens : sans effet sur les langues.

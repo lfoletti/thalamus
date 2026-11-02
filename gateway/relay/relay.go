@@ -37,11 +37,17 @@ type Server struct {
 	// The verifier of the identity block, rebuilt when the block changes.
 	idp    *identity.Verifier
 	idpFor rights.Identity // by secret: one MCP server per key, with the brain's tools
+
+	// The brains a recall with a deadline leaves alone, by the time they
+	// missed one (cold.go), and the clock.
+	coldMu sync.Mutex
+	cold   map[string]time.Time
+	now    func() time.Time
 }
 
 // New makes a relay for the brains of r, auditing to a.
 func New(src *rights.Source, a *Audit) *Server {
-	return &Server{src: src, audit: a, sessions: map[string]*mcp.Server{}}
+	return &Server{src: src, audit: a, sessions: map[string]*mcp.Server{}, cold: map[string]time.Time{}, now: time.Now}
 }
 
 // rights is the rights file as of now: the source reads it again when it
@@ -94,6 +100,10 @@ func (s *Server) admit(r *http.Request) (*mcp.Server, int, error) {
 		// The review circuit lives in the gateway; the engine's raw tools
 		// would let a writer's key accept, publish, replace or delete.
 		return nil, http.StatusForbidden, fmt.Errorf("brain %s has a review circuit: it is served through /mcp only", name)
+	}
+	if brain.Convention != nil {
+		// The engine's raw tools would write past the convention.
+		return nil, http.StatusForbidden, fmt.Errorf("brain %s has a convention: it is served through /mcp only", name)
 	}
 	if brain.ExcerptWords > 0 {
 		// The engine's raw tools would serve a source document whole.
@@ -182,6 +192,7 @@ func (s *Server) addTool(srv *mcp.Server, client rpcv1.ToolsServiceClient, def *
 			s.note(entry)
 			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("tool %s: %v", def.GetName(), err)}}}, nil
 		}
+		s.warm(who.Brain)
 		entry.OK = true
 		s.note(entry)
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}, nil

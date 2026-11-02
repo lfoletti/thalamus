@@ -1,6 +1,6 @@
-# 13. L'instantané HNSW sans copie des vecteurs, voisins en entiers
+# 15. L'instantané HNSW sans copie des vecteurs, voisins en entiers
 
-**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 150 lignes hors tests dans `pkg/index/hnsw.go` et `pkg/core/store_index.go`, plus un test d'aller-retour et un test de lecture de l'ancien format. **Dépend de** : rien. **Ordre** : après la fiche 12. Si Contaixt passe à l'index binaire (fiche 12), cette fiche ne sert plus qu'aux bases qui gardent HNSW.
+**Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 150 lignes hors tests dans `pkg/index/hnsw.go` et `pkg/core/store_index.go`, plus un test d'aller-retour et un test de lecture de l'ancien format. **Dépend de** : rien. **Ordre** : après la fiche 14 (fusionnée dans v2.142.0). Si Contaixt passe à l'index binaire (fiche 14), cette fiche ne sert plus qu'aux bases qui gardent HNSW.
 
 ## Le besoin
 
@@ -48,7 +48,7 @@ Pour ai-engineering, on passerait d'environ 430 Mo à environ 35 Mo.
 
 **En mémoire :** une chaîne de moins par voisin, soit 1,49 M allocations de 16 octets d'en-tête plus le texte, environ 50 Mo sur ai-quant. Les vecteurs float32 restent en mémoire, comme aujourd'hui.
 
-**Coût :** une lecture de la table `embeddings` à l'ouverture. Elle est mesurée à 0,3 s pour ai-quant par l'index binaire, qui fait la même lecture (fiche 12).
+**Coût :** une lecture de la table `embeddings` à l'ouverture. Elle est mesurée à 0,3 s pour ai-quant par l'index binaire, qui fait la même lecture (fiche 14).
 
 ## Preuves à apporter
 

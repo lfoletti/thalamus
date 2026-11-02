@@ -1,6 +1,6 @@
-# 16. Un instantané quantifié se relit avec le quantifieur qui l'a écrit, sinon l'index se reconstruit
+# 18. Un instantané quantifié se relit avec le quantifieur qui l'a écrit, sinon l'index se reconstruit
 
-**Statut** : envoyée le 30 octobre 2026, liliang-cn/cortexdb#116 (brouillon, branche `co-16-sq8-reopen` du fork lfoletti/cortexdb). La PR va plus loin que cette fiche : elle compare aussi les bits (SQ8 contre SQ4), écrit la ligne `QUANTIZER` dans la même transaction que l'instantané, et ne reconstruit plus à chaque ouverture une configuration qui ne crée pas de quantifieur. **Taille estimée** : environ 30 lignes hors tests dans `pkg/core/store_index.go`, plus une table de tests de réouverture. **Dépend de** : rien. Défaut trouvé en préparant la fiche 12 : il a fait retirer `hnsw-sq8` de la PR #114.
+**Statut** : **fusionnée le 31 octobre 2026 (liliang-cn/cortexdb#116, 54a1103, branche `co-16-sq8-reopen` du fork lfoletti/cortexdb), publiée dans v2.142.0.** La PR va plus loin que cette fiche : elle compare aussi les bits (SQ8 contre SQ4), écrit la ligne `QUANTIZER` dans la même transaction que l'instantané, et ne reconstruit plus à chaque ouverture une configuration qui ne crée pas de quantifieur. **Taille estimée** : environ 30 lignes hors tests dans `pkg/core/store_index.go`, plus une table de tests de réouverture. **Dépend de** : rien. Défaut trouvé en préparant la fiche 14 : il a fait retirer `hnsw-sq8` de la PR #114.
 
 ## Le défaut
 
@@ -46,6 +46,6 @@ Tests à écrire d'abord, sur `main` : la table des paires de réouverture, avec
 
 ## Ce que Thalamus y gagne
 
-Rien de direct : Thalamus sert des cerveaux sans quantification. La fiche corrige un défaut que la fiche 12 aurait rendu atteignable par une variable d'environnement, et rend possible plus tard un `hnsw-sq8` dans `cortexdb-grpc` (la moitié de la mémoire de HNSW).
+Rien de direct : Thalamus sert des cerveaux sans quantification. La fiche corrige un défaut que la fiche 14 aurait rendu atteignable par une variable d'environnement, et rend possible plus tard un `hnsw-sq8` dans `cortexdb-grpc` (la moitié de la mémoire de HNSW).
 
 Pour européens : sans effet sur les langues.

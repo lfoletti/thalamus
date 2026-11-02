@@ -412,3 +412,48 @@ func TestABrainMayBeServedInExcerpts(t *testing.T) {
 		t.Fatalf("negative: %v", err)
 	}
 }
+
+// A brain may declare a convention: the themes and natures its documents
+// carry, the natures that must be dated, and the word likeness from which a
+// new document is refused as a near copy. The lists are closed and their
+// keys are lower case words joined by hyphens.
+func TestABrainMayDeclareAConvention(t *testing.T) {
+	conv := "    convention:\n      themes: [tests, git]\n      natures: [rule, pitfall]\n      dated: [pitfall]\n      near: 0.8\n"
+	r := parse(t, strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n"+conv, 1))
+	c := r.Brains["team/acme"].Convention
+	if c == nil || strings.Join(c.Themes, ",") != "tests,git" || strings.Join(c.Natures, ",") != "rule,pitfall" || strings.Join(c.Dated, ",") != "pitfall" || c.Near != 0.8 {
+		t.Fatalf("convention: %+v", c)
+	}
+	if c.NearBound() != 0.8 || (Convention{}).NearBound() != DefaultNear || (Convention{Near: 0.95}).NearBound() != 0.95 {
+		t.Fatalf("near bound: %v %v", c.NearBound(), (Convention{}).NearBound())
+	}
+	if c.UnsortedTheme() != "unsorted" || (Convention{Unsorted: "a-classer"}).UnsortedTheme() != "a-classer" || c.EmergeAt() != DefaultEmerge || (Convention{Emerge: 3}).EmergeAt() != 3 {
+		t.Fatalf("unsorted and emerge: %q %d", c.UnsortedTheme(), c.EmergeAt())
+	}
+	if r.Brains["org/reference"].Convention != nil {
+		t.Fatal("a brain without a convention has none")
+	}
+	for _, tc := range []struct{ conv, want string }{
+		{"    convention:\n      natures: [rule]\n", "convention needs themes"},
+		{"    convention:\n      themes: [tests]\n", "convention needs natures"},
+		{"    convention:\n      themes: [Tests]\n      natures: [rule]\n", `theme "Tests"`},
+		{"    convention:\n      themes: [tests]\n      natures: [a rule]\n", `nature "a rule"`},
+		{"    convention:\n      themes: [tests, tests]\n      natures: [rule]\n", `theme "tests" twice`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule, rule]\n", `nature "rule" twice`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      dated: [pitfall]\n", `dated nature "pitfall" is not a nature`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      near: 1.2\n", "near must be between 0 and 1"},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      near: -0.1\n", "near must be between 0 and 1"},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      unsorted: A classer\n", `unsorted "A classer"`},
+		{"    convention:\n      themes: [tests, misc]\n      natures: [rule]\n      unsorted: misc\n", `unsorted "misc" is a theme`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      emerge: -1\n", "emerge must not be negative"},
+		{"    convention:\n      themes: [tests, \"2026\"]\n      natures: [rule]\n", `theme "2026"`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule, nan]\n", `nature "nan"`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule, theme]\n", `nature "theme" would read as a theme document`},
+		{"    convention:\n      themes: [tests]\n      natures: [rule]\n      unsorted: inf\n", `unsorted "inf"`},
+	} {
+		_, err := Parse([]byte(strings.Replace(sample, "    collection: team-acme\n", "    collection: team-acme\n"+tc.conv, 1)))
+		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "team/acme") {
+			t.Errorf("%q: %v", tc.conv, err)
+		}
+	}
+}

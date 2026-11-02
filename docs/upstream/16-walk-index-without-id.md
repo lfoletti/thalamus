@@ -1,4 +1,4 @@
-# 14. Les index de marche sans la colonne `id`
+# 16. Les index de marche sans la colonne `id`
 
 **Statut** : fiche écrite le 30 octobre 2026, rien d'envoyé. **Taille estimée** : 20 lignes hors tests (`pkg/graph/graph.go`, `pkg/graph/graph_ppr.go`, `pkg/cortexdb/graph_runtime_sql.go`), un test de plan de requête et un test d'ordre stable. **Dépend de** : rien.
 
@@ -53,7 +53,7 @@ Le gain suit le nombre d'arêtes : environ 100 Mo sur ai-engineering (estimation
 
 ## PostgreSQL
 
-Le même schéma sert les deux bases : `createGraphSchema` (`pkg/graph/graph.go`) ne change que le type des colonnes binaires selon le dialecte. PostgreSQL n'a pas de `rowid`, et son `ctid` change à chaque mise à jour d'une ligne. La PR doit donc garder `id` dans les index et dans les requêtes sous PostgreSQL, et ne le retirer que sous SQLite : un index et deux requêtes par dialecte. Cela double les cas à tester ; c'est une raison de plus pour envoyer cette fiche après les fiches 12 et 15 A.
+Le même schéma sert les deux bases : `createGraphSchema` (`pkg/graph/graph.go`) ne change que le type des colonnes binaires selon le dialecte. PostgreSQL n'a pas de `rowid`, et son `ctid` change à chaque mise à jour d'une ligne. La PR doit donc garder `id` dans les index et dans les requêtes sous PostgreSQL, et ne le retirer que sous SQLite : un index et deux requêtes par dialecte. Cela double les cas à tester ; c'est une raison de plus pour envoyer cette fiche après les fiches 14 et 17 A, fusionnées dans v2.142.0.
 
 ## Preuves à apporter
 
