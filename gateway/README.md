@@ -36,7 +36,7 @@ La couche mince de Thalamus au-dessus d'un ou plusieurs serveurs CortexDB. Tranc
   - une proposition proche d'un thème existant ;
   - les thèmes qui portent plus du tiers des documents rangés ;
   - les thèmes qu'aucun document ne porte ;
-  - à part, les documents sous un thème que le cerveau ne connaît plus (`undeclared`) et ceux sans thème (`without_theme`), comptés dans le total (les documents `theme:` ne le sont pas).
+  - à part, les documents sous un thème que le cerveau ne connaît plus (`undeclared`) et ceux sans thème (`without_theme`), comptés dans le total (les documents `theme:` ne le sont pas). Chaque thème non déclaré nomme ses documents (`ids`), et `without_theme_ids` nomme ceux sans thème : les 50 premiers par ordre d'id, le compte restant entier. L'audit nomme ces ids comme pour toute lecture.
 
   `th_retheme {brain, proposed, theme}`, pour un curateur, réécrit sous un thème connu les documents en attente qui le proposaient. Chaque document garde son auteur, son titre et sa source, et perd `theme_proposed`. Accepter un candidat, c'est le déclarer puis y ranger ses documents ; le refuser, c'est les ranger ailleurs.
 
