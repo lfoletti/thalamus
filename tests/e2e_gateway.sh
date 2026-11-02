@@ -235,6 +235,12 @@ rec=$(mcp "$LF" "" th_recall '{"query":"quand est le ledger rollback ?","top_k":
 if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall carries team/acme's attribution in the question's language"; else ko "th_recall attribution" "$rec"; fi
 rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"fr"}')
 if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall carries the attribution in the language lang names"; else ko "th_recall lang" "$rec"; fi
+# A locale names its language; a lang the gateway does not serve is read
+# from the query, and the recall still answers.
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"fr_CH.UTF-8"}')
+if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall reads the language of a locale in lang"; else ko "th_recall lang locale" "$rec"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"ja"}')
+if printf '%s' "$rec" | grep -q 'Information provided by Example.' && ! printf '%s' "$rec" | grep -q isError; then ok "th_recall answers an unserved lang, in the query's language"; else ko "th_recall lang unserved" "$rec"; fi
 check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMR" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
 
 # The pyramid of team/acme: a synthesis in its own collection, citing spec-1.
