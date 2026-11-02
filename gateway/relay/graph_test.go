@@ -30,7 +30,7 @@ func TestTheGraphToolsAreListedWithTheEnginesArguments(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	sort.Strings(names)
-	want := []string{"th_add", "th_brains", "th_descend", "th_entity", "th_expand_graph", "th_find_nodes", "th_get", "th_get_nodes", "th_pending", "th_recall", "th_review", "th_search_chunks_by_entities", "th_search_paths"}
+	want := []string{"th_add", "th_brains", "th_descend", "th_entity", "th_expand_graph", "th_find_nodes", "th_get", "th_get_nodes", "th_pending", "th_recall", "th_retheme", "th_review", "th_search_chunks_by_entities", "th_search_paths", "th_themes"}
 	if !slices.Equal(names, want) {
 		t.Fatalf("tools: %v", names)
 	}

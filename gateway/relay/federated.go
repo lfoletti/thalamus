@@ -255,6 +255,7 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			return jsonResult(res), nil
 		})
 	s.addWriteTools(srv, user)
+	s.addThemeTools(srv, user)
 	s.addPyramidTools(srv, user)
 	s.addEntityTools(srv, user)
 	s.addGraphTools(srv, user)

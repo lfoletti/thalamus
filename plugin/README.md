@@ -2,7 +2,7 @@
 
 Le client des cerveaux partagés derrière `th-gateway`. Il apporte :
 
-- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending` et `th_review`, sous la clé de l'employé ;
+- le serveur MCP du gateway (`.mcp.json`, transport HTTP) : outils `th_brains`, `th_recall`, `th_get`, `th_add`, `th_pending`, `th_review`, `th_themes` et `th_retheme`, sous la clé de l'employé ;
 - une commande `/th-add [cerveau] <fichier ou texte>` qui propose un document à la relecture des curateurs, par défaut dans le cerveau d'écriture que le `CLAUDE.md` du projet nomme ;
 - une commande `/th-recall [brains | on <cerveau> | off <cerveau> | only <cerveau>… | only --clear]` qui choisit les cerveaux du rappel automatique ; sans argument, elle montre une liste à cocher ;
 - une commande `/brains` qui ouvre un dialogue des cerveaux, mis en page comme `/mcp` (`hooks/panel.tsx`, un module de hooks de Claude Code) : il prend le clavier, Échap le ferme, sa hauteur suit la liste ; une ligne par cerveau, le curseur `❯` sur la ligne qui a le focus, ✔ en vert s'il répond, ✘ en rouge sinon avec la raison, `on` ou `off`, et l'accès ; Entrée change `on` ou `off` ;

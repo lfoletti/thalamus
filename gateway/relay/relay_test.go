@@ -53,6 +53,12 @@ type brain struct {
 	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
 	replies           map[string]string         // what a tool answers, by tool name, as the engine's JSON
 	cut               atomic.Bool               // a slow call saw its caller go away
+	// rows are the stored records aggregate_metadata groups, one map of
+	// metadata each, when set; a row without _review_status is accepted,
+	// and only accepted rows count unless a filter names another status.
+	rows []map[string]string
+	// failGroup makes aggregate_metadata fail when it groups by this key.
+	failGroup string
 }
 
 // fakeGraph is one key's part of the graph around one entity.
@@ -180,6 +186,56 @@ func (b *brain) CallTool(ctx context.Context, req *rpcv1.CallToolRequest) (*rpcv
 			reply = map[string]any{"nodes": nodes}
 		}
 		out, _ := json.Marshal(reply)
+		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
+	}
+	if req.GetName() == "aggregate_metadata" && b.rows != nil {
+		var agg struct {
+			GroupBy []string          `json:"group_by"`
+			Filters map[string]string `json:"filters"`
+		}
+		_ = json.Unmarshal([]byte(req.GetArgsJson()), &agg)
+		if b.failGroup != "" && len(agg.GroupBy) > 0 && agg.GroupBy[0] == b.failGroup {
+			return nil, errors.New("brain says no to the groups of " + b.failGroup)
+		}
+		counts, keys := map[string]int{}, map[string]map[string]any{}
+		var order []string
+		for _, r := range b.rows {
+			st := r["_review_status"]
+			if st == "" {
+				st = "accepted"
+			}
+			if want, ok := agg.Filters["_review_status"]; (ok && st != want) || (!ok && st != "accepted") {
+				continue
+			}
+			match := true
+			for k, v := range agg.Filters {
+				if k != "_review_status" && r[k] != v {
+					match = false
+				}
+			}
+			if !match {
+				continue
+			}
+			ks, sig := map[string]any{}, ""
+			for _, g := range agg.GroupBy {
+				if v, ok := r[g]; ok {
+					ks[g] = v
+				} else {
+					ks[g] = nil
+				}
+				sig += "|" + r[g]
+			}
+			if _, seen := counts[sig]; !seen {
+				order = append(order, sig)
+				keys[sig] = ks
+			}
+			counts[sig]++
+		}
+		groups := []map[string]any{}
+		for _, sig := range order {
+			groups = append(groups, map[string]any{"keys": keys[sig], "count": counts[sig]})
+		}
+		out, _ := json.Marshal(map[string]any{"results": groups, "total": len(groups)})
 		return &rpcv1.CallToolResponse{ResultJson: string(out)}, nil
 	}
 	if req.GetName() == "aggregate_metadata" {

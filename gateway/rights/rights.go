@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -81,6 +83,104 @@ type Brain struct {
 	// publisher sets it when the sources are not its to hand out whole. 0
 	// serves them whole.
 	ExcerptWords int `yaml:"excerpt_words"`
+	// Convention is what every document written to the brain declares: its
+	// theme and nature from closed lists, the day of the dated natures, and
+	// the likeness from which a new document is a near copy. nil takes any
+	// document.
+	Convention *Convention `yaml:"convention"`
+}
+
+// Convention is a brain's rule for the documents written to it.
+type Convention struct {
+	Themes  []string `yaml:"themes"`
+	Natures []string `yaml:"natures"`
+	// Dated are the natures that must carry their day in metadata date.
+	Dated []string `yaml:"dated"`
+	// Near is the word likeness, above 0 and at most 1, from which a new
+	// document is refused as a near copy of one the brain has; 0 means
+	// DefaultNear.
+	Near float64 `yaml:"near"`
+	// Unsorted is the theme of a document whose theme the brain does not
+	// know yet; "" means DefaultUnsorted. It is never one of Themes.
+	Unsorted string `yaml:"unsorted"`
+	// Emerge is how many documents must propose a theme before th_themes
+	// names it a candidate; 0 means DefaultEmerge.
+	Emerge int `yaml:"emerge"`
+}
+
+// DefaultUnsorted is the unsorted theme when a convention names none.
+const DefaultUnsorted = "unsorted"
+
+// DefaultEmerge is the count of a candidate theme when a convention names none.
+const DefaultEmerge = 5
+
+// UnsortedTheme is the theme of a document the brain cannot file yet.
+func (c Convention) UnsortedTheme() string {
+	if c.Unsorted == "" {
+		return DefaultUnsorted
+	}
+	return c.Unsorted
+}
+
+// EmergeAt is how many documents make a proposed theme a candidate.
+func (c Convention) EmergeAt() int {
+	if c.Emerge == 0 {
+		return DefaultEmerge
+	}
+	return c.Emerge
+}
+
+// DefaultNear is the likeness of a near copy when a convention names none.
+const DefaultNear = 0.8
+
+// NearBound is the likeness from which a document is a near copy.
+func (c Convention) NearBound() float64 {
+	if c.Near == 0 {
+		return DefaultNear
+	}
+	return c.Near
+}
+
+// key is a lower case word, or words joined by hyphens.
+var key = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+func (c Convention) check() error {
+	if len(c.Themes) == 0 {
+		return errors.New("the convention needs themes")
+	}
+	if len(c.Natures) == 0 {
+		return errors.New("the convention needs natures")
+	}
+	for kind, list := range map[string][]string{"theme": c.Themes, "nature": c.Natures} {
+		seen := map[string]bool{}
+		for _, v := range list {
+			if !key.MatchString(v) {
+				return fmt.Errorf("%s %q must be lower case words joined by hyphens", kind, v)
+			}
+			if seen[v] {
+				return fmt.Errorf("%s %q twice", kind, v)
+			}
+			seen[v] = true
+		}
+	}
+	for _, d := range c.Dated {
+		if !slices.Contains(c.Natures, d) {
+			return fmt.Errorf("dated nature %q is not a nature", d)
+		}
+	}
+	if c.Near < 0 || c.Near > 1 {
+		return errors.New("near must be between 0 and 1")
+	}
+	if c.Unsorted != "" && !key.MatchString(c.Unsorted) {
+		return fmt.Errorf("unsorted %q must be lower case words joined by hyphens", c.Unsorted)
+	}
+	if slices.Contains(c.Themes, c.UnsortedTheme()) {
+		return fmt.Errorf("unsorted %q is a theme", c.UnsortedTheme())
+	}
+	if c.Emerge < 0 {
+		return errors.New("emerge must not be negative")
+	}
+	return nil
 }
 
 // Pyramid names the collection of a brain's syntheses and the metadata key
@@ -214,6 +314,11 @@ func Parse(data []byte) (*Rights, error) {
 		}
 		if b.ExcerptWords < 0 {
 			return nil, fmt.Errorf("parse rights file: brain %q: excerpt_words must not be negative", name)
+		}
+		if c := b.Convention; c != nil {
+			if err := c.check(); err != nil {
+				return nil, fmt.Errorf("parse rights file: brain %q: %w", name, err)
+			}
 		}
 		if p := b.Pyramid; p != nil && p.Collection == b.Collection {
 			return nil, fmt.Errorf("parse rights file: brain %q: the pyramid's collection must differ from the brain's", name)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/lfoletti/thalamus/gateway/convention"
 	"github.com/lfoletti/thalamus/gateway/rights"
 )
 
@@ -51,7 +53,7 @@ type reviewArgs struct {
 }
 
 func (s *Server) addWriteTools(srv *mcp.Server, user string) {
-	srv.AddTool(&mcp.Tool{Name: "th_add", Description: "Proposes a document into a brain the caller may write. It waits for a curator's review; a curator's own document is accepted at once. Returns the engine's ingest report.",
+	srv.AddTool(&mcp.Tool{Name: "th_add", Description: "Proposes a document into a brain the caller may write. It waits for a curator's review; a curator's own document is accepted at once. In a brain with a convention, metadata theme and nature come from the brain's lists, a new document_id is <nature>:<theme>:<subject>, and a near copy of a document the brain has is refused, naming it. Returns the engine's ingest report.",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 			"brain":       map[string]any{"type": "string"},
 			"document_id": map[string]any{"type": "string", "description": "stable id; derived from the time when absent"},
@@ -148,6 +150,18 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 		return errResult(err)
 	}
 	access, _ := s.rights().Access(user, args.Brain)
+	note := ""
+	if c := b.Convention; c != nil {
+		md, err := s.followsConvention(ctx, b, user, *c, args)
+		if err != nil {
+			s.note(Entry{User: user, Brain: args.Brain, Tool: "th_add", IDs: map[string]any{"document_id": args.DocumentID}, Error: err.Error()})
+			return errResult(fmt.Errorf("th_add: %w", err))
+		}
+		if md["theme_proposed"] != "" && args.Metadata["theme"] != md["theme"] {
+			note = fmt.Sprintf("theme %q is not declared: filed under %s, theme_proposed %s", args.Metadata["theme"], md["theme"], md["theme_proposed"])
+		}
+		args.Metadata = md
+	}
 	if args.DocumentID == "" {
 		args.DocumentID = user + "-" + time.Now().UTC().Format("20060102T150405.000000000Z")
 	} else if access != rights.Curate {
@@ -174,8 +188,83 @@ func (s *Server) add(ctx context.Context, user string, args addArgs) *mcp.CallTo
 	if args.SourceURL != "" {
 		req["source_url"] = args.SourceURL
 	}
-	return s.audited(ctx, b, user, args.Brain, "th_add", "ingest_document", req, map[string]any{"document_id": args.DocumentID})
+	res := s.audited(ctx, b, user, args.Brain, "th_add", "ingest_document", req, map[string]any{"document_id": args.DocumentID})
+	if note != "" && !res.IsError {
+		res.Content = append(res.Content, &mcp.TextContent{Text: note})
+	}
+	return res
 }
+
+// followsConvention applies the brain's convention to a document before it
+// is written: its metadata and id (convention.Check), then the near copies.
+// The brain is searched by words for the document's text, each candidate is
+// read whole, and one whose likeness reaches the brain's bound refuses the
+// write, unless it is the document itself or the caller names it in
+// replaces or distinct_from. A search that fails refuses the write too: the
+// gate does not open because the brain could not be read.
+func (s *Server) followsConvention(ctx context.Context, b rights.Brain, user string, c rights.Convention, args addArgs) (map[string]string, error) {
+	exists := false
+	if args.DocumentID != "" {
+		_, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_get", map[string]any{"knowledge_id": args.DocumentID, "collection": nil})
+		switch {
+		case err == nil:
+			exists = true
+		case status.Code(err) != codes.NotFound:
+			return nil, err
+		}
+	}
+	var declared []string
+	theme := args.Metadata["theme"]
+	newTheme := strings.HasPrefix(args.DocumentID, convention.ThemePrefix) && !exists
+	if newTheme || (!strings.HasPrefix(args.DocumentID, convention.ThemePrefix) && theme != c.UnsortedTheme() && !slices.Contains(c.Themes, theme)) {
+		var err error
+		if declared, err = s.declaredThemes(ctx, b, user, args.Brain); err != nil {
+			return nil, fmt.Errorf("cannot read the brain's themes: %w", err)
+		}
+	}
+	md, err := convention.Check(c, args.DocumentID, args.Metadata, exists, declared)
+	if err != nil {
+		return nil, err
+	}
+	query := strings.Join(strings.Fields(args.Content)[:min(len(strings.Fields(args.Content)), nearQueryWords)], " ")
+	result, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_search", map[string]any{"query": query, "top_k": nearCandidates, "retrieval_mode": "lexical"})
+	if err != nil {
+		return nil, fmt.Errorf("cannot look for near copies: %w", err)
+	}
+	var found struct {
+		Results []hit `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(result), &found); err != nil {
+		return nil, fmt.Errorf("cannot look for near copies: decode knowledge_search: %w", err)
+	}
+	for _, h := range found.Results {
+		id := h.KnowledgeID
+		if id == args.DocumentID || id == md["replaces"] || id == md["distinct_from"] {
+			continue
+		}
+		got, err := s.callBrain(ctx, b, user, args.Brain, "knowledge_get", map[string]any{"knowledge_id": id, "collection": nil})
+		if err != nil {
+			return nil, fmt.Errorf("cannot look for near copies: %w", err)
+		}
+		var doc struct {
+			Knowledge struct {
+				Content string `json:"content"`
+			} `json:"knowledge"`
+		}
+		_ = json.Unmarshal([]byte(got), &doc)
+		if l := convention.Likeness(args.Content, doc.Knowledge.Content); l >= c.NearBound() {
+			return nil, fmt.Errorf("near copy of %s (likeness %.2f): rewrite %s under its id, or name it in metadata replaces or distinct_from", id, l, id)
+		}
+	}
+	return md, nil
+}
+
+// The near-copy search asks the brain, by its words, for the first
+// nearQueryWords of the document, and reads the nearCandidates first hits.
+const (
+	nearQueryWords = 40
+	nearCandidates = 5
+)
 
 // owns checks that a writer who names a document_id does not take over
 // another author's document: th_add replaces the document of that id, and the

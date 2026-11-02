@@ -66,7 +66,7 @@ func TestGcBrainsListsTheCallersBrains(t *testing.T) {
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
 	s := b.federated(t, k.Secret)
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 13 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_descend" || tools.Tools[3].Name != "th_entity" || tools.Tools[12].Name != "th_search_paths" {
+	if err != nil || len(tools.Tools) != 15 || tools.Tools[0].Name != "th_add" || tools.Tools[1].Name != "th_brains" || tools.Tools[2].Name != "th_descend" || tools.Tools[3].Name != "th_entity" || tools.Tools[10].Name != "th_retheme" || tools.Tools[13].Name != "th_search_paths" || tools.Tools[14].Name != "th_themes" {
 		t.Fatalf("tools: %+v %v", tools, err)
 	}
 	res, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "th_brains"})
