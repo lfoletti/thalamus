@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -195,7 +196,11 @@ func (s *Server) addTool(srv *mcp.Server, client rpcv1.ToolsServiceClient, def *
 		s.warm(who.Brain)
 		entry.OK = true
 		s.note(entry)
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}, nil
+		res := &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: resp.GetResultJson()}}}
+		if slices.Contains(pureWrites, def.GetName()) {
+			return res, nil
+		}
+		return attributed(res, s.noticesFor([]string{who.Brain}, "")), nil
 	})
 }
 

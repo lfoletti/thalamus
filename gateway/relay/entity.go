@@ -80,6 +80,9 @@ type entityResult struct {
 	KnownIn   []string   `json:"known_in"`
 	Neighbors []neighbor `json:"neighbors"`
 	Skipped   []skipped  `json:"skipped,omitempty"`
+	// Attribution is the notice of each brain that knows the entity or
+	// serves one of its neighbors.
+	Attribution []notice `json:"attribution,omitempty"`
 }
 
 // entityNeighbors is one brain's neighbors: the entities of the walks, in
@@ -240,12 +243,16 @@ func (s *Server) entity(ctx context.Context, user string, args entityArgs) (enti
 	sort.Slice(out.Skipped, func(i, j int) bool { return out.Skipped[i].Brain < out.Skipped[j].Brain })
 	sort.Strings(brains)
 	out.KnownIn, out.Neighbors = fuseNeighbors(graphs)
+	served := slices.Clone(out.KnownIn)
 	for _, n := range out.Neighbors {
 		for _, b := range n.Brains {
 			read = append(read, b+":"+n.ID)
 		}
+		served = append(served, n.Brains...)
 	}
 	sort.Strings(read)
+	slices.Sort(served)
+	out.Attribution = s.noticesFor(slices.Compact(served), "")
 	s.note(Entry{User: user, Tool: "th_entity", OK: true, IDs: map[string]any{"entity": args.Entity, "brains": brains, "knowledge_ids": read, "denied": refusals}})
 	return out, nil
 }

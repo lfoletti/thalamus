@@ -102,7 +102,7 @@ func (s *Server) graph(ctx context.Context, user, tool, engineTool string, args 
 	}
 	entry.OK = true
 	s.note(entry)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}
+	return attributed(&mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: result}}}, s.noticesFor([]string{name}, ""))
 }
 
 // excerpted drops the vectors of an engine answer and, with n > 0, cuts

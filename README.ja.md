@@ -169,6 +169,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
        collection: handbook
        readers: [group:acme]
        writers: [user:carol]
+       attribution: {en: Information provided by Example., fr: Information fournie par Example.}
    groups:
      acme: [alice, bob, carol]
    ```

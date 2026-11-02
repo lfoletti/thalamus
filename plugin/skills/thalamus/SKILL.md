@@ -21,5 +21,6 @@ The hook on each prompt already injects the best chunks of the documents (4 synt
 Rules:
 
 1. Quote the provenance line when you use an extract. The reader must know which brain and which document it comes from.
+   When the answer carries an `attribution` (a notice that a brain's publisher asks to show, such as "Information provided by Example."), end your answer with that notice, once per text, in the language it comes in. The hook's context ends with it too. Give `th_recall` the user's language in `lang` (en, fr, de, es, it, pt, nl) when you search in another language than the user's.
 2. Write through `th_add` only, and tell the user that the document waits for review. Never set `review_status` yourself: the gateway does.
 3. A brain in `skipped` with "no key issued" means you have the right but no key yet: ask an administrator for `th-gateway key issue`.

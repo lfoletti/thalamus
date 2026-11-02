@@ -12,7 +12,7 @@ S=$(mktemp -d)
 # The bench owns its environment: no setting of this machine's Thalamus
 # (TH_*, ~/.thalamus) reaches the hook or the gateway. HOME changes after
 # the builds, which use the Go caches under the real HOME.
-unset TH_GATEWAY TH_KEY TH_ENV TH_RECALL_FILE TH_RECALL_TIMEOUT TH_RECALL_TOPK TH_LOCAL_RECALL TH_LOCAL_BRAINS TH_HOOK_BIN
+unset TH_GATEWAY TH_KEY TH_ENV TH_LANG TH_RECALL_FILE TH_RECALL_TIMEOUT TH_RECALL_TOPK TH_LOCAL_RECALL TH_LOCAL_BRAINS TH_HOOK_BIN
 HOME=$S; export HOME
 GRPC=$S/cortexdb-grpc
 GW=$S/th-gateway
@@ -32,6 +32,7 @@ brains:
     keys_file: $S/data/keys.json
     collection: team-acme
     pyramid: {collection: acme-pyramid, sources: preuves}
+    attribution: {en: Information provided by Example., fr: Information fournie par Example.}
     readers: [group:acme]
     writers: [user:lfoletti]
   team/review:
@@ -227,6 +228,19 @@ check "mdupont: revoked key (401 at the gateway)" denied "$(mcp "$MD" team/acme 
 # th_get reads a document whole, under the caller's right on the brain.
 get=$(mcp "$LF" "" th_get '{"brain":"team/acme","knowledge_id":"spec-1"}')
 if printf '%s' "$get" | grep -q '"id\\":\\"spec-1' && ! printf '%s' "$get" | grep -q isError; then ok "th_get reads spec-1 whole"; else ko "th_get" "$get"; fi
+# A brain's attribution ends what is served from it: th_get in the fallback
+# language, th_recall in the language of the question.
+if printf '%s' "$get" | grep -q '"attribution\\":\[{\\"brain\\":\\"team/acme\\",\\"text\\":\\"Information provided by Example.\\"}\]'; then ok "th_get carries team/acme's attribution"; else ko "th_get attribution" "$get"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"quand est le ledger rollback ?","top_k":3,"brains":["team/acme"]}')
+if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall carries team/acme's attribution in the question's language"; else ko "th_recall attribution" "$rec"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"fr"}')
+if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall carries the attribution in the language lang names"; else ko "th_recall lang" "$rec"; fi
+# A locale names its language; a lang the gateway does not serve is read
+# from the query, and the recall still answers.
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"fr_CH.UTF-8"}')
+if printf '%s' "$rec" | grep -q 'Information fournie par Example.'; then ok "th_recall reads the language of a locale in lang"; else ko "th_recall lang locale" "$rec"; fi
+rec=$(mcp "$LF" "" th_recall '{"query":"ledger rollback","top_k":3,"brains":["team/acme"],"lang":"ja"}')
+if printf '%s' "$rec" | grep -q 'Information provided by Example.' && ! printf '%s' "$rec" | grep -q isError; then ok "th_recall answers an unserved lang, in the query's language"; else ko "th_recall lang unserved" "$rec"; fi
 check "kmlead: th_get on an unknown brain (refused)" denied "$(mcp "$KMR" "" th_get '{"brain":"org/none","knowledge_id":"secret-doc"}')"
 
 # The pyramid of team/acme: a synthesis in its own collection, citing spec-1.

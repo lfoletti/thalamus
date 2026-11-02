@@ -408,3 +408,17 @@ func TestAKeyFollowsThePyramidOfItsBrain(t *testing.T) {
 		t.Fatalf("after sync: %d %q", code, out)
 	}
 }
+
+// rights check names the languages of each brain's attribution.
+func TestRightsCheckListsTheAttributions(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rights.yaml")
+	text := "brains:\n  team/acme:\n    addr: 127.0.0.1:1\n    keys_file: k.json\n    collection: team-acme\n    readers: [user:mdupont]\n    attribution: {fr: Par Acme., en: By Acme.}\n  team/other:\n    addr: 127.0.0.1:1\n    keys_file: k.json\n    collection: other\n    readers: [user:mdupont]\ngroups: {}\n"
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := call(t, "rights", "check", path)
+	if code != 0 || !strings.Contains(out, "team/acme  127.0.0.1:1  collection=team-acme  readers=1  writers=0  attribution=en,fr\n") || !strings.Contains(out, "team/other  127.0.0.1:1  collection=other  readers=1  writers=0\n") {
+		t.Fatalf("check: %d %q", code, out)
+	}
+}

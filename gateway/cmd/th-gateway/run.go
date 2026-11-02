@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"slices"
@@ -90,7 +91,12 @@ func rightsCheck(r *rights.Rights, out io.Writer) error {
 	fmt.Fprintf(out, "%d brain(s), %d group(s)\n", len(r.Brains), len(r.Groups))
 	for _, name := range sortedBrains(r) {
 		b := r.Brains[name]
-		fmt.Fprintf(out, "  %s  %s  collection=%s  readers=%d  writers=%d\n", name, b.Addr, b.Collection, len(b.Readers), len(b.Writers))
+		line := fmt.Sprintf("  %s  %s  collection=%s  readers=%d  writers=%d", name, b.Addr, b.Collection, len(b.Readers), len(b.Writers))
+		if len(b.Attribution) > 0 {
+			langs := slices.Sorted(maps.Keys(b.Attribution))
+			line += "  attribution=" + strings.Join(langs, ",")
+		}
+		fmt.Fprintln(out, line)
 	}
 	return nil
 }

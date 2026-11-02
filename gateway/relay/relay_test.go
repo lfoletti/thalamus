@@ -54,6 +54,7 @@ type brain struct {
 	slow              map[string]time.Duration  // how long knowledge_search waits, by collection
 	slowQuery         map[string]time.Duration  // how long knowledge_search waits, by query
 	replies           map[string]string         // what a tool answers, by tool name, as the engine's JSON
+	tools             []string                  // the tools ListTools offers, when set, in place of knowledge_get and ingest_document
 	cut               atomic.Bool               // a slow call saw its caller go away
 	// rows are the stored records aggregate_metadata groups, one map of
 	// metadata each, when set; a row without _review_status is accepted,
@@ -112,6 +113,13 @@ func (b *brain) ListTools(ctx context.Context, _ *rpcv1.ListToolsRequest) (*rpcv
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.seen(ctx)
+	if b.tools != nil {
+		var defs []*rpcv1.ToolDefinition
+		for _, name := range b.tools {
+			defs = append(defs, &rpcv1.ToolDefinition{Name: name, InputSchemaJson: `{"type":"object"}`})
+		}
+		return &rpcv1.ListToolsResponse{Tools: defs}, nil
+	}
 	return &rpcv1.ListToolsResponse{Tools: []*rpcv1.ToolDefinition{
 		{Name: "knowledge_get", Description: "reads a document", InputSchemaJson: `{"type":"object","properties":{"knowledge_id":{"type":"string"}}}`},
 		{Name: "ingest_document", Description: "writes a document", InputSchemaJson: `{"type":"object"}`},

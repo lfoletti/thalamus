@@ -125,6 +125,12 @@ type recallArgs struct {
 	// Syntheses is how many syntheses of the pyramids to serve first; nil
 	// means defaultSyntheses, 0 none.
 	Syntheses *int `json:"syntheses,omitempty"`
+	// Lang is the language of the notices, a code or a locale that names
+	// one of rights.Languages (rights.LanguageOf); anything else, or
+	// nothing, reads it from the query. It is any JSON value, as on a
+	// gateway without notices, which ignores it: a lang it cannot use
+	// never fails a recall.
+	Lang any `json:"lang,omitempty"`
 	// DeadlineMS is how long th_recall waits for the brains, in
 	// milliseconds; 0 means it waits for each one.
 	DeadlineMS int `json:"deadline_ms,omitempty"`
@@ -207,6 +213,9 @@ type skipped struct {
 type recallResult struct {
 	Results []fused   `json:"results"`
 	Skipped []skipped `json:"skipped,omitempty"`
+	// Attribution is the notice of each brain that contributed a result,
+	// in the language of the question.
+	Attribution []notice `json:"attribution,omitempty"`
 }
 
 // hit is one answer of knowledge_search, as the engine returns it.
@@ -241,6 +250,8 @@ func (s *Server) federatedServer(user string) *mcp.Server {
 			"syntheses":   map[string]any{"type": "integer", "description": fmt.Sprintf("passages of the brains' pyramids of syntheses to serve first, default %d, 0 for none", defaultSyntheses)},
 			"alternate_queries": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": maxVariants,
 				"description": fmt.Sprintf("the question in other words or other languages of the documents, at most %d; each is searched apart and fused with the query", maxVariants)},
+			"lang": map[string]any{"type": "string",
+				"description": fmt.Sprintf("the language of the brains' attribution notices, one of %s; by default, or for another value, read from the query", strings.Join(rights.Languages, ", "))},
 			"deadline_ms": map[string]any{"type": "integer", "minimum": 0, "maximum": maxDeadlineMS,
 				"description": fmt.Sprintf("how long to wait for the brains, in milliseconds, at most %d; at the deadline the answers received are fused and each brain still asked is skipped; default 0, wait for each brain", maxDeadlineMS)},
 		}, "required": []string{"query"}}},
@@ -282,6 +293,11 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	deadline, err := recallDeadline(args.DeadlineMS)
 	if err != nil {
 		return recallResult{}, err
+	}
+	code, _ := args.Lang.(string)
+	lang := rights.LanguageOf(code)
+	if lang == "" {
+		lang = language(args.Query)
 	}
 	grants, err := s.grantsFor(user, args.Brains, args.Skip, "th_recall")
 	if err != nil {
@@ -397,7 +413,7 @@ func (s *Server) recall(ctx context.Context, user string, args recallArgs) (reca
 	entry := Entry{User: user, Tool: "th_recall", OK: true, IDs: map[string]any{"brains": brains, "knowledge_ids": read, "denied": refusals}}
 	s.note(entry)
 	results := append(fuse(slices.Concat(synths...), syntheses, "synthesis"), fuse(slices.Concat(lists...), args.TopK, "")...)
-	return recallResult{Results: results, Skipped: skips}, nil
+	return recallResult{Results: results, Skipped: skips, Attribution: s.noticesFor(contributors(results), lang)}, nil
 }
 
 // grantsFor chooses the brains a federated tool asks: every brain the
