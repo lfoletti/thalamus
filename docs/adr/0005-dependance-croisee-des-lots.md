@@ -26,5 +26,5 @@ La liste blanche de #72 (ADR 0001) est tenue au schéma des outils par un test d
 
 ## Références
 
-- `../thalamus_local/docs/pr/lot_C/README.md`, section « Dépendance croisée avec le lot B ».
+- Notes du lot C, section « Dépendance croisée avec le lot B » : archive locale, hors du dépôt.
 - Mémoire CortexDB `knowledge:granular-cortex:allowlist-cross-lot-dependency`.

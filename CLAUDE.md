@@ -31,16 +31,16 @@ Ce fichier est technique : règles permanentes, arborescence, commandes, accès 
 
 ## Règles de publication
 
-- **Aucun push, aucune pull request, aucune issue** vers l'amont, le fork ou ce dépôt sans demande explicite de Lauro. La soumission se fait par petits lots.
+- **Aucun push, aucune pull request, aucune issue** vers l'amont, le fork ou ce dépôt sans demande explicite du mainteneur. La soumission se fait par petits lots.
 - **Rien de privé dans un dépôt public.** Une faille signalée en privé à un tiers ne paraît dans aucun commit, corps de PR ou fichier suivi, avant que le propriétaire le permette. Avant un push de ce dépôt, relire les commits non poussés pour cette règle.
-- **Ce dépôt** : `main` est protégée (PR obligatoire, les 5 jobs CI verts, 1 approbation, pas de force push). Une PR de Lauro se fusionne avec `gh pr merge --admin` après une CI verte. Hooks : `git config core.hooksPath tools/hooks`, chemin **relatif**, jamais absolu (il se résout dans chaque copie de travail et survit à un déplacement du dossier) ; termes privés dans `.git/info/private-terms` (jamais suivi). Bonne pratique pour tout dépôt public : `practice:github:public-repo-basics` dans `coding`.
+- **Ce dépôt** : `main` est protégée (PR obligatoire, les 5 jobs CI verts, 1 approbation, pas de force push). Une PR du mainteneur se fusionne avec `gh pr merge --admin` après une CI verte. Hooks : `git config core.hooksPath tools/hooks`, chemin **relatif**, jamais absolu (il se résout dans chaque copie de travail et survit à un déplacement du dossier) ; termes privés dans `.git/info/private-terms` (jamais suivi). Bonne pratique pour tout dépôt public : `practice:github:public-repo-basics` dans `coding`.
 - **Une copie de travail par session.** La copie principale reste sur `main` et ne reçoit aucun commit : le hook `pre-commit` le refuse. Chaque session travaille dans son propre `git worktree`, sur sa propre branche créée depuis `origin/main` : `git worktree add -b <branche> ../thalamus_wt/<branche> origin/main`. Jamais dans la copie d'une autre session. Un commit n'entre dans `main` que par sa propre PR. Après la fusion : `git worktree remove ../thalamus_wt/<branche>`, puis `gh pr merge --delete-branch`.
 - Avant de lire `origin/main`, faire `git fetch`.
-- Tous les correctifs se développent **localement**, **un commit par correctif**. Une PR ne touche pas `CHANGELOG.md` : le propriétaire amont l'écrit seul à la release (`docs/plan_publication.md`, section 0 bis).
+- Tous les correctifs se développent **localement**, **un commit par correctif**. Une PR ne touche pas `CHANGELOG.md` : le propriétaire amont l'écrit seul à la release.
 - Le produit final se teste en entier avant toute soumission.
-- **Tests « failing first »** (exigence du propriétaire amont) : chaque test d'une PR échoue sans son code. Vérifier avec les fichiers de test posés sur l'arbre sans le correctif, ou par une mutation de chaque règle si les tests ne compilent pas sans elle. Preuve dans le corps de la PR, section « Failing first ». Méthode et exemple : `../thalamus_local/docs/pr/lot_B/failing_first.md`.
+- **Tests « failing first »** (exigence du propriétaire amont) : chaque test d'une PR échoue sans son code. Vérifier avec les fichiers de test posés sur l'arbre sans le correctif, ou par une mutation de chaque règle si les tests ne compilent pas sans elle. Preuve dans le corps de la PR, section « Failing first ». Méthode : `docs/pipeline_pr.md` ; exemple : `docs/gateway/failing_first.md`.
 - **PR en brouillon d'abord** : une PR s'ouvre en brouillon et passe à la relecture seulement après un rapport Codecov à zéro ligne non couverte sur sa tête (ou les seules lignes de `main` déclarées). Voir le pipeline.
-- Auteur des commits : `git -c user.name="Lauro Foletti" -c user.email="25608942+lfoletti@users.noreply.github.com" commit` (identité GitHub, jamais l'adresse personnelle, ni dans un commit ni dans une PR), message en style conventional-commit, **sans** ligne `Co-Authored-By` (tous les commits de ce dépôt et des PR amont).
+- Auteur des commits : l'identité GitHub du mainteneur, `git -c user.name="Lauro Foletti" -c user.email="25608942+lfoletti@users.noreply.github.com" commit` (jamais une adresse personnelle, ni dans un commit ni dans une PR), message en style conventional-commit, **sans** ligne `Co-Authored-By` (tous les commits de ce dépôt et des PR amont).
 - Dans les textes publics, ne jamais juger CortexDB ni écrire ce qui lui manque. Dire ce que Thalamus ajoute, et décrire une PR amont comme une fonction proposée.
 
 ## Pipeline avant toute PR (procédure complète : `docs/pipeline_pr.md`)
@@ -79,9 +79,8 @@ Dans `gateway/` : `go test -race ./...` et `python3 -I mutate.py`. Depuis la rac
 ## Documents
 
 - `docs/pipeline_pr.md` : pipeline interne avant toute PR. À lire avant d'ouvrir une PR.
-- `docs/plan_publication.md` : plan de publication vers l'amont.
 - `docs/upstream/` : fiches des PR amont potentielles. Rien n'est envoyé sans commande explicite.
-- Notes de travail d'un lot (plans, corps, preuves « failing first », scénarios, relectures adverses) : dans l'archive locale hors du dépôt, `../thalamus_local/docs/pr/<lot>/`, jamais publiée (règle de Lauro, 25 octobre 2026). `../thalamus_local/docs/pr/` garde les lots plus anciens, déjà suivis.
+- Notes de travail d'un lot (plans, corps, preuves « failing first », scénarios, relectures adverses) : dans l'archive locale hors du dépôt, `../thalamus_local/docs/pr/<lot>/`, jamais publiée. `../thalamus_local/docs/pr/` garde les lots plus anciens, déjà suivis.
 - `docs/revision_graphes_entreprise.md` : architecture (CortexDB comme moteur, couche mince Thalamus). Section 3.9 : granularité par collection et liens logiques entre cerveaux.
 
 ## Mémoire du projet : le cerveau partagé `coding`
@@ -90,11 +89,11 @@ Dans `gateway/` : `go test -race ./...` et `python3 -I mutate.py`. Depuis la rac
 - Accès par le plugin `thalamus` (marketplace locale `.claude-plugin/marketplace.json`, portée `local`). Le plugin `cortexdb` est désactivé dans ce projet, et le cerveau global `~/.cortexdb/cortexdb.db` n'est pas utilisé ici.
 - Réglages dans `.claude/settings.local.json` : `TH_GATEWAY`, `TH_RECALL_FILE` (`~/.thalamus/recall_thalamus`, `only=coding`), `TH_RECALL_TIMEOUT`. La clé `TH_KEY` est dans `~/.thalamus/env` (0600) : la session se lance avec `set -a; . ~/.thalamus/env; set +a; claude`, sinon le serveur MCP du plugin n'a pas de clé. Ne jamais afficher la clé.
 - Lecture : l'état courant par `th_get` sur `state:thalamus:current`. Pour une décision passée ou un contexte : `th_recall` avec `brains: ["coding"]`, puis `th_get` pour lire un document entier. Le hook `UserPromptSubmit` sert aussi des extraits, mais il peut manquer un fait : il cherche par les mots.
-- Écriture : `th_add` avec `brain: "coding"`, un identifiant stable (`document_id`, par exemple `decision:thalamus:<sujet>`), un titre et un contenu concis. Pour corriger un contenu, réécrire le même `document_id`. La clé de Lauro a le droit `curate` : ses ajouts sont acceptés tout de suite.
+- Écriture : `th_add` avec `brain: "coding"`, un identifiant stable (`document_id`, par exemple `decision:thalamus:<sujet>`), un titre et un contenu concis. Pour corriger un contenu, réécrire le même `document_id`. La clé du mainteneur a le droit `curate` : ses ajouts sont acceptés tout de suite.
 - `coding` n'a pas d'entités ni de relations : une clé confinée ne peut pas en créer. Mettre les liens entre notes dans le texte (identifiants, `[[nom]]`).
-- Lauro est le seul lecteur de `coding`, qui contient des contenus privés. Avant d'ouvrir `coding` à d'autres personnes, déplacer ces contenus dans un cerveau privé.
+- `coding` peut contenir des contenus privés. Avant d'ouvrir `coding` à d'autres lecteurs, déplacer ces contenus dans un cerveau privé.
 - Gateway arrêté : pas de rappel, et une écriture échoue. Le dire, et réécrire le contenu quand le gateway répond.
-- **Mise à jour automatique** (règle de Lauro, 24 octobre 2026) :
+- **Mise à jour automatique** :
   1. Avant de donner un état ou des étapes du projet, lire `state:thalamus:current`, puis `th_recall` si nécessaire.
   2. Quand une vérification (GitHub, branches, fichiers, bancs) montre un état différent de `coding`, mettre à jour `coding` dans la même réponse, sans attendre une demande : réécrire `state:thalamus:current`, et le document concerné s'il existe. Puis dire ce qui a changé.
-  3. Modifier ce fichier seulement quand une règle, une commande ou l'arborescence change. Le commit attend la commande de Lauro.
+  3. Modifier ce fichier seulement quand une règle, une commande ou l'arborescence change. Le commit attend la commande du mainteneur.

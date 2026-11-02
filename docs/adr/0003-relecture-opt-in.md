@@ -21,7 +21,7 @@ Sur un cerveau partagé, un fait extrait par un modèle ne doit pas être servi 
 
 - Masquage par défaut : change le comportement de tout cerveau existant. Refusé par le propriétaire.
 - Appel d'acceptation dédié : un outil de plus dans la liste blanche. La fusion sur décision couvre le besoin sans nouvel outil.
-- Report des seules clés système à l'acceptation (version du 20 octobre au matin) : perd les clés du client. Remplacé par la fusion le soir même, sur demande de Lauro.
+- Report des seules clés système à l'acceptation (version du 20 octobre au matin) : perd les clés du client. Remplacé par la fusion le soir même, sur demande du mainteneur.
 
 ## Conséquences
 
@@ -31,4 +31,4 @@ Sur un cerveau partagé, un fait extrait par un modèle ne doit pas être servi 
 ## Références
 
 - PR amont #77 (`gc-06-review-status`), discussion #66 (réponse du 18 octobre 2026 sur l'opt-in).
-- `../thalamus_local/docs/pr/lot_C/GC-06.body.md`, `../thalamus_local/docs/pr/lot_C/failing_first.md`.
+- Notes du lot C (corps de GC-06, preuve « failing first ») : archive locale, hors du dépôt.

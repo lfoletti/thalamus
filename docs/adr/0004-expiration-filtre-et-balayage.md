@@ -16,7 +16,7 @@ Une règle de rétention (« cette source est gardée cinq ans ») devait s'appl
 
 ## Options écartées
 
-- Refuser le balayage en mode distant avec un message (version du 20 octobre au matin) : ferme la faute mais laisse le cerveau partagé sans balayage depuis un client. Remplacé le soir même, sur demande de Lauro.
+- Refuser le balayage en mode distant avec un message (version du 20 octobre au matin) : ferme la faute mais laisse le cerveau partagé sans balayage depuis un client. Remplacé le soir même, sur demande du mainteneur.
 - Un RPC `SweepExpired` dans `AdminService` : demande la chaîne protobuf (absente de la machine) et un client par langage. L'outil existant `CallTool` suffit.
 - Un filtre bloquant sur panne pour l'expiration : le propriétaire accepte l'ouverture pour l'expiration seule ; la fermeture vaut pour la porte de relecture (ADR 0003).
 
@@ -27,4 +27,4 @@ Une règle de rétention (« cette source est gardée cinq ans ») devait s'appl
 
 ## Références
 
-- PR amont #76 (`gc-05-expires-at`), `../thalamus_local/docs/pr/lot_C/GC-05.body.md`, `../thalamus_local/docs/pr/lot_C/failing_first.md`.
+- PR amont #76 (`gc-05-expires-at`) ; notes du lot C (corps de GC-05, preuve « failing first ») : archive locale, hors du dépôt.

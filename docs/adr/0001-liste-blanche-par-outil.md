@@ -28,4 +28,4 @@ Une liste blanche explicite, une ligne par outil, fermée par défaut (`pkg/auth
 ## Références
 
 - PR amont #72 (`gc-04a-authz-tool-rules`), discussion #66.
-- `../thalamus_local/docs/pr/lot_B/GC-04a.body.md`, `../thalamus_local/docs/pr/lot_B/failing_first.md`.
+- Notes du lot B (corps de GC-04a, preuve « failing first ») : archive locale, hors du dépôt.
