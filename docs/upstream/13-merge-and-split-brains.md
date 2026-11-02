@@ -19,7 +19,10 @@ Les garanties que les tests ont vérifiées, et que tout outil de fusion ou de s
 - **ses extractions suivent le document** ; une extraction dont le document n'existe plus est comptée comme orpheline, pas perdue en silence ;
 - **une source dans un seul cerveau** après la fusion ;
 - **idempotence** : appliquer deux fois revient à appliquer une fois, et le plan recalculé après application est vide ;
-- **un plan d'abord** : le même calcul, sans rien écrire, donne les chiffres par destination avant toute écriture.
+- **un plan d'abord** : le même calcul, sans rien écrire, donne les chiffres par destination avant toute écriture ;
+- **réversibilité** : une fusion se défait et une séparation se refond sans perte. Séparer ce qu'on vient de fondre rend les cerveaux d'origine, et fondre ce qu'on vient de séparer rend le cerveau d'origine : mêmes documents, mêmes identifiants, mêmes morceaux, mêmes vecteurs, mêmes entités et relations avec leur provenance (`graph_diff` vide entre l'avant et l'aller-retour). Il faut pour cela un journal de l'opération (l'origine de chaque document, la table d'alias appliquée, les entités fondues et leur version d'avant), écrit avant la première écriture et gardé après. Les doublons écartés ne sont pas perdus : le journal nomme le document gardé et l'origine de l'écarté, et l'aller-retour le rend à son cerveau.
+
+Le test d'aller-retour se pose sur chaque outil (A à D ci-dessous) et sur l'opération entière : deux cerveaux, fondus, séparés selon le journal, comparés à l'original ; un cerveau, séparé par thème, refondu, comparé à l'original. Une mutation qui oublie une ligne du journal doit le faire tomber.
 
 ## Le partage
 
@@ -43,7 +46,9 @@ Selon la ligne du 20 octobre 2026 (README de ce dossier) :
 
 **La proposition.** `merge_entities {canonical, aliases[], dry_run}`, ou une liste de paires, au-dessus de `MergeEntities` : mêmes garanties d'historique, bilan (arêtes repointées, boucles retirées). Pour une clé confinée, seules les entités de sa collection.
 
-**Tests, écrits avant le code.** Une fusion repointe les arêtes et garde la version d'avant en historique ; `dry_run` n'écrit rien ; un alias d'une autre collection est refusé à une clé confinée. Mutations : historique non écrit, garde de collection retirée.
+Pour la réversibilité, l'outil rend le journal de ce qu'il a fondu (entités, arêtes repointées, versions d'avant), et un `unmerge_entities {journal}` le défait à partir de l'historique que `MergeEntities` garde déjà (`superseded_by`).
+
+**Tests, écrits avant le code.** Une fusion repointe les arêtes et garde la version d'avant en historique ; `dry_run` n'écrit rien ; un alias d'une autre collection est refusé à une clé confinée ; fondre puis défaire rend le graphe d'avant (`graph_diff` vide). Mutations : historique non écrit, garde de collection retirée, une arête oubliée au journal.
 
 ## B. Exporter des documents avec ce qu'ils portent
 
@@ -61,7 +66,7 @@ Selon la ligne du 20 octobre 2026 (README de ce dossier) :
 
 **Le besoin.** L'opération 5 portait sur 4 000 documents : 4 000 appels de `delete_document_graph`, et entre deux appels un état où une entité est détachée d'un document mais pas encore de l'autre.
 
-**La proposition.** `delete_document_graph` accepte `ids[]` ou un filtre de métadonnées, avec `dry_run` qui rend les comptes, et calcule « seul à citer » sur l'ensemble, pas document par document.
+**La proposition.** `delete_document_graph` accepte `ids[]` ou un filtre de métadonnées, avec `dry_run` qui rend les comptes, et calcule « seul à citer » sur l'ensemble, pas document par document. Le retrait se défait par l'export pris avant (B) puis un import (C) : le test d'aller-retour le vérifie.
 
 ## Après la fusion de ces PR
 
