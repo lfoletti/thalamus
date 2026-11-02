@@ -310,7 +310,9 @@ func TestEntityCreditsABrainThatServesOnlyNeighbors(t *testing.T) {
 // tool the gateway's engine does not know, carry the notice.
 func TestTheBrainsEndpointCreditsAllButPureWrites(t *testing.T) {
 	b := attributionBench(t)
-	credited := []string{"knowledge_get", "knowledge_graph_query", "knowledge_memory_reflect", "knowledge_memory_consolidate", "extract_conversation", "knowledge_save", "a_tool_of_a_newer_engine"}
+	credited := []string{"knowledge_get", "knowledge_graph_query", "knowledge_memory_reflect", "knowledge_memory_consolidate", "extract_conversation", "a_tool_of_a_newer_engine",
+		// Writes that return their record: the content itself.
+		"knowledge_save", "knowledge_update", "memory_save", "memory_update", "knowledge_memory_remember"}
 	// Named here, not read from pureWrites: a pure write left out of it
 	// would be credited, and this test says so.
 	writes := []string{"ingest_document", "upsert_entities", "upsert_relations", "delete_entities", "delete_document_graph", "knowledge_delete", "memory_delete", "knowledge_graph_upsert", "knowledge_graph_delete"}
@@ -357,8 +359,9 @@ func TestThePureWritesAreWritesOfTheEngine(t *testing.T) {
 	}
 }
 
-// A brain without attribution answers th_recall as main does, byte for
-// byte, whatever lang says: main ignores the argument.
+// A brain without attribution answers th_recall as main does: no
+// attribution key at all, and the same bytes whatever lang says, since
+// main ignores the argument.
 func TestABrainWithoutAttributionAnswersAsBefore(t *testing.T) {
 	b := start(t)
 	k, _ := keys.Issue(b.keysFile, "lfoletti", "team/acme", "team-acme", rights.Write)
@@ -368,6 +371,13 @@ func TestABrainWithoutAttributionAnswersAsBefore(t *testing.T) {
 		want := mustCall(t, s, "th_recall", map[string]any{"query": query})
 		if want.IsError {
 			t.Fatalf("%+v", want.Content)
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(want.Content[0].(*mcp.TextContent).Text), &fields); err != nil || fields == nil {
+			t.Fatalf("%v %+v", err, want.Content)
+		}
+		if _, carried := fields["attribution"]; carried || len(want.Content) != 1 {
+			t.Fatalf("an answer without attribution carries one: %+v", want.Content)
 		}
 		for _, lang := range []any{"fr", "FR", "ja", "fr_CH.UTF-8", 12, true} {
 			got := mustCall(t, s, "th_recall", map[string]any{"query": query, "lang": lang})

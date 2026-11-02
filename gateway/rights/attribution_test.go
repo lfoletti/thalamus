@@ -103,12 +103,13 @@ func TestTheLanguagesServedStartWithEnglish(t *testing.T) {
 }
 
 // LanguageOf reads the language a code or a locale names, as a person sets
-// it: any case, quoted or not, with a region, an encoding or a modifier.
+// it: any case, quoted or not, with a region, an encoding or a modifier,
+// or first in a GNU LANGUAGE-style list ("fr:en").
 // "" for a language the gateway does not serve.
 func TestALanguageIsReadFromACodeOrALocale(t *testing.T) {
 	for _, c := range []struct{ in, want string }{
 		{"fr", "fr"}, {"FR", "fr"}, {"fr_CH.UTF-8", "fr"}, {"de-CH", "de"}, {"pt_BR", "pt"},
-		{"en_US.UTF-8@euro", "en"}, {"it@euro", "it"}, {"nl.UTF-8", "nl"}, {` "es" `, "es"}, {"'de'", "de"},
+		{"en_US.UTF-8@euro", "en"}, {"it@euro", "it"}, {"fr:en", "fr"}, {"de_CH:fr", "de"}, {"nl.UTF-8", "nl"}, {` "es" `, "es"}, {"'de'", "de"},
 		{"", ""}, {"C", ""}, {"C.UTF-8", ""}, {"POSIX", ""}, {"ja_JP", ""}, {"fra", ""}, {"f", ""}, {`"`, ""},
 	} {
 		if got := LanguageOf(c.in); got != c.want {

@@ -34,11 +34,12 @@ func Served(lang string) bool { return slices.Contains(Languages, lang) }
 
 // LanguageOf is the served language a code or a locale names, as a
 // person sets it: in any case, quoted or not, with a region, an encoding
-// or a modifier ("FR", "fr_CH.UTF-8", "pt-BR", `"de"`). "" when it names
+// or a modifier ("FR", "fr_CH.UTF-8", "pt-BR", `"de"`), or first in a GNU
+// LANGUAGE-style list ("fr:en"). "" when it names
 // none the gateway serves ("C", "ja", "fra").
 func LanguageOf(code string) string {
 	code = strings.ToLower(strings.Trim(strings.TrimSpace(code), `"'`))
-	if i := strings.IndexAny(code, "_-.@"); i >= 0 {
+	if i := strings.IndexAny(code, "_-.@:"); i >= 0 {
 		code = code[:i]
 	}
 	if Served(code) {

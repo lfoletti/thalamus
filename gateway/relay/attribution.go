@@ -20,8 +20,8 @@ import (
 // it from; the per-brain endpoint credits every answer but those of its
 // pure writes (pureWrites).
 // th_add, th_pending, th_review and th_retheme are a writer's or a
-// curator's tools, and th_themes serves counts and theme names, not
-// documents: they carry none.
+// curator's tools, and th_themes serves counts, theme names and document
+// ids, not content: they carry none.
 
 // notice is one brain's attribution, as an answer carries it.
 type notice struct {
@@ -116,7 +116,7 @@ func language(text string) string {
 // every other answer. A tool the engine classes as a write but which
 // serves content (knowledge_graph_query runs SPARQL SELECT,
 // knowledge_memory_reflect recalls), a write that returns its record
-// (knowledge_save), and a tool of a newer engine are credited: a notice too
+// (knowledge_save, memory_save), and a tool of a newer engine are credited: a notice too
 // many costs a line, a notice missing breaks the publisher's terms.
 var pureWrites = []string{
 	"ingest_document", "upsert_entities", "upsert_relations", "delete_entities", "delete_document_graph",

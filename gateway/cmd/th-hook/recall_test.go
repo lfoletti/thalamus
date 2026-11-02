@@ -336,6 +336,9 @@ func TestTheHookSendsTheLanguageItIsGiven(t *testing.T) {
 	for _, lang := range []string{"ja", "C", "frx"} {
 		g.calls = nil
 		code, out, errOut := hook(t, map[string]string{"TH_GATEWAY": url, "TH_KEY": "s3", "TH_LANG": lang}, `{"prompt":"when does the ledger move?"}`)
+		if len(g.calls) != 1 {
+			t.Fatalf("TH_LANG %q: calls %v, code %d, stderr %q", lang, g.calls, code, errOut)
+		}
 		if _, sent := g.calls[0]["lang"]; sent || code != 0 || !strings.Contains(contextOf(t, out), "[b] d") || !strings.Contains(errOut, "TH_LANG") || !strings.Contains(errOut, lang) {
 			t.Fatalf("TH_LANG %q: calls %v, code %d, stderr %q", lang, g.calls, code, errOut)
 		}
