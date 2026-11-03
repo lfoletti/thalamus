@@ -145,7 +145,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 1. 把 CortexDB 克隆到 `cortexdb/`（与 `gateway/` 并列），然后构建二进制文件。
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.141.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.145.0)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -238,7 +238,8 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
   - 欧洲语言检索：一个瑞士评测集（#99），覆盖率下限中的重音处理（#100），以及备选查询的词和运行（#101、#102）。
 - 已在 v2.139.1 中合并：`upsert_entities` 记录它所指名的分块所属的集合（#105），使 `th_entity` 能提供在 Thalamus 之外构建的大脑中的实体。
 - 已在 v2.140.0 和 v2.141.0 中合并：`find_nodes` 每次调用只对每个节点规范化一次（#110），且限定在单个集合内的 key 也可以调用 `find_nodes`（#111）。
-- Thalamus 使用 CortexDB v2.141.0。
+- 已在 v2.143.0 中合并：`ingest_document` 按条件写入（`if_absent`、`if_sha256`，#120），`knowledge_search` 和 `aggregate_metadata` 接受 `include_proposed`（#121），`knowledge_delete` 和 `knowledge_save` 让实体的来源与其文档保持一致（#122、#123）。
+- Thalamus 使用 CortexDB v2.145.0。
 - 已准备：一个列出待审核文档的工具。
 
 **下一步**

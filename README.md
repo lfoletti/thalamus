@@ -145,7 +145,7 @@ The steps start one CortexDB server with two brains, then the gateway, then the 
 1. Clone CortexDB into `cortexdb/`, next to `gateway/`, then build the binaries.
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.141.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.145.0)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -238,7 +238,8 @@ Thalamus relies on CortexDB for each mechanism that serves every CortexDB user. 
   - Search in European languages: a Swiss evaluation set (#99), accents in the coverage floor (#100), and the words and runs of alternate queries (#101, #102).
 - Merged in v2.139.1: `upsert_entities` records the collections of the chunks that it names (#105), so that `th_entity` serves the entities of a brain built outside Thalamus.
 - Merged in v2.140.0 and v2.141.0: `find_nodes` folds each node once per call (#110), and a key confined to one collection may call `find_nodes` (#111).
-- Thalamus uses CortexDB v2.141.0.
+- Merged in v2.143.0: `ingest_document` writes under a condition (`if_absent`, `if_sha256`, #120), `knowledge_search` and `aggregate_metadata` take `include_proposed` (#121), and `knowledge_delete` and `knowledge_save` keep the sources of an entity in step with its documents (#122, #123).
+- Thalamus uses CortexDB v2.145.0.
 - Prepared: a tool that lists the documents waiting for review.
 
 **Next**

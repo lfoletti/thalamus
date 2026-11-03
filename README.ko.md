@@ -145,7 +145,7 @@ docker run -p 8787:8787 -v /srv/thalamus:/etc/thalamus ghcr.io/lfoletti/thalamus
 1. CortexDB를 `gateway/` 옆의 `cortexdb/`에 클론한 다음 바이너리를 빌드합니다.
 
    ```sh
-   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.141.0)
+   git clone https://github.com/liliang-cn/cortexdb.git && (cd cortexdb && git checkout v2.145.0)
    mkdir -p bin
    (cd cortexdb && go build -o ../bin/cortexdb-grpc ./cmd/cortexdb-grpc)
    (cd gateway && go build -o ../bin/th-gateway ./cmd/th-gateway && go build -o ../plugin/bin/th-hook ./cmd/th-hook)
@@ -238,7 +238,8 @@ Thalamus는 모든 CortexDB 사용자에게 도움이 되는 각 메커니즘을
   - 유럽 언어 검색: 스위스 평가 세트(#99), 커버리지 하한에서의 악센트 처리(#100), 대체 질의의 단어와 실행(#101, #102).
 - v2.139.1에서 병합됨: `upsert_entities`가 자신이 지정하는 청크의 컬렉션을 기록하여(#105), `th_entity`가 Thalamus 밖에서 만들어진 브레인의 엔티티를 제공할 수 있게 합니다.
 - v2.140.0과 v2.141.0에서 병합됨: `find_nodes`는 호출마다 각 노드를 한 번만 정규화하고(#110), 하나의 컬렉션으로 제한된 키도 `find_nodes`를 호출할 수 있습니다(#111).
-- Thalamus는 CortexDB v2.141.0을 사용합니다.
+- v2.143.0에서 병합됨: `ingest_document`가 조건부로 기록하고(`if_absent`, `if_sha256`, #120), `knowledge_search`와 `aggregate_metadata`가 `include_proposed`를 받으며(#121), `knowledge_delete`와 `knowledge_save`가 엔티티의 출처를 그 문서와 일치하게 유지합니다(#122, #123).
+- Thalamus는 CortexDB v2.145.0을 사용합니다.
 - 준비됨: 검토를 기다리는 문서를 나열하는 도구.
 
 **다음**
