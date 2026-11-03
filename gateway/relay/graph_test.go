@@ -15,7 +15,8 @@ import (
 
 // The graph tools are a closed list of the engine's read-only graph tools,
 // each served on /mcp under th_ with the engine's own arguments and the
-// brain. The schemas below are those of CortexDB v2.141.0.
+// brain. The schemas below are those of CortexDB v2.145.0: find_nodes
+// takes skip_chunks since v2.142.0.
 func TestTheGraphToolsAreListedWithTheEnginesArguments(t *testing.T) {
 	b := start(t)
 	k, _ := keys.Issue(b.keysFile, "mdupont", "team/acme", "team-acme", rights.Read)
@@ -35,7 +36,7 @@ func TestTheGraphToolsAreListedWithTheEnginesArguments(t *testing.T) {
 		t.Fatalf("tools: %v", names)
 	}
 	for name, c := range map[string]struct{ properties, required []string }{
-		"th_find_nodes":                {[]string{"brain", "limit", "names", "node_types"}, []string{"brain", "names"}},
+		"th_find_nodes":                {[]string{"brain", "limit", "names", "node_types", "skip_chunks"}, []string{"brain", "names"}},
 		"th_expand_graph":              {[]string{"brain", "edge_types", "limit", "max_hops", "node_ids", "node_types", "relation_policies"}, []string{"brain", "node_ids"}},
 		"th_get_nodes":                 {[]string{"brain", "node_ids"}, []string{"brain", "node_ids"}},
 		"th_search_chunks_by_entities": {[]string{"brain", "entity_names", "max_hops", "top_k"}, []string{"brain", "entity_names"}},
