@@ -1,6 +1,6 @@
 # 25. Deux tests du hook de rappel lisent l'environnement de la machine
 
-**Statut** : **envoyée en brouillon le 15 novembre 2026 (liliang-cn/cortexdb#195, tête 0ae20ed, branche `co-33-recall-tests-own-environment` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : une ligne dans `cmd/cortexdb-mcp-stdio/recall_situation_test.go`. **Dépend de** : rien.
+**Statut** : **envoyée en relecture le 15 novembre 2026 (liliang-cn/cortexdb#195, tête 0ae20ed, branche `co-33-recall-tests-own-environment` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : une ligne dans `cmd/cortexdb-mcp-stdio/recall_situation_test.go`. **Dépend de** : rien.
 
 ## Le défaut
 
