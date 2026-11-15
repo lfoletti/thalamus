@@ -1,6 +1,6 @@
 # 21. Un index HNSW vidé puis réécrit garde ses nœuds
 
-**Statut** : **envoyée en brouillon le 15 novembre 2026 (liliang-cn/cortexdb#191, tête dbeb3c9, branche `co-28-hnsw-entry-point-tombstone` du fork lfoletti/cortexdb), base `main` 7e4b22b (v2.152.0 + 2).** **Taille** : 16 lignes dans `pkg/index/hnsw.go`, 206 lignes de tests. **Dépend de** : rien ; touche `liveNodeExistsLocked` comme la fiche 22, la seconde fusionnée se rebase (un conflit, deux fonctions ajoutées au même endroit, les deux gardées). Défaut trouvé par les scénarios différentiels de la fiche 22.
+**Statut** : **envoyée en relecture le 15 novembre 2026 (liliang-cn/cortexdb#191, tête dbeb3c9, branche `co-28-hnsw-entry-point-tombstone` du fork lfoletti/cortexdb), base `main` 7e4b22b (v2.152.0 + 2).** **Taille** : 16 lignes dans `pkg/index/hnsw.go`, 206 lignes de tests. **Dépend de** : rien ; touche `liveNodeExistsLocked` comme la fiche 22, la seconde fusionnée se rebase (un conflit, deux fonctions ajoutées au même endroit, les deux gardées). Défaut trouvé par les scénarios différentiels de la fiche 22.
 
 ## Le défaut
 

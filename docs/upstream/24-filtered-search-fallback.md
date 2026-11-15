@@ -1,6 +1,6 @@
 # 24. Le repli d'une recherche filtrée ne garde que les meilleurs résultats
 
-**Statut** : **envoyée en brouillon le 15 novembre 2026 (liliang-cn/cortexdb#194, tête 7bf952f, branche `co-27-filtered-search-fallback` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 17 lignes ajoutées et 11 retirées dans `pkg/core/store_search.go`, un fichier de tests. **Dépend de** : rien.
+**Statut** : **envoyée en relecture le 15 novembre 2026 (liliang-cn/cortexdb#194, tête 7bf952f, branche `co-27-filtered-search-fallback` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 17 lignes ajoutées et 11 retirées dans `pkg/core/store_search.go`, un fichier de tests. **Dépend de** : rien.
 
 ## Le défaut
 

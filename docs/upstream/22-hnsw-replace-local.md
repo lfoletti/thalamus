@@ -1,6 +1,6 @@
 # 22. Réécrire un vecteur HNSW ne lit plus tout l'index
 
-**Statut** : **envoyée en brouillon le 15 novembre 2026 (liliang-cn/cortexdb#192, tête 5bd151e, branche `co-25-hnsw-replace-local` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 79 lignes ajoutées et 27 retirées dans `pkg/index/hnsw.go`, un fichier de tests. **Dépend de** : rien ; même fonction que la fiche 21.
+**Statut** : **envoyée en relecture le 15 novembre 2026 (liliang-cn/cortexdb#192, tête 5bd151e, branche `co-25-hnsw-replace-local` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 79 lignes ajoutées et 27 retirées dans `pkg/index/hnsw.go`, un fichier de tests. **Dépend de** : rien ; même fonction que la fiche 21.
 
 ## Le défaut
 

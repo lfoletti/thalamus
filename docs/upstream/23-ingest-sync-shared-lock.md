@@ -1,6 +1,6 @@
 # 23. Les recherches continuent pendant qu'un document entre dans l'index
 
-**Statut** : **envoyée en brouillon le 15 novembre 2026 (liliang-cn/cortexdb#193, tête 0a19eee, branche `co-26-ingest-sync-shared-lock` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 10 lignes ajoutées et 4 retirées dans `pkg/core/store_tx.go` et `pkg/core/index_sync.go`, un fichier de tests. **Dépend de** : rien.
+**Statut** : **envoyée en relecture le 15 novembre 2026 (liliang-cn/cortexdb#193, tête 0a19eee, branche `co-26-ingest-sync-shared-lock` du fork lfoletti/cortexdb), base `main` 7e4b22b.** **Taille** : 10 lignes ajoutées et 4 retirées dans `pkg/core/store_tx.go` et `pkg/core/index_sync.go`, un fichier de tests. **Dépend de** : rien.
 
 ## Le défaut
 
