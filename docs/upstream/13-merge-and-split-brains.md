@@ -48,6 +48,8 @@ Selon la ligne du 20 octobre 2026 (README de ce dossier) :
 
 Pour la réversibilité, l'outil rend le journal de ce qu'il a fondu (entités, arêtes repointées, versions d'avant), et un `unmerge_entities {journal}` le défait à partir de l'historique que `MergeEntities` garde déjà (`superseded_by`).
 
+**État au 18 novembre 2026.** Écrite et prête en local, ne pas envoyer sans demande du mainteneur : branche `co-21-merge-entities` du fork lfoletti/cortexdb, un commit (tête 895ffa0), remise sur `main` 654bf0a (v2.156.1). 369 lignes hors tests, 647 de tests. Elle note aussi les noms fondus sur l'entité gardée (`aliases`, comme `--resolve-entities`), que lisent le rappel et la fiche 26 ; l'annulation reprend ces noms et eux seuls. Suites `pkg/cortexdb`, `pkg/authz`, `pkg/rpcserver` et `pkg/graph` vertes ; cinq mutations sur les noms, chacune prise par un test.
+
 **Tests, écrits avant le code.** Une fusion repointe les arêtes et garde la version d'avant en historique ; `dry_run` n'écrit rien ; un alias d'une autre collection est refusé à une clé confinée ; fondre puis défaire rend le graphe d'avant (`graph_diff` vide). Mutations : historique non écrit, garde de collection retirée, une arête oubliée au journal.
 
 ## B. Exporter des documents avec ce qu'ils portent
