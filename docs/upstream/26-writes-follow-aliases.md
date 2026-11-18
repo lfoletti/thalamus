@@ -1,6 +1,6 @@
 # 26. Les écritures et `find_nodes` suivent les alias
 
-**Statut** : prête en local, ne pas envoyer sans demande du mainteneur. Branche `co-35-upsert-follows-aliases` du fork lfoletti/cortexdb (tête 2c278ef), base `main` 654bf0a (v2.156.1). **Taille** : 207 lignes hors tests, 191 lignes de tests. **Dépend de** : rien ; elle sert la PR A de la fiche 13 (`co-21-merge-entities`, tête 895ffa0), qui note désormais les noms fondus là où cette PR les lit. **Motivée par** : l'ingestion par fiche de kg (chantier K2 d'alignement, décision du 16 novembre 2026 : « éviter les opérations rationnellement évitables, comme de réécrire des fiches qui ne changent pas de contenu »).
+**Statut** : envoyée le 18 novembre 2026, PR #222 en brouillon (demande de Lauro). Branche `co-35-upsert-follows-aliases` du fork lfoletti/cortexdb (tête b161411), base `main` 654bf0a (v2.156.1). **Taille** : 198 lignes hors tests, 282 lignes de tests. **Dépend de** : rien ; elle sert la PR A de la fiche 13 (`co-21-merge-entities`, tête 3a1380c), qui note désormais les noms fondus là où cette PR les lit. **Motivée par** : l'ingestion par fiche de kg (chantier K2 d'alignement, décision du 16 novembre 2026 : « éviter les opérations rationnellement évitables, comme de réécrire des fiches qui ne changent pas de contenu »).
 
 ## Le défaut
 
@@ -27,7 +27,7 @@ Aucune ouverture nouvelle pour une clé confinée : les entités sont partagées
 
 Quatre tombaient avant le code : `TestUpsertEntitiesUnderAnAliasWritesTheCanonicalEntity`, `TestUpsertRelationsFollowTheAliasAtEitherEnd`, `TestFindNodesAnswersAnAliasWithTheCanonicalEntity`, `TestTheAliasReadUsesThePartialIndex`. Deux gardent le comportement voisin : `TestUpsertEntitiesKeepsANodeThatStandsUnderTheName`, `TestAnAliasTwoEntitiesCarryGoesToTheFirstID`.
 
-Mutations, chacune prise par un test : aucun alias suivi ; l'alias avant un nœud vivant ; l'identité de l'entité gardée écrasée ; l'une ou l'autre extrémité d'une relation non suivie ; `find_nodes` sans la passe des alias ; pas d'index partiel ; le dernier porteur d'un alias le garde.
+Mutations, chacune prise par un test : aucun alias suivi ; l'alias avant un nœud vivant ; l'identité de l'entité gardée écrasée ; l'une ou l'autre extrémité d'une relation non suivie ; `find_nodes` sans la passe des alias ; pas d'index partiel ; le dernier porteur d'un alias le garde ; une ligne illisible qui arrête la lecture ; un identifiant typé suivi ; un identifiant donné suivi. Couverture du correctif mesurée en local : aucune ligne non couverte.
 
 Suites `pkg/cortexdb`, `pkg/graph`, `pkg/authz`, `pkg/rpcserver` : vertes. `go test ./...` : seul `pkg/liveview` (`TestHashedAssetsAreImmutableTypedAndCompressedOnce`) tombe, et il tombe aussi sur `main` 654bf0a sans la PR.
 
