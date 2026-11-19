@@ -2,6 +2,8 @@
 
 **Statut** : envoyée le 18 novembre 2026, PR #222 en brouillon (demande de Lauro). Branche `co-35-upsert-follows-aliases` du fork lfoletti/cortexdb (tête b161411), base `main` 654bf0a (v2.156.1). **Taille** : 198 lignes hors tests, 282 lignes de tests. **Dépend de** : rien ; elle sert la PR A de la fiche 13 (`co-21-merge-entities`, tête 3a1380c), qui note désormais les noms fondus là où cette PR les lit. **Motivée par** : l'ingestion par fiche de kg (chantier K2 d'alignement, décision du 16 novembre 2026 : « éviter les opérations rationnellement évitables, comme de réécrire des fiches qui ne changent pas de contenu »).
 
+**État au 19 novembre 2026.** Relecture de liliang-cn du 19 novembre (modifications demandées) : corrections poussées le même jour, tête 9e0bb40, 268 lignes hors tests, 614 de tests. Un lot écrit chaque entité une fois ; `find_nodes` range l'alias entre le nom plié et l'inclusion ; une entrée sous alias ne change rien à ce que dit l'entité ; la relation entre un alias et son entité est sautée ; une clé confinée n'est suivie que vers une entité que ses collections listent. Décisions : `projet:cortexdb:corrections-pr-221-222-decisions-2026-11-19` (cerveau `kg-coding`).
+
 ## Le défaut
 
 La résolution des entités (`cortexdb-mcp-stdio --resolve-entities`, et `merge_entities` de la fiche 13) fond une entité dans une autre. Elle note les noms fondus sur l'entité gardée, dans `properties.aliases`. Le rappel suit ces alias (`resolveEntityNameToNode`, pour `cortex_query`, `build_context`, la mémoire et `verify_claims`). Les écritures ne les suivent pas :
