@@ -1,6 +1,6 @@
 # 13. Fondre et séparer des cerveaux
 
-**Statut** : en réserve, ne pas envoyer. **Taille estimée** : quatre PR, 150 + 250 + 250 + 120 lignes hors tests. **Dépend de** : la fiche 12, PR A (écriture conditionnelle), pour l'import ; #75 (empreinte du contenu). **Motivée par** : une fusion réelle de trois cerveaux de sources en un seul, avec une archive pour ce qui n'y entre pas, faite côté client parce que ni le moteur ni le gateway n'avaient les outils.
+**Statut** : PR A fusionnée le 20 novembre 2026 (#221, CortexDB v2.157.0) ; les trois autres en réserve, ne pas envoyer. **Taille estimée** : quatre PR, 150 + 250 + 250 + 120 lignes hors tests. **Dépend de** : la fiche 12, PR A (écriture conditionnelle), pour l'import ; #75 (empreinte du contenu). **Motivée par** : une fusion réelle de trois cerveaux de sources en un seul, avec une archive pour ce qui n'y entre pas, faite côté client parce que ni le moteur ni le gateway n'avaient les outils.
 
 ## Ce que la fusion a demandé
 
@@ -47,6 +47,12 @@ Selon la ligne du 20 octobre 2026 (README de ce dossier) :
 **La proposition.** `merge_entities {canonical, aliases[], dry_run}`, ou une liste de paires, au-dessus de `MergeEntities` : mêmes garanties d'historique, bilan (arêtes repointées, boucles retirées). Pour une clé confinée, seules les entités de sa collection.
 
 Pour la réversibilité, l'outil rend le journal de ce qu'il a fondu (entités, arêtes repointées, versions d'avant), et un `unmerge_entities {journal}` le défait à partir de l'historique que `MergeEntities` garde déjà (`superseded_by`).
+
+**État au 18 novembre 2026.** Envoyée le 18 novembre 2026, PR #221 en brouillon (demande du mainteneur) : branche `co-21-merge-entities` du fork lfoletti/cortexdb, un commit (tête 3a1380c), remise sur `main` 654bf0a (v2.156.1). 374 lignes hors tests, 727 de tests. Elle note aussi les noms fondus sur l'entité gardée (`aliases`, comme `--resolve-entities`), que lisent le rappel et la fiche 26 ; l'annulation reprend ces noms et eux seuls. Suites `pkg/cortexdb`, `pkg/authz`, `pkg/rpcserver` et `pkg/graph` vertes ; six mutations sur les noms, chacune prise par un test ; couverture du correctif mesurée en local : aucune ligne non couverte.
+
+**État au 19 novembre 2026.** Relecture de liliang-cn du 19 novembre (modifications demandées) : corrections poussées le même jour, tête 9bab6a2, 652 lignes hors tests, 1 514 de tests. Une fusion ferme tout au même instant ; le journal porte `merged_at` (plus de `before` ni de `names`) ; l'annulation relit dans l'historique ce que cet instant a fermé et refuse en entier un journal qui ne s'y accorde pas ; fusion et annulation tiennent chacune en une transaction qui verrouille les écritures du graphe. La réponse propose au mainteneur de sortir `unmerge_entities` dans une PR à part.
+
+**État au 20 novembre 2026.** Fusionnée par liliang-cn le 20 novembre à 01:40 UTC (commit ccc886d, tête 9bab6a2), `unmerge_entities` compris ; parue dans CortexDB v2.157.0.
 
 **Tests, écrits avant le code.** Une fusion repointe les arêtes et garde la version d'avant en historique ; `dry_run` n'écrit rien ; un alias d'une autre collection est refusé à une clé confinée ; fondre puis défaire rend le graphe d'avant (`graph_diff` vide). Mutations : historique non écrit, garde de collection retirée, une arête oubliée au journal.
 
